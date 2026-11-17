@@ -689,35 +689,34 @@
       }
     }
       /* REELS HEADER & TOOLS (Images 1 & 2) */
-    .reels-gold-pill {
-      background: linear-gradient(135deg, #E2B755 0%, #B78103 100%);
-      border-radius: 24px;
-      padding: 4px 14px 4px 6px;
-      display: flex;
+    .reels-competitions-badge {
+      position: relative;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      height: 38px;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       user-select: none;
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));
+      transition: transform 0.15s ease;
     }
-    .reels-gold-pill span {
+    .reels-competitions-badge:active {
+      transform: scale(0.96);
+    }
+    .reels-competitions-badge img {
+      height: 38px;
+      width: auto;
+      display: block;
+    }
+    .reels-competitions-badge span {
+      position: absolute;
+      left: 18px;
       font-size: 13px;
       font-weight: bold;
       color: #ffffff;
-    }
-    .reels-gold-coin {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
-    .reels-gold-coin img {
-      width: 22px;
-      height: 22px;
+      font-family: 'Dubai', sans-serif;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      pointer-events: none;
+      white-space: nowrap;
     }
     .reels-header-tools {
       display: flex;
@@ -1190,11 +1189,9 @@
           <!-- Top Bar (Matching Image 1 & 2: Right Gold Pill [< المسابقات], Left 3 Circles [Bell, Search, +]) -->
           <div class="reels-header-top">
             <!-- Right: Gold Competitions Button (< المسابقات) -->
-            <div class="reels-gold-pill" onclick="openScreen('competitions'); event.stopPropagation();">
-              <div class="reels-gold-coin">
-                <img src="assets/images/badg_gold.png" alt="Gold Badge">
-              </div>
-              <span>المسابقات &gt;</span>
+            <div class="reels-competitions-badge" onclick="openScreen('competitions'); event.stopPropagation();" title="المسابقات">
+              <img src="assets/images/badg_gold.png" alt="المسابقات">
+              <span>&lt; المسابقات</span>
             </div>
 
             <!-- Left: 3 Circular Buttons (Bell, Search, Double-Ring Add) -->
@@ -1274,11 +1271,7 @@
             <div class="reels-caption-text" id="reel-caption-text">تحفه ما شاء الله</div>
           </div>
 
-          <!-- Subtle Up/Down Vertical Swipe Arrows on edge -->
-          <div style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 25; opacity: 0.35;">
-            <div onclick="prevReel(); event.stopPropagation();" style="width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 11px;" title="المقطع السابق">▲</div>
-            <div onclick="nextReel(); event.stopPropagation();" style="width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 11px;" title="المقطع التالي">▼</div>
-          </div>
+          
         </div>
 
         <!-- SCREEN 3: CHAPTERS SCREEN (Matching Images 3 - 10 Exactly) -->
@@ -1316,6 +1309,12 @@
               <div class="cat-rail-btn" onclick="switchCategory(this, 'قسم الفقه')">قسم الفقه</div>
               <div class="cat-rail-btn" onclick="switchCategory(this, 'قسم الابتهال')">قسم الابتهال</div>
             </div>
+          </div>
+        </div>
+
+                  <!-- Floating Action Button (Only in Chapters Screen as requested) -->
+          <div class="etqan-fab" onclick="showAddOptionsModal()" title="إضافة حلقة">
+            <div class="etqan-fab-inner">+</div>
           </div>
         </div>
 
@@ -2171,10 +2170,7 @@
         </button>
       </div>
 
-      <!-- Floating Action Button (Exact Match with Images 3 - 10: Circular Double-Ring Button at Bottom Left) -->
-      <div class="etqan-fab" onclick="showAddOptionsModal()" title="إضافة حلقة أو مقطع فيديو">
-        <div class="etqan-fab-inner">+</div>
-      </div>
+      
 
     </div>
   </div>

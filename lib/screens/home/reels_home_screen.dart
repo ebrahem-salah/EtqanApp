@@ -340,49 +340,36 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                     ],
                   ),
 
-                  // Right: Gold Competitions Button (< المسابقات)
+                  // Right: Gold Competitions Button (< المسابقات) using uploaded official badge
                   GestureDetector(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const CompetitionsScreen()),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFE2B755), Color(0xFFB78103)],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    child: SizedBox(
+                      height: 38,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.emoji_events, color: Color(0xFFB78103), size: 18),
-                            ),
+                          Image.asset(
+                            'assets/images/badg_gold.png',
+                            height: 38,
+                            fit: BoxFit.contain,
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'المسابقات >',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                          const Positioned(
+                            left: 14,
+                            child: Text(
+                              '< المسابقات',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Dubai',
+                                shadows: [
+                                  Shadow(color: Colors.black38, offset: Offset(0, 1), blurRadius: 3),
+                                ],
+                              ),
                             ),
                           ),
                         ],
