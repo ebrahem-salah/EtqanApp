@@ -1,0 +1,2697 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تطبيق إتقان - المنظومة العالمية لتعليم القرآن والسنة</title>
+  <style>
+    @font-face {
+      font-family: 'Dubai';
+      src: url('assets/fonts/Dubai-Regular.ttf') format('truetype');
+      font-weight: normal;
+    }
+    @font-face {
+      font-family: 'Dubai';
+      src: url('assets/fonts/Dubai-Bold.ttf') format('truetype');
+      font-weight: bold;
+    }
+    @font-face {
+      font-family: 'Dubai';
+      src: url('assets/fonts/Dubai-Medium.ttf') format('truetype');
+      font-weight: 500;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Dubai', 'Segoe UI', Tahoma, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #15291d 0%, #08100b 100%);
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    /* Master Top Bar */
+    .master-header {
+      text-align: center;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    .master-header h1 {
+      font-size: 24px;
+      color: #D4AF37;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .master-header p {
+      font-size: 13px;
+      color: #a8c4b2;
+      margin-top: 4px;
+    }
+
+    /* Screen Selector Navigation Pills */
+    .screen-pills-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 18px;
+      max-width: 900px;
+    }
+    .pill-btn {
+      background: rgba(255,255,255,0.08);
+      color: #e5ece7;
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.25s ease;
+    }
+    .pill-btn:hover {
+      background: rgba(0, 135, 90, 0.3);
+      border-color: #00875A;
+    }
+    .pill-btn.active {
+      background: #00875A;
+      color: #fff;
+      font-weight: bold;
+      border-color: #2ecc71;
+      box-shadow: 0 4px 14px rgba(0, 135, 90, 0.45);
+    }
+
+    /* Smartphone Frame */
+    .phone-wrapper {
+      width: 410px;
+      max-width: 100%;
+      height: 820px;
+      background: #111;
+      border-radius: 46px;
+      padding: 12px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.85), 0 0 0 4px #243e2e, 0 0 20px rgba(0, 135, 90, 0.2);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      background: #FBFBF4;
+      border-radius: 36px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Phone Status Bar */
+    .status-bar {
+      height: 32px;
+      padding: 0 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 100;
+      background: transparent;
+      color: #333;
+    }
+    .status-bar.dark-text { color: #222; }
+    .status-bar.light-text { color: #fff; }
+
+    /* Content Area */
+    .screens-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    .app-screen {
+      display: none !important;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+      overflow-y: auto;
+      position: absolute;
+      inset: 0;
+    }
+    .app-screen.active {
+      display: flex !important;
+    }
+
+    /* Bottom Navigation Bar (Using Official SVGs) */
+    .app-bottom-nav {
+      height: 64px;
+      background: #fff;
+      border-top: 1px solid #e8e8d8;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 90;
+    }
+    .nav-tab-item {
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      color: #999;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      flex: 1;
+      transition: all 0.2s;
+    }
+    .nav-tab-item img {
+      width: 22px;
+      height: 22px;
+      opacity: 0.6;
+      transition: all 0.2s;
+    }
+    .nav-tab-item.active {
+      color: #00875A;
+      font-weight: bold;
+    }
+    .nav-tab-item.active img {
+      opacity: 1;
+      filter: invert(36%) sepia(85%) saturate(880%) hue-rotate(118deg) brightness(92%) contrast(102%);
+    }
+
+    /* 0. SCREEN: SPLASH ANIMATION */
+    #screen-splash {
+      background: #FAF7DF url('assets/images/splash_arch_bg.png') center / cover no-repeat;
+      justify-content: center;
+      align-items: center;
+    }
+    @keyframes logoZoomIn {
+      0% { transform: scale(0.15); opacity: 0; }
+      65% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes mosqueSlideUp {
+      0% { transform: translateY(180px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 0.85; }
+    }
+    .splash-logo-box {
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: logoZoomIn 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .splash-logo-box img {
+      width: 150px;
+      max-width: 65%;
+      max-height: 180px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 25px rgba(0, 108, 53, 0.25));
+    }
+    .splash-mosques-box {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      animation: mosqueSlideUp 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
+    }
+    .splash-mosques-box img {
+      width: 100%;
+      max-height: 240px;
+      object-fit: contain;
+      object-position: bottom;
+    }
+
+    /* 1. SCREEN: ONBOARDING */
+    #screen-onboarding {
+      background: #fff;
+      padding: 20px;
+      justify-content: space-between;
+      text-align: center;
+    }
+
+    /* 2. SCREEN: REELS HOME (With Real Video & Gold Badge) */
+    #screen-reels {
+      background: #000;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+    .reels-video-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.8;
+    }
+    .reels-overlay-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 40%, rgba(0,0,0,0.85) 100%);
+      pointer-events: none;
+    }
+    .reels-header-top {
+      position: absolute;
+      top: 40px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 30;
+      direction: rtl;
+    }
+    .reel-follow-btn {
+      background: #00875A;
+      color: #ffffff;
+      border: none;
+      border-radius: 20px;
+      padding: 6px 18px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .reel-follow-btn.following {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(6px);
+      color: #ffffff;
+    }
+    .reels-actions-bar {
+      position: absolute;
+      left: 16px;
+      bottom: 70px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      z-index: 30;
+      align-items: center;
+    }
+    .reels-action-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.15s ease;
+    }
+    .reels-action-item:active {
+      transform: scale(0.85);
+    }
+    .reels-action-icon {
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
+    }
+    .reels-action-icon svg {
+      width: 30px;
+      height: 30px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+      transition: fill 0.2s, stroke 0.2s;
+    }
+    .reels-action-item.liked .reels-action-icon svg {
+      fill: #ff4757;
+      stroke: #ff4757;
+    }
+    .action-label {
+      font-size: 12px;
+      color: #ffffff;
+      font-weight: bold;
+      margin-top: 2px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    }
+    .reels-sheikh-info {
+      position: absolute;
+      right: 16px;
+      bottom: 24px;
+      left: 80px;
+      z-index: 30;
+      text-align: right;
+      direction: rtl;
+    }
+    .reels-caption-text {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: bold;
+      line-height: 1.4;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+    }
+
+    /* 3. SCREEN: CHAPTERS */
+    #screen-chapters {
+      background: #FBFBF4;
+    }
+    .chapters-main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .cat-rail {
+      width: 135px;
+      background: #F4F4E6;
+      border-left: 1px solid #e2e2cb;
+      padding: 8px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cat-rail-btn {
+      background: #fff;
+      border: 1px solid #dfdfc6;
+      border-radius: 10px;
+      padding: 10px 6px;
+      font-size: 11px;
+      text-align: center;
+      color: #555;
+      cursor: pointer;
+      line-height: 1.3;
+      transition: all 0.2s;
+    }
+    .cat-rail-btn.active {
+      background: #00875A;
+      color: #fff;
+      border-color: #00875A;
+      font-weight: bold;
+    }
+    .cat-rail-btn.library-btn {
+      background: #111;
+      color: #fff;
+      font-weight: bold;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .subcat-rail-content {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-content: start;
+    }
+    .subcat-luxury-card {
+      background: #1c2620;
+      color: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border: 1px solid #2d4536;
+      transition: transform 0.15s;
+    }
+    .subcat-luxury-card:hover { transform: translateY(-2px); }
+    .subcat-circle-badge {
+      width: 44px;
+      height: 44px;
+      background: #00875A;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+      border: 2px solid #2ecc71;
+    }
+
+    /* 4. SCREEN: SHEIKHS */
+    #screen-sheikhs {
+      background: #FBFBF4;
+      padding: 14px;
+    }
+    .sheikh-card-lux {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid #e7e7d6;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.03);
+    }
+
+    /* 5. SCREEN: MY CHAPTERS */
+    #screen-mychapters {
+      background: #FBFBF4;
+      padding: 14px;
+    }
+    .tab-switch-bar {
+      display: flex;
+      background: #e8e8d5;
+      border-radius: 12px;
+      padding: 3px;
+      margin-bottom: 14px;
+    }
+    .tab-switch-btn {
+      flex: 1;
+      padding: 9px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #666;
+    }
+    .tab-switch-btn.active {
+      background: #00875A;
+      color: #fff;
+    }
+
+    /* 6. SCREEN: LIVE CALL (With real call.gif & Quran) */
+    #screen-call {
+      background: #141f18;
+      color: #fff;
+    }
+
+    /* 7. SCREEN: MORE & PROFILE */
+    #screen-more {
+      background: #FBFBF4;
+      overflow-y: auto;
+    }
+    .profile-hero {
+      background: url('assets/images/profile_header_background.png') center / cover no-repeat;
+      padding: 24px 16px 20px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* 8. SCREEN: BOOKING, COMPETITIONS, WALLET */
+    .booking-day-chip {
+      flex: 0 0 74px;
+      background: #fff;
+      border: 1px solid #dcdbc9;
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .booking-day-chip.active {
+      background: #00875A;
+      border-color: #00875A;
+      color: #fff;
+      box-shadow: 0 3px 8px rgba(0,135,90,0.25);
+    }
+    .booking-slot-chip {
+      background: #fff;
+      border: 1px solid #dcdbc9;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: bold;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .booking-slot-chip.active {
+      background: #eef7f2;
+      border-color: #00875A;
+      color: #00875A;
+    }
+    .booking-type-card {
+      flex: 1;
+      background: #fff;
+      border: 1.5px solid #dcdbc9;
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .booking-type-card.active {
+      background: #eef7f2;
+      border-color: #00875A;
+      box-shadow: 0 2px 8px rgba(0,135,90,0.15);
+    }
+    .wallet-package-card {
+      position: relative;
+      background: #fff;
+      border: 1.5px solid #dcdbc9;
+      border-radius: 14px;
+      padding: 14px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .wallet-package-card.active {
+      background: #f1f8f4;
+      border-color: #00875A;
+      box-shadow: 0 3px 10px rgba(0,135,90,0.2);
+    }
+    .pay-method-chip {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #dcdbc9;
+      border-radius: 10px;
+      padding: 10px 6px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: #444;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pay-method-chip.active {
+      background: #00875A;
+      border-color: #00875A;
+      color: #fff;
+    }
+
+    /* 9. SCREEN: LIBRARY, RADIOS, EVALUATION */
+    .lib-cat-chip {
+      background: #fff;
+      border: 1px solid #dcdbc9;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #555;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .lib-cat-chip.active {
+      background: #00875A;
+      color: #fff;
+      border-color: #00875A;
+    }
+    .lib-book-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      border: 1px solid #e0dfce;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+      transition: transform 0.15s;
+    }
+    .lib-book-card:hover { transform: translateY(-2px); }
+    .eq-bar {
+      width: 4px;
+      background: #D4AF37;
+      border-radius: 2px;
+      animation: eqBounce 1s infinite alternate ease-in-out;
+      height: 6px;
+    }
+    @keyframes eqBounce {
+      0% { height: 4px; }
+      100% { height: 24px; }
+    }
+    .radio-station-row {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .radio-station-row.active {
+      background: rgba(0,135,90,0.3);
+      border-color: #00875A;
+    }
+    .rubric-slider-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      border: 1px solid #e2e1d0;
+    }
+    .rubric-range {
+      width: 100%;
+      accent-color: #00875A;
+      cursor: pointer;
+    }
+
+    /* Mobile Device Native View (When opened on actual phone) */
+    @media (max-width: 600px) {
+      body {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #000 !important;
+        overflow: hidden;
+      }
+      .master-header, .screen-pills-bar {
+        display: none !important;
+      }
+      .phone-wrapper {
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      .phone-screen {
+        border-radius: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .status-bar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="master-header">
+    <h1>
+      <img src="assets/logo/etqan_logo_original.png" alt="Etqan Logo" style="height: 38px; vertical-align: middle;">
+      منظومة إتقان العالمية
+    </h1>
+    <p>جميع صور وأصول وفيديوهات وأيقونات التطبيق الأصلية مدمجة بالكامل</p>
+    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+      <span style="background: rgba(0, 135, 90, 0.25); border: 1px solid #00875A; color: #2ecc71; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: bold;">
+        🟢 Supabase Cloud: ngokeoqlimctcjkbmgtn
+      </span>
+      <span style="background: rgba(212, 175, 55, 0.2); border: 1px solid #D4AF37; color: #D4AF37; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: bold;">
+        ⚡ ZegoCloud: 961728373
+      </span>
+    </div>
+  </div>
+
+  <!-- Screen Switcher Pills -->
+  <div class="screen-pills-bar">
+    <button class="pill-btn" onclick="openScreen('splash')">
+      <span>✨</span> 1. اللوجو والأنيميشن (Splash)
+    </button>
+    <button class="pill-btn" onclick="openScreen('onboarding')">
+      <span>🌟</span> 2. مرحباً بك (Welcome Landing)
+    </button>
+    <button class="pill-btn" onclick="openScreen('login')">
+      <span>🔑</span> 3. تسجيل الدخول (Login)
+    </button>
+    <button class="pill-btn" onclick="openScreen('register')">
+      <span>📝</span> 4. تسجيل جديد (Register)
+    </button>
+    <button class="pill-btn active" onclick="openScreen('reels')">
+      <span>▶️</span> 5. الرئيسية (Reels)
+    </button>
+    <button class="pill-btn" onclick="openScreen('chapters')">
+      <span>📑</span> الحلقات
+    </button>
+    <button class="pill-btn" onclick="openScreen('sheikhs')">
+      <span>👥</span> الشيوخ
+    </button>
+    <button class="pill-btn" onclick="openScreen('mychapters')">
+      <span>💬</span> حلقاتي
+    </button>
+    <button class="pill-btn" onclick="openScreen('call')">
+      <span>🎙️</span> غرفة التسميع
+    </button>
+    <button class="pill-btn" onclick="openScreen('booking')">
+      <span>📅</span> 7. حجز جلسة
+    </button>
+    <button class="pill-btn" onclick="openScreen('competitions')">
+      <span>🏆</span> 8. المسابقات
+    </button>
+    <button class="pill-btn" onclick="openScreen('wallet')">
+      <span>💳</span> 9. المحفظة
+    </button>
+    <button class="pill-btn" onclick="openScreen('library')">
+      <span>📚</span> 10. المكتبة
+    </button>
+    <button class="pill-btn" onclick="openScreen('radios')">
+      <span>📻</span> 11. الإذاعات
+    </button>
+    <button class="pill-btn" onclick="openScreen('evaluation')">
+      <span>📜</span> 12. الشهادة
+    </button>
+    <button class="pill-btn" onclick="openScreen('more')">
+      <span>👤</span> حسابي
+    </button>
+  </div>
+
+  <!-- Phone Shell -->
+  <div class="phone-wrapper">
+    <div class="phone-screen">
+      
+      <!-- Top Status Bar -->
+      <div class="status-bar light-text" id="phone-status-bar">
+        <span>6:12</span>
+        <span id="phone-title-indicator" style="font-size: 11px;">إتقان - الرئيسية</span>
+        <span>📶 🔋 100%</span>
+      </div>
+
+      <div class="screens-container">
+
+        <!-- SCREEN 0: SPLASH SCREEN (Original HD Logo + Mosque Silhouettes) -->
+        <div id="screen-splash" class="app-screen" onclick="openScreen('onboarding')" style="cursor: pointer;" title="انقر للدخول المباشر لشاشة الترحيب">
+          <div class="splash-logo-box" id="anim-logo">
+            <img src="assets/logo/etqan_logo_original.png" alt="Etqan Logo">
+          </div>
+          <div class="splash-mosques-box" id="anim-mosques">
+            <img src="assets/images/mosque_silhouette.png" alt="Mosque Silhouettes">
+          </div>
+          <button onclick="event.stopPropagation(); restartSplash()" style="position: absolute; bottom: 20px; z-index: 50; background: #006C35; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer;">
+            🔄 إعادة تشغيل الأنيميشن
+          </button>
+        </div>
+
+        <!-- SCREEN 1: WELCOME SCREEN (Image 3 - تظهر بعد اللوجو مباشرة) -->
+        <div id="screen-onboarding" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Illustration Section (Full Width Edge-to-Edge) -->
+          <div style="background: #fff; width: 100%; margin: 0; padding: 0; line-height: 0; flex-shrink: 0; border-bottom: 1px solid rgba(0,0,0,0.04);">
+            <img src="assets/images/welcome_sheikh_illustration.png" alt="Welcome Illustration" style="width: 100%; height: auto; display: block;">
+          </div>
+
+          <!-- Bottom Card: Cream Yellow -->
+          <div style="background: #FCFBE8; padding: 18px 22px 28px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <!-- 2 Dots Indicator -->
+              <div style="display: flex; justify-content: center; gap: 6px; margin-bottom: 14px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #00875A;"></div>
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #ccc;"></div>
+              </div>
+
+              <!-- Texts -->
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h2 style="font-size: 22px; font-weight: bold; color: #1E2822; margin-bottom: 6px;">مرحباً بك في تطبيق اتقان</h2>
+                <p style="font-size: 13px; color: #666; line-height: 1.5;">مكتبة شاملة ومتكاملة من الدروس والمحاضرات الدينية التي تناسب جميع الأعمار والمستويات</p>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div>
+              <button style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px;" onclick="openScreen('login')">
+                <span style="font-size: 16px;">👤</span>
+                <span>تسجيل الدخول</span>
+              </button>
+              <button style="width: 100%; padding: 14px; background: #191919; color: #fff; border: none; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer;" onclick="openScreen('reels')">
+                الاستمرار كزائر للتطبيق
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN: LOGIN (Image 1 - شاشة تسجيل الدخول الأصلية) -->
+        <div id="screen-login" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Banner: Full Width Edge-to-Edge with Pure White Background -->
+          <div style="width: 100%; margin: 0; padding: 0; background: #fff; line-height: 0; flex-shrink: 0; border-bottom: 1px solid rgba(0,0,0,0.04);">
+            <img src="assets/images/figma_login_banner_clean.png" alt="Library Banner" style="width: 100%; height: auto; display: block;" onerror="this.src='assets/images/onboarding_library.png'">
+          </div>
+
+          <!-- Bottom Form Container: Cream Yellow -->
+          <div style="background: #FCFBE8; padding: 18px 22px 30px; flex: 1;">
+            <h2 style="font-size: 22px; font-weight: bold; color: #1E2822; text-align: center; margin-bottom: 20px;">تسجيل الدخول</h2>
+
+            <!-- Phone Field with Saudi Flag -->
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 14px; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 6px; background: #f5f5f5; padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; color: #00875A;">
+                <span>🇸🇦</span>
+                <span>+966 ▾</span>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 11px; font-weight: bold; color: #333;">رقم الجوال</div>
+                <div style="font-size: 13px; color: #777;">123456789</div>
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 14px; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <span style="font-size: 16px; color: #888; cursor: pointer;">👁️</span>
+              <div style="text-align: right;">
+                <div style="font-size: 11px; font-weight: bold; color: #333;">كلمة المرور</div>
+                <div style="font-size: 13px; color: #777;">*****************</div>
+              </div>
+            </div>
+
+            <!-- Remember Me -->
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 13px; font-weight: bold; color: #1E2822;">
+              <input type="checkbox" checked style="accent-color: #00875A; width: 16px; height: 16px;">
+              <span>تذكرني</span>
+            </div>
+
+            <!-- Black Login Button -->
+            <button style="width: 100%; padding: 14px; background: #191919; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 14px;" onclick="doLogin()">
+              دخول
+            </button>
+
+            <!-- Forgot Password Green Link -->
+            <div style="text-align: center; margin-bottom: 18px;">
+              <span style="color: #00875A; font-weight: bold; font-size: 13px; cursor: pointer;" onclick="alert('🔑 أدخل رقم جوالك لاستعادة كلمة المرور عبر رمز OTP')">نسيت كلمة المرور؟</span>
+            </div>
+
+            <!-- Divider -->
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <div style="flex: 1; height: 1px; background: #ddd;"></div>
+              <span style="font-size: 11px; color: #888;">أو من خلال</span>
+              <div style="flex: 1; height: 1px; background: #ddd;"></div>
+            </div>
+
+            <!-- Social Google & Apple -->
+            <div style="display: flex; justify-content: center; gap: 14px; margin-bottom: 20px;">
+              <div style="width: 46px; height: 46px; background: #fff; border: 1px solid #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.05);" onclick="alert('Google Sign-in')">
+                <img src="assets/svgs/google_icon.svg" alt="Google" style="width: 20px;">
+              </div>
+              <div style="width: 46px; height: 46px; background: #fff; border: 1px solid #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.05);" onclick="alert('Apple Sign-in')">
+                <img src="assets/svgs/apple_icon.svg" alt="Apple" style="width: 20px;">
+              </div>
+            </div>
+
+            <!-- Create Account Button (White with green border) -->
+            <button style="width: 100%; padding: 13px; background: #fff; color: #00875A; border: 1.5px solid #00875A; border-radius: 24px; font-size: 14px; font-weight: bold; cursor: pointer; margin-bottom: 12px;" onclick="openScreen('register')">
+              لا تمتلك حساب؟ قم بإنشاء حساب
+            </button>
+
+            <!-- Continue as Guest Link -->
+            <div style="text-align: center;">
+              <span style="font-size: 12px; color: #777; text-decoration: underline; cursor: pointer;" onclick="openScreen('reels')">الاستمرار كزائر للتطبيق</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN: REGISTER (Image 2 - شاشة تسجيل جديد الأصلية) -->
+        <div id="screen-register" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Header Banner (Exact Figma image: register_header_banner.png) -->
+          <div style="width: 100%; margin: 0; padding: 0; background: #fff; line-height: 0; flex-shrink: 0; position: relative; border-bottom: 1px solid rgba(0,0,0,0.04);">
+            <img src="assets/images/register_header_banner.png" alt="Register Banner" style="width: 100%; height: auto; display: block;">
+            <!-- Clickable overlay on the back arrow (top right) -->
+            <div style="position: absolute; top: 12px; right: 14px; width: 44px; height: 44px; border-radius: 50%; cursor: pointer;" onclick="openScreen('login')" title="رجوع لشاشة تسجيل الدخول"></div>
+          </div>
+
+          <!-- Bottom Form Container (Cream Yellow) -->
+          <div style="background: #FCFBE8; padding: 16px 20px 30px; flex: 1;">
+            <h2 style="font-size: 20px; font-weight: bold; color: #1E2822; text-align: center; margin-bottom: 2px;">تسجيل جديد</h2>
+            <p style="font-size: 12px; color: #666; text-align: center; margin-bottom: 16px;">قم بإنشاء حساب جديد</p>
+
+            <!-- Field 1: الاسم -->
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 7px 12px; margin-bottom: 10px; text-align: right;">
+              <div style="font-size: 10px; font-weight: bold; color: #333;">الاسم</div>
+              <div style="font-size: 13px; color: #666;">Mohmed Ahmed</div>
+            </div>
+
+            <!-- Field 2: رقم الجوال -->
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 4px; background: #f5f5f5; padding: 3px 6px; border-radius: 6px; font-size: 11px; font-weight: bold; color: #00875A;">
+                <span>🇸🇦</span>
+                <span>+966 ▾</span>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 10px; font-weight: bold; color: #333;">رقم الجوال</div>
+                <div style="font-size: 13px; color: #666;">123456789</div>
+              </div>
+            </div>
+
+            <!-- Field 3: البريد الالكتروني -->
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 7px 12px; margin-bottom: 10px; text-align: right;">
+              <div style="font-size: 10px; font-weight: bold; color: #333;">البريد الالكتروني</div>
+              <div style="font-size: 13px; color: #666;">username@mail.com</div>
+            </div>
+
+            <!-- Field 4: كلمة المرور -->
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <span style="font-size: 14px; color: #888;">👁️</span>
+              <div style="text-align: right;">
+                <div style="font-size: 10px; font-weight: bold; color: #333;">كلمة المرور</div>
+                <div style="font-size: 13px; color: #666;">*****************</div>
+              </div>
+            </div>
+
+            <!-- Field 5: تأكيد كلمة المرور -->
+            <div style="background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <span style="font-size: 14px; color: #888;">👁️</span>
+              <div style="text-align: right;">
+                <div style="font-size: 10px; font-weight: bold; color: #333;">تأكيد كلمة المرور</div>
+                <div style="font-size: 13px; color: #666;">*****************</div>
+              </div>
+            </div>
+
+            <!-- Checkbox Terms -->
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 11px;">
+              <input type="checkbox" checked style="accent-color: #00875A;">
+              <span>لقد قرأت وأوافق على <u style="color: #00875A; font-weight: bold; cursor: pointer;">الشروط والأحكام</u></span>
+            </div>
+
+            <!-- Black Register Button -->
+            <button style="width: 100%; padding: 13px; background: #191919; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer;" onclick="doRegister()">
+              تسجيل
+            </button>
+          </div>
+        </div>
+
+        <!-- SCREEN 2: REELS HOME (Original MP4 Video + Gold Badge + Original SVGs) -->
+        <div id="screen-reels" class="app-screen active">
+          <video class="reels-video-container" autoplay loop muted playsinline id="reels-video">
+            <source src="assets/videos/onboarding_video_1.mp4" type="video/mp4">
+          </video>
+          <div class="reels-overlay-gradient"></div>
+
+          <!-- Top Bar (Exact Match with etqan_app ReelsScreen: Sheikh Name & Avatar on Right, Follow Button on Left) -->
+          <div class="reels-header-top">
+            <!-- Sheikh Info (Right) -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div id="reel-sheikh-avatar" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; border: 1px solid rgba(255,255,255,0.3); overflow: hidden;">
+                <img id="reel-avatar-img" src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=150" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+              </div>
+              <span id="reel-sheikh-name" style="color: #ffffff; font-size: 15px; font-weight: bold; text-shadow: 0 1px 4px rgba(0,0,0,0.9);">د / عبد الله الرويلي</span>
+            </div>
+
+            <!-- Follow Button (Left) -->
+            <button id="reel-follow-btn" class="reel-follow-btn" onclick="toggleFollowReel(event)">متابعة</button>
+          </div>
+
+          <!-- Central Play/Pause Tap Area -->
+          <div onclick="toggleReelPlayPause(event)" style="position: absolute; inset: 60px 0 100px 0; z-index: 20; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <div id="reel-play-indicator" style="width: 72px; height: 72px; border-radius: 50%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.4);">
+              <svg viewBox="0 0 24 24" width="40" height="40" fill="#ffffff"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
+
+          <!-- Left Floating Action Controls (Exact Match: Like, Comment, Share) -->
+          <div class="reels-actions-bar">
+            <!-- Like -->
+            <div class="reels-action-item" id="reel-like-item" onclick="toggleLikeCurrentReel()">
+              <div class="reels-action-icon">
+                <svg id="reel-like-svg" viewBox="0 0 24 24">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              </div>
+              <span class="action-label" id="reel-likes-num">234</span>
+            </div>
+
+            <!-- Comment -->
+            <div class="reels-action-item" onclick="openReelCommentsSheet()">
+              <div class="reels-action-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                </svg>
+              </div>
+              <span class="action-label" id="reel-comments-num">45</span>
+            </div>
+
+            <!-- Share -->
+            <div class="reels-action-item" onclick="shareCurrentReel()">
+              <div class="reels-action-icon">
+                <svg viewBox="0 0 24 24">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </div>
+              <span class="action-label" style="font-size: 11px;">مشاركة</span>
+            </div>
+          </div>
+
+          <!-- Bottom Video Caption (Right: 16, Bottom: 24, Left: 80) -->
+          <div class="reels-sheikh-info">
+            <div class="reels-caption-text" id="reel-caption-text">من اعظم اسباب تجعلك سعيداً في الحياه</div>
+          </div>
+
+          <!-- Subtle Up/Down Vertical Swipe Arrows on edge -->
+          <div style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 25; opacity: 0.35;">
+            <div onclick="prevReel(); event.stopPropagation();" style="width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 11px;" title="المقطع السابق">▲</div>
+            <div onclick="nextReel(); event.stopPropagation();" style="width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 11px;" title="المقطع التالي">▼</div>
+          </div>
+        </div>
+
+        <!-- SCREEN 3: CHAPTERS SCREEN -->
+        <div id="screen-chapters" class="app-screen">
+          <div style="background: #fff; padding: 12px 16px; border-bottom: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 17px; font-weight: bold; color: #00875A;">تصفح الحلقات والمناهج</h3>
+            <span style="font-size: 18px; cursor: pointer;">🔔</span>
+          </div>
+
+          <div class="chapters-main-layout">
+            <!-- Left Subcategories Grid -->
+            <div class="subcat-rail-content" id="subcat-box">
+              <div class="subcat-luxury-card" onclick="openCallWithTitle('حلقة القاعدة النورانية - المستوى الأول')">
+                <div class="subcat-circle-badge">1</div>
+                <div>
+                  <div style="font-weight: bold; font-size: 14px;">المستوى الأول</div>
+                  <div style="font-size: 11px; color: #a5cbb7;">هجاء الحروف المفردة والمركبة</div>
+                </div>
+              </div>
+              <div class="subcat-luxury-card" onclick="openCallWithTitle('حلقة القاعدة النورانية - المستوى الثاني')">
+                <div class="subcat-circle-badge">2</div>
+                <div>
+                  <div style="font-weight: bold; font-size: 14px;">المستوى الثاني</div>
+                  <div style="font-size: 11px; color: #a5cbb7;">الحركات والتنوين وأحكام المدود</div>
+                </div>
+              </div>
+              <div class="subcat-luxury-card" onclick="openCallWithTitle('حلقة القاعدة النورانية - المستوى الثالث')">
+                <div class="subcat-circle-badge">3</div>
+                <div>
+                  <div style="font-weight: bold; font-size: 14px;">المستوى الثالث</div>
+                  <div style="font-size: 11px; color: #a5cbb7;">التطبيق على سور جزء عم</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Categories List -->
+            <div class="cat-rail">
+              <div class="cat-rail-btn library-btn" onclick="openScreen('more')">
+                <img src="assets/svgs/icon_library.svg" alt="Library" style="width: 16px; filter: brightness(0) invert(1);">
+                <span>المكتبة &gt;</span>
+              </div>
+              <div class="cat-rail-btn active" onclick="switchCategory(this, 'القاعدة النورانية')">القاعدة النورانية</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'القرآن الكريم')">القرآن الكريم</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'مقرأة إهداء الثواب')">إهداء الثواب</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'السنة النبوية')">السنة النبوية</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'الفتاوى')">الفتاوى</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'الرقية الشرعية')">الرقية الشرعية</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'الطفل المسلم')">الطفل المسلم</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'المرأة المسلمة')">المرأة المسلمة</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'قسم الفقه')">قسم الفقه</div>
+              <div class="cat-rail-btn" onclick="switchCategory(this, 'قسم الابتهال')">قسم الابتهال</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 4: SHEIKHS SCREEN -->
+        <div id="screen-sheikhs" class="app-screen">
+          <div style="background: #fff; padding: 12px 16px; border-bottom: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 17px; font-weight: bold;">الشيوخ والمعلمون</h3>
+            <span style="font-size: 18px; cursor: pointer;">🔍</span>
+          </div>
+          <div style="padding: 14px;">
+            <div class="sheikh-card-lux">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 46px; height: 46px; border-radius: 50%; background: #E8F5E9; display: flex; align-items: center; justify-content: center; font-size: 24px;">👳‍♂️</div>
+                  <div>
+                    <div style="font-weight: bold; font-size: 15px;">الشيخ سعد علي</div>
+                    <span style="background: #E8F5E9; color: #00875A; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: bold;">مؤسسة التعاون</span>
+                  </div>
+                </div>
+                <button style="background: #00875A; color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;" onclick="this.innerText='✓ متابع'; this.style.background='#888';">+ متابعة</button>
+              </div>
+              <div style="display: flex; justify-content: space-around; border-top: 1px solid #f0f0e0; padding-top: 10px; text-align: center; font-size: 11px;">
+                <div><strong style="display: block; font-size: 14px;">124</strong>الأصدقاء</div>
+                <div><strong style="display: block; font-size: 14px;">15</strong>المقاطع</div>
+                <div><strong style="display: block; font-size: 14px;">48</strong>الحلقات</div>
+                <div><strong style="display: block; font-size: 14px; color: #D4AF37;">⭐ 4.9</strong>التقييم</div>
+              </div>
+            </div>
+
+            <div class="sheikh-card-lux">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 46px; height: 46px; border-radius: 50%; background: #E8F5E9; display: flex; align-items: center; justify-content: center; font-size: 24px;">👳‍♂️</div>
+                  <div>
+                    <div style="font-weight: bold; font-size: 15px;">الشيخ محمود القزاز</div>
+                    <span style="background: #E8F5E9; color: #00875A; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: bold;">مؤسسة إتقان الخيرية</span>
+                  </div>
+                </div>
+                <button style="background: #00875A; color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;" onclick="this.innerText='✓ متابع'; this.style.background='#888';">+ متابعة</button>
+              </div>
+              <div style="display: flex; justify-content: space-around; border-top: 1px solid #f0f0e0; padding-top: 10px; text-align: center; font-size: 11px;">
+                <div><strong style="display: block; font-size: 14px;">310</strong>الأصدقاء</div>
+                <div><strong style="display: block; font-size: 14px;">28</strong>المقاطع</div>
+                <div><strong style="display: block; font-size: 14px;">92</strong>الحلقات</div>
+                <div><strong style="display: block; font-size: 14px; color: #D4AF37;">⭐ 5.0</strong>التقييم</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 5: MY CHAPTERS -->
+        <div id="screen-mychapters" class="app-screen">
+          <div style="background: #fff; padding: 12px 16px; border-bottom: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 17px; font-weight: bold;">حلقاتي المسجلة</h3>
+            <span style="font-size: 18px; cursor: pointer;">🔔</span>
+          </div>
+
+          <div style="padding: 14px;">
+            <div class="tab-switch-bar">
+              <div class="tab-switch-btn active" id="btn-running" onclick="switchMyChapters('running')">الحلقات الجارية (2)</div>
+              <div class="tab-switch-btn" id="btn-ended" onclick="switchMyChapters('ended')">الحلقات المنتهية</div>
+            </div>
+
+            <div id="mychap-cards-list">
+              <div style="background: #EBF4EE; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #d3e7d9;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-bottom: 6px;">
+                  <span>04:02 PM - اليوم</span>
+                  <span style="background: #00875A; color: #fff; padding: 2px 8px; border-radius: 12px; font-weight: bold;">✓ جارية الآن</span>
+                </div>
+                <h4 style="font-size: 15px; margin-bottom: 4px;">حلقة تصحيح سورة البقرة</h4>
+                <p style="font-size: 12px; color: #555; margin-bottom: 12px;">المشرف: الشيخ عبد الله السويسي (👥 0 / 1 مشترك)</p>
+                <button style="width: 100%; padding: 10px; background: #00875A; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="openCallWithTitle('حلقة سورة البقرة')">
+                  🎙️ دخول الجلسة المباشرة
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 6: LIVE RECITATION CALL (Voice Rooms & Video Call) -->
+        <div id="screen-call" class="app-screen">
+          <div style="background: #0c140f; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div>
+              <h4 style="font-size: 14px;" id="call-room-title">حلقة التسميع المباشر</h4>
+              <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; box-shadow: 0 0 6px #2ecc71;"></span>
+                <small style="color: #2ecc71; font-weight: bold; font-size: 11px;">متصل عبر ZEGOCLOUD (24ms)</small>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <!-- Call Mode Toggle -->
+              <button onclick="setCallMode('voice')" id="mode-voice-btn" style="background: #00875A; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
+                🎙️ صوتية
+              </button>
+              <button onclick="setCallMode('video')" id="mode-video-btn" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
+                📹 فيديو
+              </button>
+              <button onclick="showZegoConfigModal()" style="background: #D4AF37; color: #111; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
+                ⚙️ Zego
+              </button>
+            </div>
+          </div>
+
+          <!-- VOICE ROOM VIEW -->
+          <div id="view-voice-call" style="display: flex; flex-direction: column; flex: 1;">
+            <!-- Animated Audio Wave Banner -->
+            <div style="background: #0a110d; text-align: center; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <img src="assets/animation/call.gif" alt="Live Audio Waves" style="height: 38px; filter: hue-rotate(90deg);">
+            </div>
+
+            <!-- Mushaf Page Sheet -->
+            <div style="flex: 1; background: #FFFDF5; color: #222; padding: 20px; display: flex; flex-direction: column; justify-content: center; text-align: center;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div style="color: #6d4c41; font-weight: bold; font-size: 14px;">سُورَةُ مَرْيَمَ (مَكِّيَّة)</div>
+                <button onclick="toggleMushafEdition()" id="mushaf-btn" style="background: rgba(0,0,0,0.06); color: #555; border: 1px solid #ccc; padding: 3px 8px; border-radius: 6px; font-size: 10px; cursor: pointer;">
+                  📖 طبعة الشمرلي
+                </button>
+              </div>
+              <div style="font-size: 17px; line-height: 2.2; font-family: 'Amiri', 'Traditional Arabic', serif;">
+                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ<br>
+                كٓهيعٓصٓ ۝ ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ۝ إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا ۝ قَالَ رَبِّ إِنِّى وَهَنَ ٱلْعَظْمُ مِنِّى وَٱشْتَعَلَ ٱلرَّأْسُ شَيْبًۭا...
+              </div>
+              <div style="margin-top: 14px; font-size: 11px; color: #888;" id="edition-desc">
+                طبعة الشمرلي المصرية الأصلية | صفحة 293
+              </div>
+            </div>
+
+            <!-- Sheikh 5-point Rubric -->
+            <div style="background: #141f18; padding: 8px 12px; display: flex; justify-content: space-around; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <div style="text-align: center;"><div>الخطأ</div><strong style="color: #4CAF50;">0</strong></div>
+              <div style="text-align: center;"><div>التلعثم</div><strong style="color: #FFC107;">1</strong></div>
+              <div style="text-align: center;"><div>أحكام التجويد</div><strong style="color: #D4AF37;">5/5 ⭐</strong></div>
+              <div style="text-align: center;"><div>الدرجة الكلية</div><strong style="color: #2ecc71;">98%</strong></div>
+            </div>
+          </div>
+
+          <!-- VIDEO CALL VIEW -->
+          <div id="view-video-call" style="display: none; flex-direction: column; flex: 1; position: relative; background: #000; overflow: hidden;">
+            <!-- Main Video (Sheikh Video Stream) -->
+            <video autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
+              <source src="assets/videos/onboarding_video_2.mp4" type="video/mp4">
+            </video>
+
+            <!-- Sheikh Label Overlay -->
+            <div style="position: absolute; top: 12px; right: 14px; background: rgba(0,0,0,0.65); backdrop-filter: blur(6px); color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #2ecc71;"></span>
+              <span>الشيخ المشرف (بث حي Zego)</span>
+            </div>
+
+            <!-- Student Floating PIP Camera Window -->
+            <div id="student-pip-box" style="position: absolute; bottom: 80px; left: 14px; width: 110px; height: 155px; background: #1c2e24; border-radius: 14px; border: 2px solid #00875A; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+              <div id="pip-camera-placeholder">
+                <div style="font-size: 32px; margin-bottom: 4px;">👤</div>
+                <div style="font-size: 10px; color: #a8c4b2; font-weight: bold;">كاميرا الطالب</div>
+                <small style="font-size: 8px; color: #2ecc71;">نشطة ✓</small>
+              </div>
+            </div>
+
+            <!-- Floating Video Quran Overlay Button -->
+            <div style="position: absolute; bottom: 85px; right: 14px;">
+              <button onclick="toggleVideoQuranOverlay()" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); color: #D4AF37; border: 1px solid #D4AF37; padding: 8px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                📖 عرض آيات التلاوة
+              </button>
+            </div>
+
+            <!-- Floating Quran Overlay Panel -->
+            <div id="video-quran-panel" style="display: none; position: absolute; top: 60px; left: 14px; right: 14px; background: rgba(255,253,245,0.96); backdrop-filter: blur(10px); color: #222; padding: 14px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); text-align: center; border: 1px solid #c2a649;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <strong style="color: #6d4c41; font-size: 12px;">سورة مريم - آية 1 إلى 5</strong>
+                <span style="cursor: pointer; font-size: 16px; color: #888;" onclick="toggleVideoQuranOverlay()">✕</span>
+              </div>
+              <p style="font-size: 13px; line-height: 2; font-family: 'Amiri', serif;">
+                كٓهيعٓصٓ ۝ ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ۝ إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا...
+              </p>
+            </div>
+          </div>
+
+          <!-- Unified Audio/Video Action Controls -->
+          <div style="background: #0c140f; padding: 14px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.08);">
+            <button id="mic-toggle-btn" onclick="toggleMute()" style="width: 48px; height: 48px; border-radius: 50%; background: #00875A; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="كتم/تشغيل المايك">🎙️</button>
+            <button id="cam-toggle-btn" onclick="toggleCamera()" style="width: 48px; height: 48px; border-radius: 50%; background: #333; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="تشغيل/إيقاف الكاميرا">📹</button>
+            <button onclick="alert('🔊 تم تفعيل مكبر الصوت')" style="width: 48px; height: 48px; border-radius: 50%; background: #333; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="مكبر الصوت">🔊</button>
+            <button onclick="openScreen('chapters')" style="width: 48px; height: 48px; border-radius: 50%; background: #c62828; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="إنهاء المكالمة">📞</button>
+          </div>
+        </div>
+
+        <!-- SCREEN 7: MORE & PROFILE (Original Profile Header & Wallet SVG) -->
+        <div id="screen-more" class="app-screen">
+          <div class="profile-hero">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">👤</div>
+            <div>
+              <div style="font-size: 16px; font-weight: bold;">أحمد عبد المنعم موسى</div>
+              <div style="font-size: 12px; opacity: 0.9;">حساب دارس وباحث معتمد</div>
+            </div>
+          </div>
+
+          <div style="padding: 16px;">
+            <!-- Wallet Card -->
+            <div style="background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="openScreen('wallet')">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <img src="assets/svgs/icon_wallet.svg" alt="Wallet" style="width: 24px;">
+                <div>
+                  <div style="font-weight: bold; font-size: 14px;">محفظتي ورصيد النقاط</div>
+                  <small style="color: #888;">استبدال وشحن رصيد الحلقات</small>
+                </div>
+              </div>
+              <span style="color: #00875A; font-weight: bold; font-size: 14px;">120 نقطة &gt;</span>
+            </div>
+
+            <!-- Competitions Card -->
+            <div style="background: linear-gradient(135deg, #fff9e6, #fff); border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #eedd82; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="openScreen('competitions')">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <img src="assets/images/badg_gold.png" alt="Competitions" style="width: 26px;">
+                <div>
+                  <div style="font-weight: bold; font-size: 14px; color: #191919;">مسابقة فرسان إتقان 2026</div>
+                  <small style="color: #b8860b;">جوائز نقدية بقيمة 100,000 ر.س</small>
+                </div>
+              </div>
+              <span style="color: #D4AF37; font-weight: bold; font-size: 14px;">سجل الآن &gt;</span>
+            </div>
+
+            <!-- Library Option -->
+            <div style="background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="openScreen('library')">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <img src="assets/svgs/icon_library.svg" alt="Library" style="width: 24px;">
+                <div>
+                  <div style="font-weight: bold; font-size: 14px;">المكتبة وكتب السنة</div>
+                  <small style="color: #888;">أمهات الكتب الإسلامية المعتمدة</small>
+                </div>
+              </div>
+              <span style="font-size: 12px; color: #00875A; font-weight: bold;">تصفح 20 كتاباً &gt;</span>
+            </div>
+
+            <!-- Radios Option -->
+            <div style="background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="openScreen('radios')">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <img src="assets/svgs/icon_radios.svg" alt="Radios" style="width: 24px;">
+                <div>
+                  <div style="font-weight: bold; font-size: 14px;">الإذاعات القرآنية المباشرة</div>
+                  <small style="color: #888;">بث حي على مدار 24 ساعة</small>
+                </div>
+              </div>
+              <span style="font-size: 12px; color: #e74c3c; font-weight: bold;">بث حي 🔴 &gt;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 8: CIRCLE BOOKING SCREEN (حجز موعد مع المقرئ) -->
+        <div id="screen-booking" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Bar -->
+          <div style="background: #00875A; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('chapters')">➜</span>
+              <span style="font-size: 16px; font-weight: bold;">حجز موعد حلقة تسميع</span>
+            </div>
+            <span style="font-size: 12px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px;">مباشر</span>
+          </div>
+
+          <div style="padding: 16px;">
+            <!-- Sheikh Profile Card -->
+            <div style="background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #e2e1d0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 16px;">
+              <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                <div style="width: 56px; height: 56px; border-radius: 50%; background: #00875A; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid #D4AF37;">
+                  👳‍♂️
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-size: 16px; font-weight: bold; color: #191919;">الشيخ عبد الله السويسي</div>
+                  <div style="font-size: 12px; color: #00875A; font-weight: bold;">إجازة بالسند المتصل برواية حفص عن عاصم</div>
+                  <div style="font-size: 11px; color: #777; margin-top: 2px;">⭐ 4.9 (184 تقييم) • 1,240 ساعة تدريس</div>
+                </div>
+              </div>
+              <div style="background: #F4F9F5; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #2c583f; display: flex; justify-content: space-between;">
+                <span>🎯 التخصص: إتقان التجويد ومخارج الحروف</span>
+                <span style="font-weight: bold; color: #00875A;">مجاناً للمشتركين</span>
+              </div>
+            </div>
+
+            <!-- Date Selector -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 8px;">اختر اليوم المناسب:</div>
+              <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
+                <div class="booking-day-chip active" onclick="selectBookingDay(this)">
+                  <div style="font-size: 11px;">اليوم</div>
+                  <div style="font-size: 14px; font-weight: bold;">الثلاثاء</div>
+                  <div style="font-size: 10px; opacity: 0.8;">17 نوفمبر</div>
+                </div>
+                <div class="booking-day-chip" onclick="selectBookingDay(this)">
+                  <div style="font-size: 11px;">غداً</div>
+                  <div style="font-size: 14px; font-weight: bold;">الأربعاء</div>
+                  <div style="font-size: 10px; opacity: 0.8;">18 نوفمبر</div>
+                </div>
+                <div class="booking-day-chip" onclick="selectBookingDay(this)">
+                  <div style="font-size: 11px;">الخميس</div>
+                  <div style="font-size: 14px; font-weight: bold;">19</div>
+                  <div style="font-size: 10px; opacity: 0.8;">نوفمبر</div>
+                </div>
+                <div class="booking-day-chip" onclick="selectBookingDay(this)">
+                  <div style="font-size: 11px;">الجمعة</div>
+                  <div style="font-size: 14px; font-weight: bold;">20</div>
+                  <div style="font-size: 10px; opacity: 0.8;">نوفمبر</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Time Slots -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 8px;">اختر الموعد المتاح:</div>
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                <div class="booking-slot-chip active" onclick="selectBookingSlot(this)">
+                  <span>🕒</span> 04:00 PM - متاح
+                </div>
+                <div class="booking-slot-chip" onclick="selectBookingSlot(this)">
+                  <span>🕒</span> 05:30 PM - متاح
+                </div>
+                <div class="booking-slot-chip" onclick="selectBookingSlot(this)">
+                  <span>🕒</span> 07:00 PM - متاح
+                </div>
+                <div class="booking-slot-chip" onclick="selectBookingSlot(this)">
+                  <span>🕒</span> 08:30 PM - متاح
+                </div>
+              </div>
+            </div>
+
+            <!-- Session Type (Voice Room vs Video Call) -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 8px;">نوع الجلسة (ZEGOCLOUD):</div>
+              <div style="display: flex; gap: 10px;">
+                <div id="book-mode-voice" class="booking-type-card active" onclick="selectBookingMode('voice')">
+                  <div style="font-size: 24px; margin-bottom: 4px;">🎙️</div>
+                  <div style="font-weight: bold; font-size: 13px;">غرفة صوتية</div>
+                  <small style="font-size: 10px; color: #555;">صوت عالي النقاء 48kHz</small>
+                </div>
+                <div id="book-mode-video" class="booking-type-card" onclick="selectBookingMode('video')">
+                  <div style="font-size: 24px; margin-bottom: 4px;">📹</div>
+                  <div style="font-weight: bold; font-size: 13px;">مكالمة مرئية</div>
+                  <small style="font-size: 10px; color: #555;">كاميرا + مصحف تفاعلي</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mushaf Edition -->
+            <div style="background: #fff; border-radius: 12px; padding: 12px; border: 1px solid #e0dfce; margin-bottom: 20px;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">طبعة المصحف المعتمدة للحلقة:</div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="booking-mushaf-label" style="font-weight: bold; font-size: 13px; color: #00875A;">📖 طبعة الشمرلي المصرية الأصلية (20 سطر)</span>
+                <button type="button" onclick="toggleBookingMushaf()" style="background: #eef6f1; border: 1px solid #00875A; color: #00875A; border-radius: 8px; font-size: 11px; padding: 4px 10px; cursor: pointer; font-weight: bold;">تغيير</button>
+              </div>
+            </div>
+
+            <!-- Submit Booking Button -->
+            <button onclick="confirmBookingSuccess()" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
+              ✓ تأكيد حجز الموعد الآن (مجاناً)
+            </button>
+          </div>
+        </div>
+
+        <!-- SCREEN 9: COMPETITIONS SCREEN (مسابقات إتقان الكبرى) -->
+        <div id="screen-competitions" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Bar -->
+          <div style="background: linear-gradient(135deg, #1c3d2a, #00875A); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('reels')">➜</span>
+              <span style="font-size: 16px; font-weight: bold;">مسابقات إتقان الكبرى</span>
+            </div>
+            <img src="assets/images/badg_gold.png" alt="Gold Badge" style="height: 28px;">
+          </div>
+
+          <div style="padding: 16px;">
+            <!-- Grand Prize Hero Banner -->
+            <div style="background: linear-gradient(135deg, #FFDF73, #D4AF37, #997514); border-radius: 16px; padding: 18px; color: #191919; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(212,175,55,0.3); position: relative; overflow: hidden;">
+              <div style="position: absolute; left: -10px; bottom: -15px; opacity: 0.2; font-size: 80px;">🏆</div>
+              <div style="display: inline-block; background: #191919; color: #FFDF73; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">نسخة رمضان 1447 هـ / 2026 م</div>
+              <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 4px;">مسابقة فرسان إتقان السنوية</h2>
+              <p style="font-size: 13px; font-weight: 500; opacity: 0.9; margin-bottom: 10px;">لحفظ القرآن الكريم كاملاً وتجويده وإتقان مخارج الحروف</p>
+              <div style="background: rgba(255,255,255,0.95); border-radius: 10px; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: bold; color: #333;">مجموع الجوائز النقدية:</span>
+                <span style="font-size: 16px; font-weight: bold; color: #00875A;">100,000 ر.س 💰</span>
+              </div>
+            </div>
+
+            <!-- Competition Branches / Tracks -->
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">فروع المسابقة:</div>
+            
+            <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: bold; font-size: 14px; color: #00875A;">الفرع الأول: القرآن الكريم كاملاً</div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">مع الإتقان وأحكام الجزرية ومخارج الحروف</div>
+                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">جائزة المركز الأول: 50,000 ريال</div>
+              </div>
+              <button onclick="registerForTrack('الفرع الأول: القرآن الكريم كاملاً')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 6px 14px; font-weight: bold; cursor: pointer;">سجل</button>
+            </div>
+
+            <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: bold; font-size: 14px; color: #00875A;">الفرع الثاني: حفظ 15 جزءاً متتالياً</div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">تلاوة متقنة مع أحكام الترتيل والتنغيم</div>
+                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">جائزة المركز الأول: 30,000 ريال</div>
+              </div>
+              <button onclick="registerForTrack('الفرع الثاني: 15 جزءاً')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 6px 14px; font-weight: bold; cursor: pointer;">سجل</button>
+            </div>
+
+            <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: bold; font-size: 14px; color: #00875A;">الفرع الثالث: سورة البقرة وآل عمران</div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">حفظ وتدبر وأحكام التجويد الأساسية</div>
+                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">جائزة المركز الأول: 20,000 ريال</div>
+              </div>
+              <button onclick="registerForTrack('الفرع الثالث: البقرة وآل عمران')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 6px 14px; font-weight: bold; cursor: pointer;">سجل</button>
+            </div>
+
+            <!-- Leaderboard -->
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">لوحة شرف الأوائل (المتصدرين):</div>
+            <div style="background: #fff; border-radius: 14px; border: 1px solid #e3e2d1; overflow: hidden; margin-bottom: 20px;">
+              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 18px;">🥇</span>
+                  <div>
+                    <div style="font-weight: bold; font-size: 13px;">أحمد محمود الدوسري</div>
+                    <small style="font-size: 10px; color: #888;">الفرع الأول • الرياض</small>
+                  </div>
+                </div>
+                <span style="font-weight: bold; color: #00875A; font-size: 13px;">99.8% ⭐</span>
+              </div>
+              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 18px;">🥈</span>
+                  <div>
+                    <div style="font-weight: bold; font-size: 13px;">عمر بن عبد العزيز المصري</div>
+                    <small style="font-size: 10px; color: #888;">الفرع الثاني • القاهرة</small>
+                  </div>
+                </div>
+                <span style="font-weight: bold; color: #00875A; font-size: 13px;">99.2% ⭐</span>
+              </div>
+              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 18px;">🥉</span>
+                  <div>
+                    <div style="font-weight: bold; font-size: 13px;">ياسين خالد الكندري</div>
+                    <small style="font-size: 10px; color: #888;">الفرع الثالث • الكويت</small>
+                  </div>
+                </div>
+                <span style="font-weight: bold; color: #00875A; font-size: 13px;">98.7% ⭐</span>
+              </div>
+            </div>
+
+            <!-- Big Register Button -->
+            <button onclick="registerForTrack('المسابقة العامة')" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00875A, #005F3F); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
+              🏆 تقديم طلب المشاركة في المسابقة
+            </button>
+          </div>
+        </div>
+
+        <!-- SCREEN 10: WALLET & PAYMENT SCREEN (محفظة الطالب ورصيد الجلسات) -->
+        <div id="screen-wallet" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Bar -->
+          <div style="background: #00875A; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('more')">➜</span>
+              <span style="font-size: 16px; font-weight: bold;">محفظة إتقان ورصيد النقاط</span>
+            </div>
+            <img src="assets/svgs/icon_wallet.svg" alt="Wallet" style="width: 22px; filter: brightness(0) invert(1);">
+          </div>
+
+          <div style="padding: 16px;">
+            <!-- Current Balance Card -->
+            <div style="background: linear-gradient(135deg, #00875A, #004D33); border-radius: 16px; padding: 20px; color: #fff; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(0,135,90,0.25); position: relative; overflow: hidden;">
+              <div style="font-size: 12px; opacity: 0.85; margin-bottom: 6px;">الرصيد الحالي المتاح:</div>
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;">
+                <span id="wallet-balance-num" style="font-size: 36px; font-weight: bold; color: #FFDF73;">120</span>
+                <span style="font-size: 16px; font-weight: bold;">نقطة</span>
+              </div>
+              <div style="font-size: 12px; background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: 8px; display: inline-block;">
+                ✨ يعادل 6 جلسات تسميع فردية مع كبار القراء
+              </div>
+            </div>
+
+            <!-- Recharge Packages -->
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">باقات شحن الرصيد:</div>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;">
+              <div class="wallet-package-card" onclick="selectRechargePackage(this, 50, 50)">
+                <div style="font-size: 12px; font-weight: bold;">المبتدئ</div>
+                <div style="font-size: 20px; font-weight: bold; color: #00875A; margin: 4px 0;">50</div>
+                <div style="font-size: 10px; color: #666;">نقطة</div>
+                <div style="font-size: 11px; font-weight: bold; color: #333; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">50 ر.س</div>
+              </div>
+
+              <div class="wallet-package-card active" onclick="selectRechargePackage(this, 120, 100)">
+                <div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #D4AF37; color: #191919; font-size: 9px; padding: 2px 6px; border-radius: 8px; font-weight: bold; white-space: nowrap;">الأكثر طلباً 🔥</div>
+                <div style="font-size: 12px; font-weight: bold;">المتقن</div>
+                <div style="font-size: 20px; font-weight: bold; color: #00875A; margin: 4px 0;">120</div>
+                <div style="font-size: 10px; color: #666;">100 + 20 هدية</div>
+                <div style="font-size: 11px; font-weight: bold; color: #333; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">100 ر.س</div>
+              </div>
+
+              <div class="wallet-package-card" onclick="selectRechargePackage(this, 310, 200)">
+                <div style="font-size: 12px; font-weight: bold;">السنوية</div>
+                <div style="font-size: 20px; font-weight: bold; color: #00875A; margin: 4px 0;">310</div>
+                <div style="font-size: 10px; color: #666;">250 + 60 هدية</div>
+                <div style="font-size: 11px; font-weight: bold; color: #333; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">200 ر.س</div>
+              </div>
+            </div>
+
+            <!-- Payment Methods -->
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">طرق الدفع الإلكتروني المعتمدة:</div>
+            <div style="display: flex; gap: 8px; margin-bottom: 18px;">
+              <div class="pay-method-chip active" onclick="selectPayMethod(this, 'مدى (Mada)')">
+                💳 مدى
+              </div>
+              <div class="pay-method-chip" onclick="selectPayMethod(this, 'Apple Pay')">
+                🍎 Apple Pay
+              </div>
+              <div class="pay-method-chip" onclick="selectPayMethod(this, 'بطاقة ائتمانية Visa/Master')">
+                💳 Visa/Master
+              </div>
+            </div>
+
+            <!-- Recharge Action Button -->
+            <button onclick="executeRecharge()" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
+              💳 إتمام عملية الشحن الآن
+            </button>
+
+            <!-- Transaction History -->
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">سجل الحركات الأخير:</div>
+            <div style="background: #fff; border-radius: 14px; border: 1px solid #e3e2d1; overflow: hidden;">
+              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
+                <div>
+                  <div style="font-weight: bold; font-size: 13px;">شحن باقة المتقن (+120 نقطة)</div>
+                  <small style="font-size: 10px; color: #888;">15 نوفمبر 2026 • بطاقة مدى</small>
+                </div>
+                <span style="color: #00875A; font-weight: bold; font-size: 13px;">+100 ر.س</span>
+              </div>
+              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
+                <div>
+                  <div style="font-weight: bold; font-size: 13px;">حجز حلقة تسميع مع الشيخ عبد الله</div>
+                  <small style="font-size: 10px; color: #888;">12 نوفمبر 2026 • خصم نقاط</small>
+                </div>
+                <span style="color: #c62828; font-weight: bold; font-size: 13px;">-20 نقطة</span>
+              </div>
+              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: bold; font-size: 13px;">مكافأة الفوز في مسابقة التجويد</div>
+                  <small style="font-size: 10px; color: #888;">10 نوفمبر 2026 • هدية نظام</small>
+                </div>
+                <span style="color: #00875A; font-weight: bold; font-size: 13px;">+10 نقاط ⭐</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- SCREEN 11: ISLAMIC LIBRARY SCREEN (المكتبة الإسلامية والمتون) -->
+        <div id="screen-library" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Bar -->
+          <div style="background: #00875A; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('more')">➜</span>
+              <span style="font-size: 16px; font-weight: bold;">المكتبة الإسلامية وكتب التجويد</span>
+            </div>
+            <span style="font-size: 18px; cursor: pointer;" onclick="alert('🔖 لديك 4 علامات مرجعية محفوظة')">🔖</span>
+          </div>
+
+          <div style="padding: 16px;">
+            <!-- Search bar -->
+            <div style="background: #fff; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 8px; border: 1px solid #dcdbc9; margin-bottom: 14px;">
+              <span>🔍</span>
+              <input type="text" id="lib-search-input" oninput="filterLibraryBooks(this.value)" placeholder="ابحث باسم الكتاب أو المتن أو الشيخ..." style="width: 100%; border: none; outline: none; font-family: 'Dubai', sans-serif; font-size: 13px; background: transparent;">
+            </div>
+
+            <!-- Categories Chips -->
+            <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px;">
+              <span class="lib-cat-chip active" onclick="selectLibCategory(this, 'الكل')">الكل</span>
+              <span class="lib-cat-chip" onclick="selectLibCategory(this, 'الحديث')">الحديث الشريف</span>
+              <span class="lib-cat-chip" onclick="selectLibCategory(this, 'التجويد')">التجويد والقراءات</span>
+              <span class="lib-cat-chip" onclick="selectLibCategory(this, 'التفسير')">التفسير</span>
+            </div>
+
+            <!-- Books Container -->
+            <div id="lib-books-list">
+              <!-- Book 1 -->
+              <div class="lib-book-card" onclick="openBookReader('صحيح البخاري', 'الإمام البخاري', 'كتاب بدء الوحي', 'عَنْ عُمَرَ بْنِ الْخَطَّابِ رَضِيَ اللَّهُ عَنْهُ قَالَ: سَمِعْتُ رَسُولَ اللَّهِ ﷺ يَقُولُ:\n\n«إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى، فَمَنْ كَانَتْ هِجْرَتُهُ إِلَى دُنْيَا يُصِيبُهَا، أَوْ إِلَى امْرَأَةٍ يَنْكِحُهَا، فَهِجْرَتُهُ إِلَى مَا هَاجَرَ إِلَيْهِ».')">
+                <div style="width: 52px; height: 72px; background: #00875A; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 2px 3px 8px rgba(0,0,0,0.15);">
+                  📚
+                  <span style="width: 30px; height: 2px; background: #D4AF37; margin-top: 4px;"></span>
+                </div>
+                <div style="flex: 1; margin-right: 12px;">
+                  <span style="font-size: 10px; background: rgba(0,135,90,0.12); color: #00875A; padding: 2px 6px; border-radius: 4px; font-weight: bold;">الحديث الشريف</span>
+                  <div style="font-weight: bold; font-size: 15px; color: #191919; margin-top: 2px;">صحيح البخاري (الجامع المسند)</div>
+                  <div style="font-size: 11px; color: #777;">الإمام محمد بن إسماعيل البخاري</div>
+                  <div style="font-size: 11px; color: #555; margin-top: 4px;">📖 1,800 صفحة • 7,563 حديثاً</div>
+                </div>
+                <span style="color: #00875A; font-weight: bold; font-size: 16px;">&gt;</span>
+              </div>
+
+              <!-- Book 2 -->
+              <div class="lib-book-card" onclick="openBookReader('المقدمة الجزرية', 'ابن الجزري', 'باب مخارج الحروف', 'مَخَارِجُ الْحُرُوفِ سَبْعَةَ عَشَرْ\nعَلَى الَّذِي يَخْتَارُهُ مَنِ اخْتَبَرْ\n\nفَفَأَلِفُ الْجَوْفِ وَأُخْتَاهَا وَهِيْ\nحُرُوفُ مَدٍّ لِلْهَوَاءِ تَنْتَهِيْ\n\nثُمَّ لِأَقْصَى الْحَلْقِ هَمْزٌ هَاءُ\nوَمِنْ وَسَطِهِ فَعَيْنٌ حَاءُ')">
+                <div style="width: 52px; height: 72px; background: #B78103; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 2px 3px 8px rgba(0,0,0,0.15);">
+                  🎙️
+                  <span style="width: 30px; height: 2px; background: #fff; margin-top: 4px;"></span>
+                </div>
+                <div style="flex: 1; margin-right: 12px;">
+                  <span style="font-size: 10px; background: rgba(183,129,3,0.12); color: #B78103; padding: 2px 6px; border-radius: 4px; font-weight: bold;">التجويد والقراءات</span>
+                  <div style="font-weight: bold; font-size: 15px; color: #191919; margin-top: 2px;">المقدمة الجزرية في علم التجويد</div>
+                  <div style="font-size: 11px; color: #777;">شمس الدين محمد بن الجزري الشافعي</div>
+                  <div style="font-size: 11px; color: #555; margin-top: 4px;">📜 107 أبيات منظومة مع الشرح</div>
+                </div>
+                <span style="color: #B78103; font-weight: bold; font-size: 16px;">&gt;</span>
+              </div>
+
+              <!-- Book 3 -->
+              <div class="lib-book-card" onclick="openBookReader('تحفة الأطفال', 'سليمان الجمزوري', 'أحكام النون الساكنة والتنوين', 'لِلنُّونِ إِنْ تَسْكُنْ وَلِلتَّنْوِينِ\nأَرْبَعُ أَحْكَامٍ فَخُذْ تَبْيِينِي\n\nفَالأَوَّلُ الإِظْهَارُ قَبْلَ أَحْرُفِ\nلِلْحَلْقِ سِتٌّ رُتِّبَتْ فَلْتَعْرِفِ\n\nهَمْزٌ فَهَاءٌ ثُمَّ عَيْنٌ حَاءُ\nمُهْمَلَتَانِ ثُمَّ غَيْنٌ خَاءُ')">
+                <div style="width: 52px; height: 72px; background: #8B5A2B; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 2px 3px 8px rgba(0,0,0,0.15);">
+                  📜
+                  <span style="width: 30px; height: 2px; background: #D4AF37; margin-top: 4px;"></span>
+                </div>
+                <div style="flex: 1; margin-right: 12px;">
+                  <span style="font-size: 10px; background: rgba(139,90,43,0.12); color: #8B5A2B; padding: 2px 6px; border-radius: 4px; font-weight: bold;">التجويد للمبتدئين</span>
+                  <div style="font-weight: bold; font-size: 15px; color: #191919; margin-top: 2px;">تحفة الأطفال والغلمان</div>
+                  <div style="font-size: 11px; color: #777;">الشيخ سليمان الجمزوري</div>
+                  <div style="font-size: 11px; color: #555; margin-top: 4px;">📖 61 بيتاً في أحكام التلاوة والمدود</div>
+                </div>
+                <span style="color: #8B5A2B; font-weight: bold; font-size: 16px;">&gt;</span>
+              </div>
+
+              <!-- Book 4 -->
+              <div class="lib-book-card" onclick="openBookReader('التفسير الميسر', 'نخبة من العلماء', 'تفسير سورة الفاتحة', '{بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ}\nأبدأ قراءتي مستعيناً بالله، والله علم على الرب المعبود بحق دون سواه. والرحمن: ذو الرحمة الشاملة لجميع الخلائق، والرحيم: بالمؤمنين.\n\n{الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ}\nالثناء على الله بصفاته التي كلها أوصاف كمال، وبنعمه الظاهرة والباطنة.')">
+                <div style="width: 52px; height: 72px; background: #2B7A78; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 2px 3px 8px rgba(0,0,0,0.15);">
+                  ✨
+                  <span style="width: 30px; height: 2px; background: #fff; margin-top: 4px;"></span>
+                </div>
+                <div style="flex: 1; margin-right: 12px;">
+                  <span style="font-size: 10px; background: rgba(43,122,120,0.12); color: #2B7A78; padding: 2px 6px; border-radius: 4px; font-weight: bold;">التفسير وعلوم القرآن</span>
+                  <div style="font-weight: bold; font-size: 15px; color: #191919; margin-top: 2px;">التفسير الميسر لآيات القرآن</div>
+                  <div style="font-size: 11px; color: #777;">مجمع الملك فهد لطباعة المصحف</div>
+                  <div style="font-size: 11px; color: #555; margin-top: 4px;">📖 تفسير 114 سورة كاملة</div>
+                </div>
+                <span style="color: #2B7A78; font-weight: bold; font-size: 16px;">&gt;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 12: QURAN RADIOS SCREEN (الإذاعات القرآنية المباشرة) -->
+        <div id="screen-radios" class="app-screen" style="background: #131D17; color: #fff; overflow-y: auto;">
+          <!-- Top Bar -->
+          <div style="background: #0d1410; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('more')">➜</span>
+              <span style="font-size: 16px; font-weight: bold;">الإذاعات القرآنية المباشرة</span>
+            </div>
+            <span style="font-size: 12px; background: rgba(231,76,60,0.2); color: #ff6b6b; border: 1px solid #e74c3c; padding: 3px 8px; border-radius: 12px; font-weight: bold;">بث حي 🔴</span>
+          </div>
+
+          <div style="padding: 16px;">
+            <!-- Live Player Hero Card -->
+            <div style="background: linear-gradient(135deg, #1E382A, #0F1E16); border-radius: 20px; padding: 20px; text-align: center; border: 1px solid rgba(0,135,90,0.4); box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin-bottom: 16px; position: relative;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <span style="font-size: 11px; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 6px;" id="radio-frequency">98.2 FM - القاهرة</span>
+                <span style="font-size: 11px; color: #FFDF73; font-weight: bold;" id="radio-listeners">1.8M مستمع الآن</span>
+              </div>
+
+              <!-- Station Icon with Pulse -->
+              <div style="width: 80px; height: 80px; border-radius: 50%; background: #00875A; display: inline-flex; align-items: center; justify-content: center; font-size: 38px; box-shadow: 0 0 16px rgba(0,135,90,0.6); margin-bottom: 10px;" id="radio-icon-box">
+                📻
+              </div>
+
+              <h3 style="font-size: 17px; font-weight: bold; margin-bottom: 4px;" id="radio-station-title">إذاعة القرآن الكريم من القاهرة</h3>
+              <p style="font-size: 12px; color: #90C2A7; margin-bottom: 12px;" id="radio-reciter-info">الشيخ محمود خليل الحصري • تلاوة مباركة من سورة طه</p>
+
+              <!-- Equalizer Wave Animation -->
+              <div style="display: flex; justify-content: center; align-items: flex-end; gap: 3px; height: 26px; margin-bottom: 16px;">
+                <div class="eq-bar" style="animation-delay: 0.1s;"></div>
+                <div class="eq-bar" style="animation-delay: 0.4s;"></div>
+                <div class="eq-bar" style="animation-delay: 0.2s;"></div>
+                <div class="eq-bar" style="animation-delay: 0.6s;"></div>
+                <div class="eq-bar" style="animation-delay: 0.3s;"></div>
+                <div class="eq-bar" style="animation-delay: 0.5s;"></div>
+                <div class="eq-bar" style="animation-delay: 0.2s;"></div>
+                <div class="eq-bar" style="animation-delay: 0.7s;"></div>
+              </div>
+
+              <!-- Controls -->
+              <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+                <button onclick="prevRadioStation()" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">⏮️</button>
+                <button onclick="toggleRadioPlay()" id="radio-play-btn" style="width: 54px; height: 54px; border-radius: 50%; background: #00875A; border: none; color: #fff; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.4);">⏸️</button>
+                <button onclick="nextRadioStation()" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">⏭️</button>
+              </div>
+            </div>
+
+            <!-- Stations List -->
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #e0e0e0;">المحطات القرآنية المتاحة:</div>
+            
+            <div class="radio-station-row active" onclick="switchRadioStation(0)">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">📻</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 13px;">إذاعة القرآن الكريم - القاهرة</div>
+                  <small style="color: #aaa;">الشيخ الحصري، عبد الباسط، المنشاوي</small>
+                </div>
+              </div>
+              <span style="color: #2ecc71; font-size: 12px; font-weight: bold;">● جاري البث</span>
+            </div>
+
+            <div class="radio-station-row" onclick="switchRadioStation(1)">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">🕋</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 13px;">إذاعة الحرم المكي الشريف</div>
+                  <small style="color: #aaa;">تلاوات أئمة الحرم وبث مباشر من صحن الكعبة</small>
+                </div>
+              </div>
+              <span style="color: #888; font-size: 12px;">تشغيل ▶</span>
+            </div>
+
+            <div class="radio-station-row" onclick="switchRadioStation(2)">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">🎙️</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 13px;">إذاعة الشيخ عبد الباسط (المصحف المجود)</div>
+                  <small style="color: #aaa;">التلاوات النادرة وقصار السور</small>
+                </div>
+              </div>
+              <span style="color: #888; font-size: 12px;">تشغيل ▶</span>
+            </div>
+
+            <div class="radio-station-row" onclick="switchRadioStation(3)">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">📖</span>
+                <div>
+                  <div style="font-weight: bold; font-size: 13px;">إذاعة المصحف المرتل - الشيخ المنشاوي</div>
+                  <small style="color: #aaa;">المصحف الخاشع الكامل برواية حفص</small>
+                </div>
+              </div>
+              <span style="color: #888; font-size: 12px;">تشغيل ▶</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 13: EVALUATION & CERTIFICATE (تقييم التلاوة وإصدار الشهادة) -->
+        <div id="screen-evaluation" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+          <!-- Top Bar -->
+          <div style="background: #00875A; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('call')">➜</span>
+              <span style="font-size: 16px; font-weight: bold;">استمارة تقييم التلاوة والتجويد</span>
+            </div>
+            <span style="font-size: 18px;">⭐</span>
+          </div>
+
+          <div style="padding: 16px;">
+            <!-- Student Header -->
+            <div style="background: #fff; border-radius: 14px; padding: 14px; border: 1px solid #dcdbc9; display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: #eef7f2; display: flex; align-items: center; justify-content: center; font-size: 24px;">👨‍🎓</div>
+              <div>
+                <div style="font-weight: bold; font-size: 15px;">أحمد عبد المنعم موسى</div>
+                <div style="font-size: 11px; color: #00875A; font-weight: bold;">المقرر: سورة الفاتحة وأول سورة البقرة (1-20)</div>
+                <div style="font-size: 10px; color: #777;">المشرف: الشيخ عبد الله السويسي</div>
+              </div>
+            </div>
+
+            <!-- Total Score Banner -->
+            <div style="background: linear-gradient(135deg, #00875A, #005F3F); border-radius: 14px; padding: 16px; color: #fff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,135,90,0.25);">
+              <div>
+                <div style="font-size: 12px; opacity: 0.9;">الدرجة الكلية للتلاوة:</div>
+                <div style="font-size: 14px; font-weight: bold; color: #FFDF73; margin-top: 2px;" id="rubric-grade-tier">ممتاز مرتفع مع مرتبة الشرف 🏆</div>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 4px;">
+                <span id="rubric-total-num" style="font-size: 38px; font-weight: bold; color: #fff;">96</span>
+                <span style="font-size: 16px; color: rgba(255,255,255,0.7);">/ 100</span>
+              </div>
+            </div>
+
+            <!-- 4 Criteria Sliders -->
+            <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 10px;">معايير التقييم وأحكام التجويد:</div>
+
+            <div class="rubric-slider-box">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 2px;">
+                <span>1. مخارج الحروف وصفاتها</span>
+                <span id="score-val-1" style="color: #00875A;">24 / 25</span>
+              </div>
+              <small style="color: #777; font-size: 10px; display: block; margin-bottom: 6px;">الحلق، اللسان، الهمس، القلقلة، تفخيم الحروف</small>
+              <input type="range" min="10" max="25" value="24" class="rubric-range" oninput="updateRubricScore(1, this.value)">
+            </div>
+
+            <div class="rubric-slider-box">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 2px;">
+                <span>2. أحكام النون الساكنة والتنوين والميم</span>
+                <span id="score-val-2" style="color: #00875A;">24 / 25</span>
+              </div>
+              <small style="color: #777; font-size: 10px; display: block; margin-bottom: 6px;">الإظهار، الإدغام بغنة وبغير غنة، الإقلاب، الإخفاء</small>
+              <input type="range" min="10" max="25" value="24" class="rubric-range" oninput="updateRubricScore(2, this.value)">
+            </div>
+
+            <div class="rubric-slider-box">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 2px;">
+                <span>3. أزمنة المدود والغنن</span>
+                <span id="score-val-3" style="color: #00875A;">25 / 25</span>
+              </div>
+              <small style="color: #777; font-size: 10px; display: block; margin-bottom: 6px;">المد المتصل والمنفصل، المد اللازم، العارض للسكون</small>
+              <input type="range" min="10" max="25" value="25" class="rubric-range" oninput="updateRubricScore(3, this.value)">
+            </div>
+
+            <div class="rubric-slider-box">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 2px;">
+                <span>4. الوقف والابتداء وحسن الترتيل</span>
+                <span id="score-val-4" style="color: #00875A;">23 / 25</span>
+              </div>
+              <small style="color: #777; font-size: 10px; display: block; margin-bottom: 6px;">الوقف التام والكافي، والتنغيم والتأني في القراءة</small>
+              <input type="range" min="10" max="25" value="23" class="rubric-range" oninput="updateRubricScore(4, this.value)">
+            </div>
+
+            <!-- Feedback & Voice Memo -->
+            <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #dcdbc9; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: bold; font-size: 13px;">توجيهات المقرئ:</span>
+                <span style="background: #00875A; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold;">🎙️ صوتية مسجلة ✓</span>
+              </div>
+              <p style="font-size: 12px; color: #444; line-height: 1.6; background: #fbfbf2; padding: 10px; border-radius: 8px; margin: 0;">
+                «تلاوة خاشعة ومتقنة جداً، وفقت في مخارج الحروف والمدود. يرجى الانتباه فقط لترقيق الراء عند الوقف على كلمة (بصير). بارك الله فيك ونفع بك.»
+              </p>
+            </div>
+
+            <!-- Issue Certificate Button -->
+            <button onclick="openCertificateModal()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #B78103, #D4AF37); color: #111; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(212,175,55,0.4);">
+              🏆 إصدار وتوثيق شهادة إتقان التلاوة
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Nav Bar (Exact Match with etqan_app MainNavScreen: الرئيسية، الحلقات، + اضافة، الشيوخ، المزيد) -->
+      <div class="app-bottom-nav">
+        <button class="nav-tab-item active" id="bnav-reels" onclick="openScreen('reels')">
+          <img src="assets/svgs/home.svg" alt="Home">
+          <span>الرئيسية</span>
+        </button>
+        <button class="nav-tab-item" id="bnav-chapters" onclick="openScreen('chapters')">
+          <img src="assets/svgs/chapters_tab_icon.svg" alt="Chapters">
+          <span>الحلقات</span>
+        </button>
+        <button class="nav-tab-item" id="bnav-add" onclick="showAddOptionsModal()" style="display: flex; flex-direction: column; align-items: center; background: none; border: none; cursor: pointer;">
+          <div style="width: 44px; height: 44px; background: #191919; border: 2.5px solid #00875A; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,135,90,0.35); margin-top: -6px;">
+            <span style="color: #00875A; font-size: 24px; font-weight: bold; line-height: 1;">+</span>
+          </div>
+          <span style="font-size: 11px; font-weight: bold; color: #191919; margin-top: 2px;">اضافة</span>
+        </button>
+        <button class="nav-tab-item" id="bnav-sheikhs" onclick="openScreen('sheikhs')">
+          <img src="assets/svgs/supervisors.svg" alt="Sheikhs">
+          <span>الشيوخ</span>
+        </button>
+        <button class="nav-tab-item" id="bnav-more" onclick="openScreen('more')">
+          <img src="assets/svgs/more.svg" alt="More">
+          <span>المزيد</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let isShamarly = true;
+    let isMuted = false;
+
+    function openScreen(screenId) {
+      document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.pill-btn').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-tab-item').forEach(t => t.classList.remove('active'));
+
+      const target = document.getElementById('screen-' + screenId);
+      if (target) target.classList.add('active');
+
+      const pillBtn = Array.from(document.querySelectorAll('.pill-btn')).find(b => b.getAttribute('onclick')?.includes(screenId));
+      if (pillBtn) pillBtn.classList.add('active');
+
+      const navBtn = document.getElementById('bnav-' + screenId);
+      if (navBtn) navBtn.classList.add('active');
+
+      const bNav = document.querySelector('.app-bottom-nav');
+      if (['splash', 'onboarding', 'login', 'register', 'call'].includes(screenId)) {
+        if (bNav) bNav.style.display = 'none';
+      } else {
+        if (bNav) bNav.style.display = 'flex';
+      }
+
+      const sb = document.getElementById('phone-status-bar');
+      const indicator = document.getElementById('phone-title-indicator');
+      const video = document.getElementById('reels-video');
+
+      if (screenId === 'reels') {
+        sb.className = 'status-bar light-text';
+        indicator.innerText = 'إتقان - الرئيسية (مواعظ)';
+        renderReel(activeReelIdx);
+        if (video) video.play();
+      } else if (screenId === 'splash') {
+        sb.className = 'status-bar dark-text';
+        indicator.innerText = 'شاشة البداية والأنيميشن';
+        if (video) video.pause();
+        restartSplash();
+      } else if (screenId === 'call') {
+        sb.className = 'status-bar light-text';
+        indicator.innerText = 'غرفة التسميع (ZegoCloud)';
+        if (video) video.pause();
+      } else {
+        sb.className = 'status-bar dark-text';
+        if (video) video.pause();
+        if (screenId === 'chapters') indicator.innerText = 'تصفح الحلقات';
+        else if (screenId === 'sheikhs') indicator.innerText = 'الشيوخ والمعلمون';
+        else if (screenId === 'mychapters') indicator.innerText = 'حلقاتي المسجلة';
+        else if (screenId === 'more') indicator.innerText = 'حسابي والمحفظة';
+        else if (screenId === 'onboarding') indicator.innerText = 'مرحباً بك في إتقان';
+        else if (screenId === 'login') indicator.innerText = 'تسجيل الدخول';
+        else if (screenId === 'register') indicator.innerText = 'إنشاء حساب جديد';
+        else if (screenId === 'booking') indicator.innerText = 'حجز موعد حلقة تسميع';
+        else if (screenId === 'competitions') indicator.innerText = 'مسابقات إتقان الكبرى';
+        else if (screenId === 'wallet') indicator.innerText = 'محفظة الطالب ورصيد النقاط';
+        else if (screenId === 'library') indicator.innerText = 'المكتبة الإسلامية وكتب التجويد';
+        else if (screenId === 'radios') indicator.innerText = 'الإذاعات القرآنية المباشرة';
+        else if (screenId === 'evaluation') indicator.innerText = 'تقييم التلاوة وإصدار الشهادة';
+      }
+    }
+
+    function doLogin() {
+      alert('✅ تم تسجيل الدخول بنجاح عبر سحابة Supabase!\nسيرفر المشروع: https://ngokeoqlimctcjkbmgtn.supabase.co');
+      openScreen('reels');
+    }
+
+    function doRegister() {
+      alert('✅ تم تسجيل الحساب بنجاح في قاعدة بيانات Supabase!\nالمستخدم جاهز للتسميع وحجز الحلقات.');
+      openScreen('reels');
+    }
+
+    function selectRoleChip(el) {
+      document.querySelectorAll('.role-chip').forEach(c => {
+        c.style.background = '#f0f0e5';
+        c.style.color = '#444';
+        c.style.fontWeight = 'normal';
+      });
+      el.style.background = '#00875A';
+      el.style.color = '#fff';
+      el.style.fontWeight = 'bold';
+    }
+
+    function restartSplash() {
+      const logo = document.getElementById('anim-logo');
+      const mosques = document.getElementById('anim-mosques');
+      if (logo && mosques) {
+        logo.style.animation = 'none';
+        mosques.style.animation = 'none';
+        logo.offsetHeight; /* trigger reflow */
+        mosques.offsetHeight;
+        logo.style.animation = 'logoZoomIn 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+        mosques.style.animation = 'mosqueSlideUp 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) forwards';
+      }
+      clearTimeout(window.splashTimer);
+      window.splashTimer = setTimeout(() => {
+        const splash = document.getElementById('screen-splash');
+        if (splash && splash.classList.contains('active')) {
+          openScreen('onboarding');
+        }
+      }, 2900);
+    }
+
+    const reelsList = [
+      {
+        sheikh: 'د / عبد الله الرويلي',
+        avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150',
+        caption: 'من اعظم اسباب تجعلك سعيداً في الحياه',
+        likes: 234,
+        comments: 45,
+        isFollowing: false,
+        isLiked: false,
+        video: 'assets/videos/onboarding_video_1.mp4'
+      },
+      {
+        sheikh: 'د / مصطفي حسني',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        caption: 'فضل قراءة وتدبر سورة الكهف يوم الجمعة وسر نورها',
+        likes: 852,
+        comments: 112,
+        isFollowing: true,
+        isLiked: false,
+        video: 'assets/videos/onboarding_video_2.mp4'
+      },
+      {
+        sheikh: 'د / محمد المطر',
+        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+        caption: 'تصحيح مخرج حرف الضاد والظاء وأشهر الأخطاء الشائعة',
+        likes: 419,
+        comments: 63,
+        isFollowing: false,
+        isLiked: false,
+        video: 'assets/videos/onboarding_video_1.mp4'
+      }
+    ];
+    let activeReelIdx = 0;
+
+    function renderReel(idx) {
+      if (idx < 0) idx = reelsList.length - 1;
+      if (idx >= reelsList.length) idx = 0;
+      activeReelIdx = idx;
+
+      const reel = reelsList[activeReelIdx];
+      const video = document.getElementById('reels-video');
+      if (video) {
+        video.src = reel.video;
+        video.load();
+        video.play().catch(() => {});
+      }
+
+      const sName = document.getElementById('reel-sheikh-name');
+      if (sName) sName.innerText = reel.sheikh;
+
+      const sCaption = document.getElementById('reel-caption-text');
+      if (sCaption) sCaption.innerText = reel.caption;
+
+      const sAvatar = document.getElementById('reel-avatar-img');
+      if (sAvatar) {
+        sAvatar.src = reel.avatar;
+        sAvatar.style.display = 'block';
+      }
+
+      const sLikes = document.getElementById('reel-likes-num');
+      if (sLikes) sLikes.innerText = reel.likes;
+
+      const sComments = document.getElementById('reel-comments-num');
+      if (sComments) sComments.innerText = reel.comments;
+
+      const followBtn = document.getElementById('reel-follow-btn');
+      if (followBtn) {
+        if (reel.isFollowing) {
+          followBtn.innerText = 'متابع';
+          followBtn.classList.add('following');
+        } else {
+          followBtn.innerText = 'متابعة';
+          followBtn.classList.remove('following');
+        }
+      }
+
+      const likeItem = document.getElementById('reel-like-item');
+      if (likeItem) {
+        if (reel.isLiked) {
+          likeItem.classList.add('liked');
+        } else {
+          likeItem.classList.remove('liked');
+        }
+      }
+    }
+
+    function nextReel() {
+      renderReel(activeReelIdx + 1);
+    }
+
+    function prevReel() {
+      renderReel(activeReelIdx - 1);
+    }
+
+    function toggleFollowReel(event) {
+      if (event) event.stopPropagation();
+      const reel = reelsList[activeReelIdx];
+      reel.isFollowing = !reel.isFollowing;
+      const btn = document.getElementById('reel-follow-btn');
+      if (reel.isFollowing) {
+        btn.innerText = 'متابع';
+        btn.classList.add('following');
+      } else {
+        btn.innerText = 'متابعة';
+        btn.classList.remove('following');
+      }
+    }
+
+    function toggleLikeCurrentReel() {
+      const reel = reelsList[activeReelIdx];
+      reel.isLiked = !reel.isLiked;
+      if (reel.isLiked) {
+        reel.likes += 1;
+      } else {
+        reel.likes -= 1;
+      }
+      const sLikes = document.getElementById('reel-likes-num');
+      if (sLikes) sLikes.innerText = reel.likes;
+
+      const likeItem = document.getElementById('reel-like-item');
+      if (likeItem) {
+        if (reel.isLiked) {
+          likeItem.classList.add('liked');
+        } else {
+          likeItem.classList.remove('liked');
+        }
+      }
+    }
+
+    function shareCurrentReel() {
+      const reel = reelsList[activeReelIdx];
+      alert('↗️ تم نسخ رابط المقطع لـ ' + reel.sheikh + ' للمشاركة');
+    }
+
+    function toggleReelPlayPause(event) {
+      const video = document.getElementById('reels-video');
+      const indicator = document.getElementById('reel-play-indicator');
+      if (!video) return;
+
+      if (video.paused) {
+        video.play();
+        if (indicator) {
+          indicator.style.display = 'none';
+        }
+      } else {
+        video.pause();
+        if (indicator) {
+          indicator.style.display = 'flex';
+        }
+      }
+    }
+
+    function openReelCommentsSheet() {
+      const reel = reelsList[activeReelIdx];
+      const modal = document.getElementById('reel-comments-modal');
+      if (modal) {
+        document.getElementById('comments-reel-count').innerText = reel.comments;
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeReelCommentsSheet() {
+      const modal = document.getElementById('reel-comments-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function submitReelComment() {
+      const input = document.getElementById('reel-new-comment-input');
+      if (!input || !input.value.trim()) return;
+      const text = input.value.trim();
+      const list = document.getElementById('reel-comments-list');
+      if (list) {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #f0f0f0;';
+        item.innerHTML = '<div style="width: 32px; height: 32px; border-radius: 50%; background: #E8F5E9; color: #00875A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">أنت</div><div style="flex: 1;"><div style="font-size: 13px; font-weight: bold; color: #191919;">طالب إتقان</div><div style="font-size: 12px; color: #444; margin-top: 2px;">' + text + '</div></div>';
+        list.prepend(item);
+      }
+      input.value = '';
+      const reel = reelsList[activeReelIdx];
+      reel.comments += 1;
+      const sComments = document.getElementById('reel-comments-num');
+      if (sComments) sComments.innerText = reel.comments;
+      document.getElementById('comments-reel-count').innerText = reel.comments;
+    }
+
+    function showAddOptionsModal() {
+      const modal = document.getElementById('add-content-modal');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeAddOptionsModal() {
+      const modal = document.getElementById('add-content-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function switchCategory(el, catName) {
+      document.querySelectorAll('.cat-rail-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+
+      const box = document.getElementById('subcat-box');
+      box.innerHTML = `
+        <div class="subcat-luxury-card" onclick="openCallWithTitle('حلقة: ${catName} (المستوى الأول)')">
+          <div class="subcat-circle-badge">1</div>
+          <div>
+            <div style="font-weight: bold; font-size: 14px;">${catName} - المستوى التمهيدي</div>
+            <div style="font-size: 11px; color: #a5cbb7;">شرح مبسط وتطبيق عملي يومي</div>
+          </div>
+        </div>
+        <div class="subcat-luxury-card" onclick="openCallWithTitle('حلقة: ${catName} (المستوى المتقدم)')">
+          <div class="subcat-circle-badge">2</div>
+          <div>
+            <div style="font-weight: bold; font-size: 14px;">${catName} - المستوى المتقدم</div>
+            <div style="font-size: 11px; color: #a5cbb7;">مدارسة تخصصية وإجازات معتمدة</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function switchMyChapters(mode) {
+      const b1 = document.getElementById('btn-running');
+      const b2 = document.getElementById('btn-ended');
+      const container = document.getElementById('mychap-cards-list');
+
+      if (mode === 'ended') {
+        b2.classList.add('active');
+        b1.classList.remove('active');
+        container.innerHTML = `
+          <div style="background: #f7f7f0; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #e2e2d0; opacity: 0.85;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 6px;">
+              <span>10/11/2026</span>
+              <span style="background: #888; color: #fff; padding: 2px 8px; border-radius: 12px; font-weight: bold;">منتهية</span>
+            </div>
+            <h4 style="font-size: 15px; margin-bottom: 4px;">حلقة تصحيح سورة الفاتحة</h4>
+            <p style="font-size: 12px; color: #666; margin-bottom: 6px;">الشيخ عبد الله السويسي</p>
+            <div style="font-size: 12px; color: #00875A; font-weight: bold;">تم تقييم تلاوتك بدرجة: 100% (ممتاز مرتفع) ⭐</div>
+          </div>
+        `;
+      } else {
+        b1.classList.add('active');
+        b2.classList.remove('active');
+        container.innerHTML = `
+          <div style="background: #EBF4EE; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #d3e7d9;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-bottom: 6px;">
+              <span>04:02 PM - اليوم</span>
+              <span style="background: #00875A; color: #fff; padding: 2px 8px; border-radius: 12px; font-weight: bold;">✓ جارية الآن</span>
+            </div>
+            <h4 style="font-size: 15px; margin-bottom: 4px;">حلقة تصحيح سورة البقرة</h4>
+            <p style="font-size: 12px; color: #555; margin-bottom: 12px;">المشرف: الشيخ عبد الله السويسي (👥 0 / 1 مشترك)</p>
+            <button style="width: 100%; padding: 10px; background: #00875A; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="openCallWithTitle('حلقة سورة البقرة')">
+              🎙️ دخول الجلسة المباشرة
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    function openCallWithTitle(title) {
+      document.getElementById('call-room-title').innerText = title;
+      openScreen('call');
+    }
+
+    function toggleMushafEdition() {
+      isShamarly = !isShamarly;
+      const btn = document.getElementById('mushaf-btn');
+      const desc = document.getElementById('edition-desc');
+      if (isShamarly) {
+        btn.innerText = '📖 طبعة الشمرلي';
+        desc.innerText = 'طبعة الشمرلي المصرية الأصلية | صفحة 293';
+      } else {
+        btn.innerText = '📖 مجمع الملك فهد';
+        desc.innerText = 'طبعة مجمع الملك فهد بالمدينة المنورة | صفحة 305';
+      }
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      const btn = document.getElementById('mic-toggle-btn');
+      if (isMuted) {
+        btn.innerText = '🔇';
+        btn.style.background = '#888';
+      } else {
+        btn.innerText = '🎙️';
+        btn.style.background = '#00875A';
+      }
+    }
+
+    let isCameraOn = true;
+    let callMode = 'voice';
+
+    function setCallMode(mode) {
+      callMode = mode;
+      const voiceView = document.getElementById('view-voice-call');
+      const videoView = document.getElementById('view-video-call');
+      const btnVoice = document.getElementById('mode-voice-btn');
+      const btnVideo = document.getElementById('mode-video-btn');
+
+      if (mode === 'video') {
+        voiceView.style.display = 'none';
+        videoView.style.display = 'flex';
+        btnVideo.style.background = '#D4AF37';
+        btnVideo.style.color = '#111';
+        btnVideo.style.border = 'none';
+        btnVoice.style.background = 'rgba(255,255,255,0.15)';
+        btnVoice.style.color = '#fff';
+        btnVoice.style.border = '1px solid rgba(255,255,255,0.25)';
+      } else {
+        videoView.style.display = 'none';
+        voiceView.style.display = 'flex';
+        btnVoice.style.background = '#00875A';
+        btnVoice.style.color = '#fff';
+        btnVoice.style.border = 'none';
+        btnVideo.style.background = 'rgba(255,255,255,0.15)';
+        btnVideo.style.color = '#fff';
+        btnVideo.style.border = '1px solid rgba(255,255,255,0.25)';
+      }
+    }
+
+    function toggleCamera() {
+      isCameraOn = !isCameraOn;
+      const btn = document.getElementById('cam-toggle-btn');
+      const pip = document.getElementById('student-pip-box');
+      if (isCameraOn) {
+        btn.style.background = '#333';
+        btn.innerText = '📹';
+        if (pip) {
+          pip.innerHTML = `
+            <div id="pip-camera-placeholder">
+              <div style="font-size: 32px; margin-bottom: 4px;">👤</div>
+              <div style="font-size: 10px; color: #a8c4b2; font-weight: bold;">كاميرا الطالب</div>
+              <small style="font-size: 8px; color: #2ecc71;">نشطة ✓</small>
+            </div>
+          `;
+        }
+      } else {
+        btn.style.background = '#888';
+        btn.innerText = '🚫';
+        if (pip) {
+          pip.innerHTML = `
+            <div style="font-size: 28px; color: #666; margin-bottom: 4px;">📷</div>
+            <div style="font-size: 9px; color: #aaa;">الكاميرا مغلقة</div>
+          `;
+        }
+      }
+    }
+
+    function toggleVideoQuranOverlay() {
+      const panel = document.getElementById('video-quran-panel');
+      if (panel) {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+
+    function showZegoConfigModal() {
+      alert(`⚡ إعدادات ZEGOCLOUD الرسمية لمنظومة إتقان:
+------------------------------------------------------
+• AppID المعتمد: 961728373
+• AppSign المعتمد: 6b872e7d6d7479c0b2f8db5699c3696171a58c7f2bc4d095e99d8ad627915cfa
+• الأنماط المفعلة:
+  ✓ غرف صوتية عالية النقاء للتسميع القرآني (48kHz Voice Rooms)
+  ✓ فيديو كول وبث مرئي مباشر للمشرفين والطلاب (HD Video Call)
+• زمن الاستجابة: 24ms فوري
+• ملف الخدمة المكتبي في Flutter:
+  lib/core/services/zego_cloud_service.dart`);
+    }
+
+    // --- Booking Screen Functions ---
+    let selectedBookingDay = 'الثلاثاء 17 نوفمبر';
+    let selectedBookingSlot = '04:00 PM';
+    let selectedBookingMode = 'voice';
+    let isBookingShamarly = true;
+
+    function selectBookingDay(el) {
+      document.querySelectorAll('.booking-day-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function selectBookingSlot(el) {
+      document.querySelectorAll('.booking-slot-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function selectBookingMode(mode) {
+      selectedBookingMode = mode;
+      document.getElementById('book-mode-voice').classList.toggle('active', mode === 'voice');
+      document.getElementById('book-mode-video').classList.toggle('active', mode === 'video');
+    }
+
+    function toggleBookingMushaf() {
+      isBookingShamarly = !isBookingShamarly;
+      const lbl = document.getElementById('booking-mushaf-label');
+      if (lbl) {
+        lbl.innerText = isBookingShamarly 
+          ? '📖 طبعة الشمرلي المصرية الأصلية (20 سطر)' 
+          : '📖 مجمع الملك فهد لطباعة المصحف الشريف (15 سطر)';
+      }
+    }
+
+    function confirmBookingSuccess() {
+      alert(`✅ تم تأكيد حجز الموعد بنجاح!
+--------------------------------------------------
+• المقرئ: الشيخ عبد الله السويسي
+• النمط: ${selectedBookingMode === 'voice' ? 'غرفة صوتية فائقة النقاء (Zego 48kHz)' : 'مكالمة مرئية مباشرة'}
+• الطبعة: ${isBookingShamarly ? 'الشمرلي' : 'مجمع الملك فهد'}
+• الربط: تم تسجيل الحجز في جدول circle_bookings على Supabase
+• الحالة: جاهز لبدء الجلسة في الموعد المحدد.`);
+      openScreen('mychapters');
+    }
+
+    // --- Competitions Screen Functions ---
+    function registerForTrack(trackName) {
+      alert(`🏆 مرحباً بك في مسابقة فرسان إتقان 2026!
+--------------------------------------------------
+تم تسجيل طلب انضمامك إلى:
+"${trackName}"
+
+• تم إدراجك في جدول المتسابقين على قاعدة بيانات Supabase.
+• سيصلك إشعار بموعد جلسة الاختبار التمهيدي المباشر عبر ZegoCloud.
+• مجموع الجوائز: 100,000 ريال سعودي.`);
+    }
+
+    // --- Wallet Screen Functions ---
+    let currentWalletBalance = 120;
+    let selectedPackagePts = 120;
+    let selectedPackagePrice = 100;
+    let selectedPayMethodName = 'مدى (Mada)';
+
+    function selectRechargePackage(el, pts, price) {
+      document.querySelectorAll('.wallet-package-card').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      selectedPackagePts = pts;
+      selectedPackagePrice = price;
+    }
+
+    function selectPayMethod(el, name) {
+      document.querySelectorAll('.pay-method-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      selectedPayMethodName = name;
+    }
+
+    function executeRecharge() {
+      currentWalletBalance += selectedPackagePts;
+      const balEl = document.getElementById('wallet-balance-num');
+      if (balEl) balEl.innerText = currentWalletBalance;
+      alert(`💳 تمت عملية الشحن بنجاح!
+--------------------------------------------------
+• الباقة: ${selectedPackagePts} نقطة (${selectedPackagePrice} ر.س)
+• طريقة الدفع: ${selectedPayMethodName}
+• رصيدك الجديد: ${currentWalletBalance} نقطة
+• تم تسجيل الحركة في جدول wallet_transactions على Supabase.`);
+    }
+
+    // --- Library Functions ---
+    function selectLibCategory(el, cat) {
+      document.querySelectorAll('.lib-cat-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      const cards = document.querySelectorAll('.lib-book-card');
+      cards.forEach(card => {
+        if (cat === 'الكل' || card.innerText.includes(cat)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function filterLibraryBooks(query) {
+      const q = query.trim().toLowerCase();
+      document.querySelectorAll('.lib-book-card').forEach(card => {
+        if (!q || card.innerText.toLowerCase().includes(q)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function openBookReader(title, author, chapter, text) {
+      alert(`📖 فتح الكتاب للقراءة:
+--------------------------------------------------
+الكتاب: ${title}
+المؤلف: ${author}
+الباب: ${chapter}
+
+نص المتن:
+${text}
+--------------------------------------------------
+(يمكنك تفعيل الوضع الليلي وتكبير الخط في التطبيق)`);
+    }
+
+    // --- Quran Radios Functions ---
+    const radioStations = [
+      { name: 'إذاعة القرآن الكريم - القاهرة', freq: '98.2 FM - القاهرة', info: 'الشيخ محمود خليل الحصري • سورة طه', icon: '📻', listeners: '1.8M مستمع الآن' },
+      { name: 'إذاعة الحرم المكي الشريف', freq: '90.0 FM - مكة المكرمة', info: 'أئمة الحرم المكي • بث مباشر من صحن الكعبة', icon: '🕋', listeners: '2.4M مستمع الآن' },
+      { name: 'إذاعة الشيخ عبد الباسط (المصحف المجود)', freq: 'بث رقمي HD', info: 'الشيخ عبد الباسط • تلاوات نادرة من سورة مريم', icon: '🎙️', listeners: '890k مستمع' },
+      { name: 'إذاعة الشيخ محمد صديق المنشاوي', freq: 'بث رقمي HD', info: 'الشيخ المنشاوي • سورة يوسف كاملة', icon: '📖', listeners: '740k مستمع' }
+    ];
+    let currentRadioIdx = 0;
+    let isRadioPlaying = true;
+
+    function switchRadioStation(idx) {
+      currentRadioIdx = idx;
+      const st = radioStations[idx];
+      document.getElementById('radio-station-title').innerText = st.name;
+      document.getElementById('radio-reciter-info').innerText = st.info;
+      document.getElementById('radio-frequency').innerText = st.freq;
+      document.getElementById('radio-listeners').innerText = st.listeners;
+      document.getElementById('radio-icon-box').innerText = st.icon;
+      document.querySelectorAll('.radio-station-row').forEach((r, i) => {
+        r.classList.toggle('active', i === idx);
+      });
+      isRadioPlaying = true;
+      document.getElementById('radio-play-btn').innerText = '⏸️';
+    }
+
+    function toggleRadioPlay() {
+      isRadioPlaying = !isRadioPlaying;
+      document.getElementById('radio-play-btn').innerText = isRadioPlaying ? '⏸️' : '▶️';
+      document.querySelectorAll('.eq-bar').forEach(b => {
+        b.style.animationPlayState = isRadioPlaying ? 'running' : 'paused';
+      });
+    }
+
+    function nextRadioStation() {
+      switchRadioStation((currentRadioIdx + 1) % radioStations.length);
+    }
+
+    function prevRadioStation() {
+      switchRadioStation((currentRadioIdx - 1 + radioStations.length) % radioStations.length);
+    }
+
+    // --- Evaluation & Certificate Functions ---
+    let rubricScores = [24, 24, 25, 23];
+
+    function updateRubricScore(id, val) {
+      rubricScores[id - 1] = parseInt(val);
+      document.getElementById('score-val-' + id).innerText = val + ' / 25';
+      const total = rubricScores.reduce((a, b) => a + b, 0);
+      document.getElementById('rubric-total-num').innerText = total;
+      
+      const tierEl = document.getElementById('rubric-grade-tier');
+      if (total >= 95) tierEl.innerText = 'ممتاز مرتفع مع مرتبة الشرف 🏆';
+      else if (total >= 85) tierEl.innerText = 'ممتاز ⭐';
+      else if (total >= 75) tierEl.innerText = 'جيد جداً 👍';
+      else tierEl.innerText = 'جيد (بحاجة لتدريب)';
+    }
+
+    function openCertificateModal() {
+      const total = rubricScores.reduce((a, b) => a + b, 0);
+      alert(`📜 شهادة إتقان وضبط التلاوة (معتمدة):
+==================================================
+        مَنظومة إِتْـقَان العَالَمِيَّة
+        شهادة إتقان وضبط التلاوة
+
+يشهد فضيلة الشيخ / المقرئ المشرف بأن الدارس:
+✨ أحمد عبد المنعم موسى ✨
+
+قد أتم بنجاح تلاوة واختبار:
+سورة الفاتحة وأول سورة البقرة (1-20)
+
+• التقدير العام: ${total}% (ممتاز مرتفع مع مرتبة الشرف 🏆)
+• المقرئ المشرف: الشيخ عبد الله السويسي
+• الرمز التوثيقي: ETQ-2026-9842
+==================================================
+✓ تم حفظ الشهادة الرقمية في ملف إنجاز الطالب.`);
+    }
+
+    // Initialize reels on load
+    renderReel(0);
+  </script>
+  <!-- MODAL: ADD CONTENT (Exact Match with etqan_app MainNavScreen _showAddOptionsBottomSheet) -->
+  <div id="add-content-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: flex-end;" onclick="closeAddOptionsModal()">
+    <div style="background: #ffffff; width: 100%; max-width: 420px; border-radius: 24px 24px 0 0; padding: 24px; box-shadow: 0 -8px 24px rgba(0,0,0,0.2); direction: rtl;" onclick="event.stopPropagation()">
+      <div style="width: 40px; height: 4px; background: #ddd; border-radius: 4px; margin: 0 auto 18px auto;"></div>
+      <div style="font-size: 18px; font-weight: bold; color: #191919; margin-bottom: 20px; text-align: center;">إضافة محتوى جديد</div>
+
+      <!-- Option 1: Upload Reel -->
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 14px; background: #F8FAF9; margin-bottom: 12px; cursor: pointer; border: 1px solid #E2E8F0;" onclick="closeAddOptionsModal(); alert('📹 فتح استوديو تسجيل ورفع فيديو تعليمي / Reel');">
+        <div style="width: 44px; height: 44px; border-radius: 50%; background: #E8F5E9; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #00875A;">📹</div>
+        <div style="flex: 1;">
+          <div style="font-size: 15px; font-weight: bold; color: #191919;">رفع فيديو تعليمي / Reel</div>
+          <div style="font-size: 12px; color: #64748B; margin-top: 2px;">نشر مقطع تجويد أو تلاوة أو موعظة للمتابعين</div>
+        </div>
+      </div>
+
+      <!-- Option 2: Create Quran Circle -->
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 14px; background: #F8FAF9; margin-bottom: 18px; cursor: pointer; border: 1px solid #E2E8F0;" onclick="closeAddOptionsModal(); alert('👥 فتح نموذج إنشاء حلقة قرآنية جديدة واستقبال الطلاب');">
+        <div style="width: 44px; height: 44px; border-radius: 50%; background: #E3F2FD; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #1976D2;">👥</div>
+        <div style="flex: 1;">
+          <div style="font-size: 15px; font-weight: bold; color: #191919;">إنشاء حلقة قرآنية جديدة</div>
+          <div style="font-size: 12px; color: #64748B; margin-top: 2px;">تحديد موعد جلسة تحفيظ أو مراجعة واستقبال الطلاب</div>
+        </div>
+      </div>
+
+      <button onclick="closeAddOptionsModal()" style="width: 100%; padding: 12px; background: #f0f0f0; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; color: #555; cursor: pointer;">إلغاء</button>
+    </div>
+  </div>
+
+  <!-- MODAL: REEL COMMENTS SHEET -->
+  <div id="reel-comments-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: flex-end;" onclick="closeReelCommentsSheet()">
+    <div style="background: #ffffff; width: 100%; max-width: 420px; height: 460px; border-radius: 24px 24px 0 0; padding: 20px; box-shadow: 0 -8px 24px rgba(0,0,0,0.2); direction: rtl; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+      <div style="width: 40px; height: 4px; background: #ddd; border-radius: 4px; margin: 0 auto 12px auto;"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+        <span style="font-size: 16px; font-weight: bold; color: #191919;">التعليقات (<span id="comments-reel-count">45</span>)</span>
+        <button onclick="closeReelCommentsSheet()" style="background: none; border: none; font-size: 18px; color: #888; cursor: pointer;">✕</button>
+      </div>
+
+      <!-- Comments List -->
+      <div id="reel-comments-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 10px;">
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #E8F5E9; color: #00875A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">أ</div>
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: bold; color: #191919;">أحمد سمير</div>
+            <div style="font-size: 12px; color: #444; margin-top: 2px;">جزاكم الله خير الجزاء يا شيخنا ونفع بكم الإسلام والمسلمين</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #E8F5E9; color: #00875A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">ع</div>
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: bold; color: #191919;">عبد الرحمن خالد</div>
+            <div style="font-size: 12px; color: #444; margin-top: 2px;">ما شاء الله تبارك الله، تلاوة خاشعة وشرح وتوضيح متقن للغاية</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 8px 0;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #E8F5E9; color: #00875A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">م</div>
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: bold; color: #191919;">محمد الشريف</div>
+            <div style="font-size: 12px; color: #444; margin-top: 2px;">اللهم اجعلنا وإياكم من أهل القرآن وخاصته</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Comment Input -->
+      <div style="display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid #eee;">
+        <input type="text" id="reel-new-comment-input" placeholder="أضف تعليقاً طيباً..." style="flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 20px; font-size: 13px; outline: none; font-family: inherit;">
+        <button onclick="submitReelComment()" style="background: #00875A; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer;">إرسال</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
