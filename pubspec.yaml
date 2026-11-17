@@ -1,0 +1,54 @@
+name: etqan
+description: "تطبيق إتقان لتعليم وتحفيظ القرآن الكريم والسنة النبوية والمقارئ الإلكترونية"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.19.0
+  supabase_flutter: ^2.8.0
+  flutter_svg: ^2.0.10+1
+  dio: ^5.7.0
+  shared_preferences: ^2.3.2
+  provider: ^6.1.2
+  cached_network_image: ^3.4.1
+  lottie: ^3.1.2
+  video_player: ^2.9.2
+  audioplayers: ^6.0.0
+  zego_uikit_prebuilt_call: ^4.16.0
+  zego_uikit_prebuilt_live_streaming: ^3.7.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/svgs/
+    - assets/animation/
+    - assets/logo/
+    - assets/videos/
+    - assets/translations/
+    - assets/payment/
+
+  fonts:
+    - family: Dubai
+      fonts:
+        - asset: assets/fonts/Dubai-Regular.ttf
+        - asset: assets/fonts/Dubai-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Dubai-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Dubai-Light.ttf
+          weight: 300

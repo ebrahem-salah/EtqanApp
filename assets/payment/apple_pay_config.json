@@ -1,0 +1,11 @@
+{
+  "provider": "apple_pay",
+  "data": {
+    "merchantIdentifier": "merchant.com.etqan.app",
+    "displayName": "Etqan App",
+    "merchantCapabilities": ["3DS"],
+    "supportedNetworks": ["visa", "masterCard"],
+    "countryCode": "SA",
+    "currencyCode": "USD"
+  }
+}

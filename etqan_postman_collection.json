@@ -1,0 +1,184 @@
+{
+	"info": {
+		"_postman_id": "etqan-api-collection-2026",
+		"name": "منظومة إتقان العالمية - API Collection & Endpoints",
+		"description": "توثيق شامل لكافة مسارات الـ API والـ Endpoints لمنظومة إتقan (Supabase Cloud + ZEGOCLOUD Realtime Engine)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "SUPABASE_URL",
+			"value": "https://ngokeoqlimctcjkbmgtn.supabase.co",
+			"type": "string"
+		},
+		{
+			"key": "SUPABASE_ANON_KEY",
+			"value": "sb_publishable_vkDauPHxs9FyPOUziJkq4g_5JS2Md8o",
+			"type": "string"
+		},
+		{
+			"key": "ZEGO_APP_ID",
+			"value": "961728373",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. المصادقة والحسابات (Auth)",
+			"item": [
+				{
+					"name": "تسجيل دخول بريد وكلمة مرور (Login)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@etqan.org\",\n  \"password\": \"P@ssword123\"\n}"
+						},
+						"url": {
+							"raw": "{{SUPABASE_URL}}/auth/v1/token?grant_type=password",
+							"host": ["{{SUPABASE_URL}}"],
+							"path": ["auth", "v1", "token"],
+							"query": [{ "key": "grant_type", "value": "password" }]
+						}
+					}
+				},
+				{
+					"name": "تسجيل حساب دارس جديد (Sign Up)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"new_student@etqan.org\",\n  \"password\": \"SecurePass2026!\",\n  \"data\": {\n    \"name\": \"أحمد عبد المنعم موسى\",\n    \"role\": \"student\",\n    \"phone\": \"+966501234567\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{SUPABASE_URL}}/auth/v1/signup",
+							"host": ["{{SUPABASE_URL}}"],
+							"path": ["auth", "v1", "signup"]
+						}
+					}
+				},
+				{
+					"name": "تسجيل الدخول برقم الجوال ورمز OTP (Phone Auth)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+201012345678\"\n}"
+						},
+						"url": {
+							"raw": "{{SUPABASE_URL}}/auth/v1/otp",
+							"host": ["{{SUPABASE_URL}}"],
+							"path": ["auth", "v1", "otp"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. الحلقات وحجز المواعيد (Circles & Bookings)",
+			"item": [
+				{
+					"name": "استرجاع قائمة الحلقات المتاحة (Get Circles)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+							{ "key": "Authorization", "value": "Bearer {{SUPABASE_ANON_KEY}}" }
+						],
+						"url": {
+							"raw": "{{SUPABASE_URL}}/rest/v1/circles?select=*,profiles:sheikh_id(name,title,avatar_url)&status=eq.active",
+							"host": ["{{SUPABASE_URL}}"],
+							"path": ["rest", "v1", "circles"],
+							"query": [
+								{ "key": "select", "value": "*,profiles:sheikh_id(name,title,avatar_url)" },
+								{ "key": "status", "value": "eq.active" }
+							]
+						}
+					}
+				},
+				{
+					"name": "حجز موعد حلقة تسميع (Create Booking)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+							{ "key": "Authorization", "value": "Bearer {{SUPABASE_ANON_KEY}}" },
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Prefer", "value": "return=representation" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"circle_id\": \"b83c5097-4c4f-4d32-9cb9-650a3da629e4\",\n  \"student_id\": \"USER_UUID_HERE\",\n  \"sheikh_id\": \"SHEIKH_UUID_HERE\",\n  \"booking_date\": \"2026-11-18\",\n  \"time_slot\": \"04:00 PM\",\n  \"session_type\": \"voice\",\n  \"mushaf_edition\": \"الشمرلي\",\n  \"status\": \"confirmed\"\n}"
+						},
+						"url": {
+							"raw": "{{SUPABASE_URL}}/rest/v1/circle_bookings",
+							"host": ["{{SUPABASE_URL}}"],
+							"path": ["rest", "v1", "circle_bookings"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. التقييم والشهادات الرقمية (Evaluations)",
+			"item": [
+				{
+					"name": "إرسال تقييم تلاوة الطالب (Submit Evaluation)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+							{ "key": "Authorization", "value": "Bearer {{SUPABASE_ANON_KEY}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"booking_id\": \"BOOKING_UUID\",\n  \"student_id\": \"STUDENT_UUID\",\n  \"sheikh_id\": \"SHEIKH_UUID\",\n  \"surah_name\": \"سورة الفاتحة وأول البقرة\",\n  \"makharij_score\": 24,\n  \"ahkam_score\": 24,\n  \"mudood_score\": 25,\n  \"waqf_score\": 23,\n  \"total_score\": 96,\n  \"sheikh_notes\": \"تلاوة متقنة وممتازة مع مرتبة الشرف\",\n  \"certificate_code\": \"ETQ-2026-9842\"\n}"
+						},
+						"url": {
+							"raw": "{{SUPABASE_URL}}/rest/v1/evaluations",
+							"host": ["{{SUPABASE_URL}}"],
+							"path": ["rest", "v1", "evaluations"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. المحفظة والمدفوعات (Wallet)",
+			"item": [
+				{
+					"name": "استرجاع رصيد المحفظة وسجل الحركات (Get Wallet)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+							{ "key": "Authorization", "value": "Bearer {{SUPABASE_ANON_KEY}}" }
+						],
+						"url": {
+							"raw": "{{SUPABASE_URL}}/rest/v1/wallet_transactions?select=*&order=created_at.desc",
+							"host": ["{{SUPABASE_URL}}"],
+							"path": ["rest", "v1", "wallet_transactions"],
+							"query": [
+								{ "key": "select", "value": "*" },
+								{ "key": "order", "value": "created_at.desc" }
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

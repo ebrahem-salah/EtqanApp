@@ -1,0 +1,4 @@
+-keep class **.zego.** { *; }
+-keep class im.zego.** { *; }
+-keep class com.zego.** { *; }
+-dontwarn **.zego.**

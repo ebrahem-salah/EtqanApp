@@ -1,0 +1,45 @@
+name: Build Etqan Android APK (تجميع تطبيق إتقان أندرويد)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً بنقرة زر واحدة من الموقع
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. جلب كود المشروع
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. إعداد بيئة جافا JDK 17
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. إعداد فلاتر في السحاب
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      # 4. تثبيت المكتبات (ZegoCloud + Supabase)
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 5. بناء ملف APK النهائي الجاهز للتثبيت
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      # 6. رفع ملف الـ APK لتتمكن من تنزيله على هاتفك مباشرة
+      - name: Upload APK File
+        uses: actions/upload-artifact@v4
+        with:
+          name: etqan-app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
