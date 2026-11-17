@@ -1,163 +1,177 @@
 -- =======================================================================
 -- منظومة إتقان العالمية لتعليم القرآن والسنة (Etqan Master Database Schema)
--- منصة Supabase السحابية
+-- منصة Supabase السحابية (مطابقة 100% لتطبيق إتقان الفعلي)
 -- =======================================================================
 
 -- 1. جدول الملفات الشخصية للمستخدمين (الطلاب والشيوخ)
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     full_name TEXT NOT NULL,
     phone TEXT,
-    role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'sheikh', 'admin', 'guest')),
+    role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'sheikh', 'admin', 'volunteer')),
+    title TEXT DEFAULT 'طالب علم', -- إمام مسجد / مقرئ / متطوع
+    is_volunteer BOOLEAN DEFAULT false,
     avatar_url TEXT,
     wallet_balance INTEGER NOT NULL DEFAULT 50,
-    quran_hifz_amount TEXT DEFAULT 'مبتدئ',
-    institution TEXT DEFAULT 'مقرأة الإتقان العامة',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. جدول تصنيفات الحلقات والمناهج
+-- 2. جدول تصنيفات الحلقات والمناهج (الـ 11 تصنيفاً الأصلية)
 CREATE TABLE IF NOT EXISTS public.categories (
     id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
+    title TEXT NOT NULL UNIQUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    has_levels BOOLEAN DEFAULT false,
     icon_name TEXT DEFAULT 'menu_book',
-    levels_count INTEGER DEFAULT 3,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. جدول الحلقات والمقارئ القرآنية (Circles / Halaqat)
+-- 3. جدول الأقسام الفرعية والمستويات والمقررات (Subcategories / Courses)
+CREATE TABLE IF NOT EXISTS public.subcategories (
+    id SERIAL PRIMARY KEY,
+    category_id INTEGER REFERENCES public.categories(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    subtitle TEXT, -- المستوى الأول / المستوى الثاني
+    image_url TEXT,
+    badge_number INTEGER, -- 1, 2, 3 للقاعدة النورانية
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. جدول الحلقات المباشرة والمقارئ (Halaqat & Circles)
 CREATE TABLE IF NOT EXISTS public.circles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sheikh_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     category_id INTEGER REFERENCES public.categories(id) ON DELETE SET NULL,
+    subcategory_id INTEGER REFERENCES public.subcategories(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
-    surah_name TEXT NOT NULL,
+    surah_name TEXT NOT NULL DEFAULT 'سورة الفاتحة',
     room_id TEXT NOT NULL UNIQUE, -- ZEGOCLOUD Room ID
     status TEXT NOT NULL DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'running', 'ended')),
-    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_time TIMESTAMP WITH TIME ZONE,
-    max_students INTEGER DEFAULT 1,
-    current_students INTEGER DEFAULT 0,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
     mushaf_edition TEXT DEFAULT 'الشمرلي' CHECK (mushaf_edition IN ('الشمرلي', 'مجمع الملك فهد')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. جدول حجوزات الطلاب للحلقات (Bookings)
-CREATE TABLE IF NOT EXISTS public.circle_bookings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    circle_id UUID NOT NULL REFERENCES public.circles(id) ON DELETE CASCADE,
-    student_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    status TEXT DEFAULT 'booked' CHECK (status IN ('booked', 'completed', 'cancelled')),
-    booked_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    UNIQUE (circle_id, student_id)
-);
-
--- 5. جدول تقييمات التسميع (Sheikh Recitation Evaluations)
-CREATE TABLE IF NOT EXISTS public.evaluations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    circle_id UUID REFERENCES public.circles(id) ON DELETE CASCADE,
-    student_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    sheikh_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    correct_score INTEGER DEFAULT 5 CHECK (correct_score BETWEEN 1 AND 5),
-    fluency_score INTEGER DEFAULT 5 CHECK (fluency_score BETWEEN 1 AND 5),
-    tajweed_score INTEGER DEFAULT 5 CHECK (tajweed_score BETWEEN 1 AND 5),
-    total_percentage INTEGER NOT NULL,
-    sheikh_notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- 6. جدول مقاطع الريلز القرآنية (Reels)
+-- 5. جدول مقاطع الريلز والفيديوهات التعليمية (Reels)
 CREATE TABLE IF NOT EXISTS public.reels (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sheikh_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    title TEXT NOT NULL,
+    id SERIAL PRIMARY KEY,
+    user_name TEXT NOT NULL,
+    user_role TEXT DEFAULT 'إمام مسجد',
+    is_volunteer BOOLEAN DEFAULT true,
+    time_ago TEXT DEFAULT 'منذ 7 شهر',
+    avatar_url TEXT,
+    caption TEXT NOT NULL,
     video_url TEXT NOT NULL,
-    thumbnail_url TEXT,
     likes_count INTEGER DEFAULT 0,
     comments_count INTEGER DEFAULT 0,
     shares_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. جدول المسابقات القرآنية (فرسان إتقان 2026)
+-- 6. جدول تعليقات الريلز (Reel Comments)
+CREATE TABLE IF NOT EXISTS public.reel_comments (
+    id SERIAL PRIMARY KEY,
+    reel_id INTEGER REFERENCES public.reels(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    user_name TEXT NOT NULL,
+    comment_text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 7. جدول المسابقات والجوائز (Competitions)
 CREATE TABLE IF NOT EXISTS public.competitions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    prize TEXT NOT NULL,
-    badge_type TEXT DEFAULT 'gold',
+    category TEXT NOT NULL,
+    prize_amount TEXT NOT NULL,
     participants_count INTEGER DEFAULT 0,
-    start_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    end_date TIMESTAMP WITH TIME ZONE NOT NULL,
     is_active BOOLEAN DEFAULT true,
+    ends_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 8. جدول حركة المحفظة ورصيد النقاط (Wallet Transactions)
-CREATE TABLE IF NOT EXISTS public.wallet_transactions (
+-- 8. جدول تقييمات الشيوخ للتسميع (Recitation Evaluations)
+CREATE TABLE IF NOT EXISTS public.evaluations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    amount INTEGER NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('deposit', 'deduction', 'reward')),
-    description TEXT NOT NULL,
+    circle_id UUID REFERENCES public.circles(id) ON DELETE CASCADE,
+    student_name TEXT NOT NULL,
+    sheikh_name TEXT NOT NULL,
+    correct_score INTEGER DEFAULT 25,
+    fluency_score INTEGER DEFAULT 25,
+    tajweed_score INTEGER DEFAULT 25,
+    stops_score INTEGER DEFAULT 25,
+    total_percentage INTEGER NOT NULL,
+    grade_tier TEXT NOT NULL DEFAULT 'ممتاز',
+    certificate_code TEXT UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- =======================================================================
--- تلقائية إنشاء بروفايل جديد فور تسجيل المستخدم (Trigger)
+-- البيانات الأولية المطابقة للصور الأصلية (SEED DATA)
 -- =======================================================================
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-    INSERT INTO public.profiles (id, full_name, phone, role)
-    VALUES (
-        new.id,
-        COALESCE(new.raw_user_meta_data->>'full_name', 'مستخدم جديد'),
-        new.raw_user_meta_data->>'phone',
-        COALESCE(new.raw_user_meta_data->>'role', 'student')
-    );
-    RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- إسقاط التريجر إن وجد مسبقاً ثم إعادة إنشائه
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+-- 1. إضافة الأقسام الرئيسية الـ 11
+INSERT INTO public.categories (id, title, sort_order, has_levels) VALUES
+(1, 'تعليم الحروف والقاعدة النورانية', 1, true),
+(2, 'القرآن الكريم', 2, false),
+(3, 'مقرأة إهداء الثواب', 3, false),
+(4, 'السنة النبوية', 4, false),
+(5, 'علوم أخرى', 5, false),
+(6, 'الفتاوى', 6, false),
+(7, 'الرقية الشرعية', 7, false),
+(8, 'الطفل المسلم', 8, false),
+(9, 'المرأة المسلمة', 9, false),
+(10, 'قسم الفقه', 10, false),
+(11, 'قسم الابتهال', 11, false)
+ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title;
 
--- =======================================================================
--- تفعيل سياسات الأمان والحماية (Row Level Security - RLS)
--- =======================================================================
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.circles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.circle_bookings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.evaluations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.reels ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.competitions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
+-- 2. إضافة الأقسام الفرعية والمستويات لكل تصنيف
 
--- سياسات القراءة العامة
-CREATE POLICY "Public profiles are readable by everyone" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Categories are readable by everyone" ON public.categories FOR SELECT USING (true);
-CREATE POLICY "Circles are readable by everyone" ON public.circles FOR SELECT USING (true);
-CREATE POLICY "Reels are readable by everyone" ON public.reels FOR SELECT USING (true);
-CREATE POLICY "Competitions are readable by everyone" ON public.competitions FOR SELECT USING (true);
-CREATE POLICY "Evaluations are readable by student or sheikh" ON public.evaluations FOR SELECT USING (true);
-CREATE POLICY "Bookings readable by user" ON public.circle_bookings FOR SELECT USING (auth.uid() = student_id OR true);
-CREATE POLICY "Wallet readable by owner" ON public.wallet_transactions FOR SELECT USING (auth.uid() = user_id OR true);
+-- أ) تعليم الحروف والقاعدة النورانية (الصور 3 و 4 و 5)
+INSERT INTO public.subcategories (category_id, title, subtitle, badge_number, sort_order) VALUES
+(1, 'القسم الاول', 'المستوى الأول', 1, 1),
+(1, 'القسم الثاني', 'المستوى الثاني', 2, 2),
+(1, 'القسم الثالث', 'المستوى الثالث', 3, 3);
 
--- إدراج بيانات أولية وتجريبية (Seed Initial Data)
-INSERT INTO public.categories (id, title, description, icon_name, levels_count) VALUES
-(1, 'سورة الفاتحة وجزء عم', 'تصحيح التلاوة وتلقين مخارج الحروف الأساسية', 'menu_book', 3),
-(2, 'حفظ ومراجعة سورة البقرة', 'مدارسة الأحكام وضبط المتشابهات والتسميع اليومي', 'menu_book', 4),
-(3, 'مخارج الحروف وصفاتها', 'تطبيق عملي لقواعد الجزرية والتحفة مع المشايخ', 'record_voice_over', 2)
-ON CONFLICT (id) DO NOTHING;
+-- ب) القرآن الكريم (الصور 6 و 7)
+INSERT INTO public.subcategories (category_id, title, sort_order, image_url) VALUES
+(2, 'الحفظ', 1, 'https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300'),
+(2, 'المراجعة', 2, 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=300'),
+(2, 'التجويد', 3, 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300'),
+(2, 'المدارسة', 4, 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=300'),
+(2, 'المقرأة', 5, 'https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?w=300'),
+(2, 'علوم القرآن', 6, 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300'),
+(2, 'القراءات العشر', 7, 'https://images.unsplash.com/photo-1519817650390-64a93db51149?w=300'),
+(2, 'المقامات الصوتية', 8, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300'),
+(2, 'التفسير', 9, 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300'),
+(2, 'القراءات', 10, 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300');
 
-INSERT INTO public.competitions (title, description, prize, badge_type, participants_count, end_date) VALUES
-('مسابقة فرسان إتقان 2026', 'المسابقة القرآنية السنوية لحفظ وتجويد القرآن الكريم كاملاً برواية حفص عن عاصم', '100,000 ريال سعودي + إجازة معتمدة', 'gold', 1420, timezone('utc'::text, now() + interval '30 days'))
-ON CONFLICT DO NOTHING;
+-- ج) مقرأة إهداء الثواب (الصورة 8)
+INSERT INTO public.subcategories (category_id, title, sort_order, image_url) VALUES
+(3, 'رجال', 1, 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300'),
+(3, 'نساء', 2, 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=300');
+
+-- د) السنة النبوية (الصورة 9)
+INSERT INTO public.subcategories (category_id, title, sort_order, image_url) VALUES
+(4, 'الحفظ', 1, 'https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300'),
+(4, 'علوم الحديث', 2, 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300'),
+(4, 'شروح الأحاديث', 3, 'https://images.unsplash.com/photo-1519817650390-64a93db51149?w=300'),
+(4, 'الإقراء لكتب السنة', 4, 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300'),
+(4, 'القراءة بالإسناد', 5, 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=300');
+
+-- هـ) علوم أخرى (الصورة 10)
+INSERT INTO public.subcategories (category_id, title, sort_order, image_url) VALUES
+(5, 'الفقه', 1, 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300'),
+(5, 'السيرة', 2, 'https://images.unsplash.com/photo-1519817650390-64a93db51149?w=300'),
+(5, 'العقيدة', 3, 'https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300'),
+(5, 'الرقائق', 4, 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300'),
+(5, 'تيست', 5, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300');
+
+-- 3. إضافة مقاطع الريلز الأصلية المطابقة للصور 1 و 2
+INSERT INTO public.reels (user_name, user_role, is_volunteer, time_ago, avatar_url, caption, video_url, likes_count, comments_count, shares_count) VALUES
+('مريم مستخدمت', 'إمام مسجد', true, 'منذ 7 شهر', 'assets/images/profile.png', 'تحفه ما شاء الله', 'assets/videos/onboarding_video_1.mp4', 4, 5, 2),
+('Ahmed', 'إمام مسجد', true, 'منذ 21 يوم', 'assets/images/welcome_sheikh_illustration.png', 'اعمل ما تحب', 'assets/videos/onboarding_video_2.mp4', 0, 0, 1),
+('د / عبد الله الرويلي', 'مشرف مقرأة', false, 'منذ شهر', 'assets/images/profile.png', 'من اعظم اسباب تجعلك سعيداً في الحياه', 'assets/videos/onboarding_video_1.mp4', 234, 45, 18);

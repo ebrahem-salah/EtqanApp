@@ -42,6 +42,8 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
       {'title': 'علوم القرآن', 'icon': '📜'},
       {'title': 'القراءات العشر', 'icon': '✨'},
       {'title': 'المقامات الصوتية', 'icon': '🎵'},
+      {'title': 'التفسير', 'icon': '📖'},
+      {'title': 'القراءات', 'icon': '📜'},
     ],
     2: [
       {'title': 'رجال', 'icon': '👨'},
@@ -56,6 +58,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
     ],
     4: [
       {'title': 'الفقه', 'icon': '⚖️'},
+      {'title': 'تيست', 'icon': '📷'},
       {'title': 'السيرة', 'icon': '🌴'},
       {'title': 'العقيدة', 'icon': '🕋'},
       {'title': 'الرقائق', 'icon': '🤍'},
@@ -79,6 +82,14 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
       {'title': 'أحكام', 'icon': '📖'},
       {'title': 'آداب', 'icon': '🌸'},
       {'title': 'أعمال منزلية', 'icon': '🏡'},
+    ],
+    9: [
+      {'title': 'فقه العبادات', 'icon': '⚖️'},
+      {'title': 'فقه المعاملات', 'icon': '💼'},
+    ],
+    10: [
+      {'title': 'مدائح نبوية', 'icon': '🎙️'},
+      {'title': 'ابتهالات الفجر', 'icon': '🌅'},
     ],
   };
 
