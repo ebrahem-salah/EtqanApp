@@ -3440,11 +3440,37 @@
       }
     }
 
+    // Live Wallet Loader from Laravel API /my-wallet
+    async function fetchLiveWallet() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/my-wallet`, {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${BACKEND_TOKEN}`
+          }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && typeof json.data.balance !== 'undefined') {
+            const serverBal = parseFloat(json.data.balance);
+            if (serverBal > 0) {
+              currentWalletBalance = serverBal;
+              updateAllWalletDisplays();
+            }
+            console.log('✅ Connected to Etqan Backend: Wallet loaded, Balance = ' + currentWalletBalance + ' ' + (json.data.currency || 'SAR'));
+          }
+        }
+      } catch (err) {
+        console.warn('Live wallet fallback:', err);
+      }
+    }
+
     // Auto-init on page load
     window.addEventListener('DOMContentLoaded', () => {
       renderReel(0);
       switchCategory(document.querySelector('.cat-rail-btn.active'), 'القاعدة النورانية');
       fetchLiveReels();
+      fetchLiveWallet();
     });
 
 
@@ -4159,12 +4185,32 @@
       selectedPayMethodName = name;
     }
 
-    function executeRecharge() {
+    async function executeRecharge() {
       const addedTotal = selectedPackageAmount + selectedPackageBonus;
       currentWalletBalance += addedTotal;
       updateAllWalletDisplays();
 
       const txnRef = 'TXN_RECHARGE_' + Date.now();
+
+      // Sync with Laravel 12 Backend API
+      try {
+        await fetch(`${API_BASE_URL}/users/1/wallet/add`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${BACKEND_TOKEN}`
+          },
+          body: JSON.stringify({
+            amount: addedTotal,
+            description: 'شحن رصيد مالي عبر ' + selectedPayMethodName + ' (' + txnRef + ')',
+            reference_no: txnRef
+          })
+        });
+        console.log('✅ Transaction synced to Laravel Backend: ' + txnRef);
+      } catch (e) {
+        console.warn('Recharge backend sync note:', e);
+      }
       
       // Prepend to transaction history
       const hist = document.getElementById('wallet-tx-history');

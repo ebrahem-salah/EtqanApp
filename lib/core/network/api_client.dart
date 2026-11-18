@@ -182,6 +182,21 @@ class ApiClient {
     return await dio.get('/competitions');
   }
 
+  /// Get competition participants and leaderboard
+  Future<Response> getCompetitionParticipants(int competitionId) async {
+    return await dio.get('/competitions/$competitionId/participants');
+  }
+
+  /// Join competition (student)
+  Future<Response> joinCompetition(int competitionId) async {
+    return await dio.post('/competitions/$competitionId/join');
+  }
+
+  /// Calculate competition rankings
+  Future<Response> calculateCompetitionRankings(int competitionId) async {
+    return await dio.post('/competitions/$competitionId/calculate-rankings');
+  }
+
   // ================= 6. BROADCASTS & RADIOS =================
 
   /// Quran & Hadith 24/7 radio broadcasts
@@ -213,5 +228,41 @@ class ApiClient {
   /// Frequently Asked Questions
   Future<Response> getFaqs() async {
     return await dio.get('/faqs');
+  }
+
+  // ================= 10. WALLET & PAYMENTS (Official API) =================
+
+  /// Get user's wallet balance and transactions from /my-wallet
+  Future<Response> getMyWallet({int page = 1, int perPage = 20}) async {
+    return await dio.get('/my-wallet', queryParameters: {
+      'page': page,
+      'per_page': perPage,
+    });
+  }
+
+  /// Add balance to wallet (recharge)
+  Future<Response> addWalletBalance({
+    required int userId,
+    required double amount,
+    String? description,
+    String? referenceNo,
+  }) async {
+    return await dio.post('/users/$userId/wallet/add', data: {
+      'amount': amount,
+      'description': description ?? 'شحن رصيد المحفظة',
+      if (referenceNo != null) 'reference_no': referenceNo,
+    });
+  }
+
+  /// Deduct balance from wallet (booking / paid session)
+  Future<Response> deductWalletBalance({
+    required int userId,
+    required double amount,
+    String? description,
+  }) async {
+    return await dio.post('/users/$userId/wallet/deduct', data: {
+      'amount': amount,
+      'description': description ?? 'خصم حجز جلسة مدفوعة',
+    });
   }
 }
