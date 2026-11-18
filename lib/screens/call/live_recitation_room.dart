@@ -88,7 +88,45 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           ],
         ),
         actions: [
+          // 1. Direct Zego Video Call
           IconButton(
+            tooltip: 'مكالمة فيديو مباشرة عبر ZEGOCLOUD',
+            icon: const Icon(Icons.videocam, color: Color(0xFF2ECC71)),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ZegoRecitationCallPage(
+                    callID: widget.roomId,
+                    userID: 'student_${DateTime.now().millisecondsSinceEpoch}',
+                    userName: 'طالب إتقان',
+                    circleTitle: widget.circleTitle,
+                    callType: ZegoCallType.video,
+                  ),
+                ),
+              );
+            },
+          ),
+          // 2. Direct Zego Voice Call
+          IconButton(
+            tooltip: 'مكالمة صوتية عالية النقاء عبر ZEGOCLOUD',
+            icon: const Icon(Icons.phone_in_talk, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ZegoRecitationCallPage(
+                    callID: widget.roomId,
+                    userID: 'student_${DateTime.now().millisecondsSinceEpoch}',
+                    userName: 'طالب إتقان',
+                    circleTitle: widget.circleTitle,
+                    callType: ZegoCallType.voice,
+                  ),
+                ),
+              );
+            },
+          ),
+          // 3. Picture in Picture / Floating background bar
+          IconButton(
+            tooltip: 'استمرار في الخلفية',
             icon: const Icon(Icons.picture_in_picture, color: Color(0xFFFFDF73)),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
