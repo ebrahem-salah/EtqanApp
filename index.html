@@ -892,6 +892,40 @@
       font-weight: bold;
       color: #191919;
     }
+  
+    .reels-flip-controls {
+      position: absolute;
+      left: 14px;
+      top: 42%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 28;
+    }
+    .reels-flip-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: all 0.2s ease;
+    }
+    .reels-flip-btn:hover {
+      background: #00875A;
+      border-color: #2ecc71;
+      transform: scale(1.12);
+    }
+    .reels-flip-btn:active {
+      transform: scale(0.9);
+    }
+    
   </style>
 </head>
 <body>
@@ -1173,7 +1207,7 @@
         </div>
 
         <!-- SCREEN 2: REELS SCREEN (100% Exact Match with Image 1 & 2) -->
-        <div id="screen-reels" class="app-screen active" onclick="toggleReelPlayPause(event)" onwheel="handleReelWheel(event)">
+        <div id="screen-reels" class="app-screen active" onwheel="handleReelWheel(event)" ontouchstart="handleReelTouchStart(event)" ontouchend="handleReelTouchEnd(event)" onmousedown="handleReelMouseDown(event)" onmouseup="handleReelMouseUp(event)">
           <video class="reels-video-container" autoplay loop muted playsinline id="reels-video">
             <source src="assets/videos/onboarding_video_1.mp4" type="video/mp4">
           </video>
@@ -1254,6 +1288,17 @@
           </div>
 
           <!-- Bottom Sheikh Info (Matching Image 1 & 2) -->
+          
+          <!-- Intuitive Click-to-Flip Reels Arrows -->
+          <div class="reels-flip-controls" onclick="event.stopPropagation()">
+            <button class="reels-flip-btn" onclick="prevReel()" title="المقطع السابق (أو مرر لأعلى)">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
+            <button class="reels-flip-btn" onclick="nextReel()" title="المقطع التالي (أو مرر لأسفل)">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          </div>
+    
           <div class="reels-sheikh-info">
             <div style="display: flex; align-items: center; gap: 10px;">
               <div class="reels-avatar-circle" id="reel-avatar-container">
@@ -1310,9 +1355,8 @@
               <div class="cat-rail-btn" onclick="switchCategory(this, 'قسم الابتهال')">قسم الابتهال</div>
             </div>
           </div>
-        </div>
 
-                  <!-- Floating Action Button (Only in Chapters Screen as requested) -->
+          <!-- Floating Action Button (Only in Chapters Screen as requested) -->
           <div class="etqan-fab" onclick="showAddOptionsModal()" title="إضافة حلقة">
             <div class="etqan-fab-inner">+</div>
           </div>
@@ -2387,6 +2431,66 @@
       renderReel(activeReelIdx - 1);
     }
 
+    let lastWheelTime = 0;
+    function handleReelWheel(e) {
+      if (e) e.preventDefault();
+      const now = Date.now();
+      if (now - lastWheelTime < 400) return;
+      lastWheelTime = now;
+      if (e.deltaY > 0) nextReel();
+      else if (e.deltaY < 0) prevReel();
+    }
+
+    let touchStartY = 0;
+    function handleReelTouchStart(e) {
+      touchStartY = e.touches[0].clientY;
+    }
+    function handleReelTouchEnd(e) {
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchEndY - touchStartY;
+      if (Math.abs(diffY) > 35) {
+        if (diffY < 0) nextReel();
+        else prevReel();
+      }
+    }
+
+    let mouseStartY = 0;
+    let isMouseDown = false;
+    function handleReelMouseDown(e) {
+      isMouseDown = true;
+      mouseStartY = e.clientY;
+    }
+    function handleReelMouseUp(e) {
+      if (!isMouseDown) return;
+      isMouseDown = false;
+      const diffY = e.clientY - mouseStartY;
+      if (Math.abs(diffY) > 40) {
+        if (diffY < 0) nextReel();
+        else prevReel();
+      }
+    }
+
+    // Keyboard support for reels
+    window.addEventListener('keydown', (e) => {
+      const rScreen = document.getElementById('screen-reels');
+      if (rScreen && rScreen.classList.contains('active')) {
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+          e.preventDefault();
+          nextReel();
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          e.preventDefault();
+          prevReel();
+        }
+      }
+    });
+
+    // Auto-init on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderReel(0);
+      switchCategory(document.querySelector('.cat-rail-btn.active'), 'القاعدة النورانية');
+    });
+
+
     function toggleLikeCurrentReel() {
       const reel = reelsList[activeReelIdx];
       reel.isLiked = !reel.isLiked;
@@ -2465,15 +2569,17 @@
 
     // ALL 11 CATEGORIES & SUBCATEGORIES FROM USER SCREENSHOTS (Images 3 - 10)
     function switchCategory(el, catName) {
-      document.querySelectorAll('.cat-rail-btn').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
+      if (el) {
+        document.querySelectorAll('.cat-rail-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+      }
 
       const box = document.getElementById('subcat-box');
       if (!box) return;
 
       if (catName === 'القاعدة النورانية') {
         // Images 3, 4, 5
-        box.innerHTML = 
+        box.innerHTML = `
           <div class="subcat-level-card" onclick="openCallWithTitle('حلقة القاعدة النورانية - القسم الأول (المستوى الأول)')">
             <div class="subcat-level-banner">
               <div class="subcat-level-number-badge">1</div>
@@ -2495,10 +2601,10 @@
             </div>
             <div class="subcat-level-subtitle">المستوى الثالث</div>
           </div>
-        ;
+        `;
       } else if (catName === 'القرآن الكريم') {
         // Images 6 & 7
-        box.innerHTML = 
+        box.innerHTML = `
           <div class="subcat-grid-2col">
             <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: الحفظ')">
               <img src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300" class="subcat-photo-img" alt="الحفظ">
@@ -2541,10 +2647,10 @@
               <div class="subcat-photo-title">القراءات</div>
             </div>
           </div>
-        ;
+        `;
       } else if (catName === 'مقرأة إهداء الثواب') {
         // Image 8
-        box.innerHTML = 
+        box.innerHTML = `
           <div class="subcat-grid-2col">
             <div class="subcat-photo-card" onclick="openCallWithTitle('مقرأة إهداء الثواب: رجال')">
               <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="رجال">
@@ -2555,10 +2661,10 @@
               <div class="subcat-photo-title">نساء</div>
             </div>
           </div>
-        ;
+        `;
       } else if (catName === 'السنة النبوية') {
         // Image 9
-        box.innerHTML = 
+        box.innerHTML = `
           <div class="subcat-grid-2col">
             <div class="subcat-photo-card" onclick="openCallWithTitle('السنة النبوية: الحفظ')">
               <img src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300" class="subcat-photo-img" alt="الحفظ">
@@ -2581,10 +2687,10 @@
               <div class="subcat-photo-title">القراءة بالإسناد</div>
             </div>
           </div>
-        ;
+        `;
       } else if (catName === 'علوم أخرى') {
         // Image 10
-        box.innerHTML = 
+        box.innerHTML = `
           <div class="subcat-grid-2col">
             <div class="subcat-photo-card" onclick="openCallWithTitle('علوم أخرى: الفقه')">
               <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="الفقه">
@@ -2607,17 +2713,17 @@
               <div class="subcat-photo-title">تيست</div>
             </div>
           </div>
-        ;
+        `;
       } else {
-        box.innerHTML = 
-          <div class="subcat-level-card" onclick="openCallWithTitle('حلقة:  + catName +  (المستوى العام)')">
+        box.innerHTML = `
+          <div class="subcat-level-card" onclick="openCallWithTitle('حلقة: ${catName} (المستوى العام)')">
             <div class="subcat-level-banner">
               <div class="subcat-level-number-badge">★</div>
-              <div class="subcat-level-title"> + catName + </div>
+              <div class="subcat-level-title">${catName}</div>
             </div>
             <div class="subcat-level-subtitle">دروس ومجالس حية مباشرة</div>
           </div>
-        ;
+        `;
       }
     }
 
