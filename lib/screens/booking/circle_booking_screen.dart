@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
+import '../../core/services/supabase_service.dart';
 import '../call/live_recitation_room.dart';
 
 class CircleBookingScreen extends StatefulWidget {
@@ -10,9 +11,9 @@ class CircleBookingScreen extends StatefulWidget {
 
   const CircleBookingScreen({
     super.key,
-    this.circleTitle = 'حلقة تصحيح سورة البقرة وأحكام التجويد',
+    this.circleTitle = 'حلقة تصحيح سورة مريم وأحكام التجويد',
     this.sheikhName = 'الشيخ عبد الله السويسي',
-    this.categoryName = 'سورة البقرة',
+    this.categoryName = 'سورة مريم',
   });
 
   @override
@@ -24,6 +25,10 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
   int _selectedTimeIndex = 0;
   String _selectedEdition = 'الشمرلي';
   bool _isVideoCall = false;
+
+  // نوع الجلسة: مجانية (0 ر.س - بدون خصم) أو مدفوعة خاصة (35 ر.س من المحفظة)
+  bool _isPaidSession = false;
+  double _walletCashBalance = 150.00; // رصيد المحفظة النقدي المتاح
 
   final List<Map<String, String>> _availableDays = [
     {'day': 'اليوم', 'date': '17 نوفمبر'},
@@ -39,30 +44,107 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
     '09:00 م - 09:30 م',
   ];
 
-  void _confirmBooking() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('✅ تم تأكيد حجز موعدك مع ${widget.sheikhName} بنجاح!'),
-        backgroundColor: const Color(0xFF00875A),
-      ),
-    );
+  void _confirmBooking() async {
+    final selectedDay = _availableDays[_selectedDayIndex]['day']!;
+    final selectedTime = _availableTimes[_selectedTimeIndex];
 
-    // الانتقال لغرفة التسميع
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => LiveRecitationRoom(
-          roomId: 'room_${DateTime.now().millisecondsSinceEpoch}',
-          circleTitle: widget.circleTitle,
-          isSheikh: false,
+    if (!_isPaidSession) {
+      // حلقة عامة مجانية: بدون أي خصم من رصيد المحفظة
+      await SupabaseService().createBooking(
+        circleId: 'circle_free_${DateTime.now().millisecondsSinceEpoch}',
+        sheikhId: 'sheikh_swaisi',
+        bookedAt: DateTime.now(),
+        timeSlot: '$selectedDay - $selectedTime',
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ تم تأكيد حجز الحلقة العامة بنجاح مجاناً!\nالموعد: $selectedDay $selectedTime\nرصيدك بالمحفظة لم يتأثر (${_walletCashBalance.toStringAsFixed(2)} ر.س)',
+          ),
+          backgroundColor: const Color(0xFF00875A),
+          duration: const Duration(seconds: 4),
         ),
-      ),
-    );
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => LiveRecitationRoom(
+            roomId: 'room_${DateTime.now().millisecondsSinceEpoch}',
+            circleTitle: widget.circleTitle,
+            isSheikh: false,
+          ),
+        ),
+      );
+    } else {
+      // حلقة مدفوعة خاصة: تتطلب خصم 35 ر.س من المحفظة
+      const sessionFee = 35.00;
+      if (_walletCashBalance < sessionFee) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('⚠️ رصيد المحفظة غير كافٍ'),
+            content: Text(
+              'رصيدك الحالي (${_walletCashBalance.toStringAsFixed(2)} ر.س) لا يكفي لحجز الجلسة الخاصة (${sessionFee.toStringAsFixed(2)} ر.س).\nيرجى شحن محفظتك أولاً.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  // فتح شحن المحفظة
+                },
+                child: const Text('شحن المحفظة الآن', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _walletCashBalance -= sessionFee;
+      });
+
+      await SupabaseService().createBooking(
+        circleId: 'circle_vip_${DateTime.now().millisecondsSinceEpoch}',
+        sheikhId: 'sheikh_swaisi',
+        bookedAt: DateTime.now(),
+        timeSlot: '$selectedDay - $selectedTime',
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ تم تأكيد حجز الجلسة الخاصة بنجاح!\nتم خصم ${sessionFee.toStringAsFixed(2)} ر.س من المحفظة.\nرصيدك المتبقي: ${_walletCashBalance.toStringAsFixed(2)} ر.س',
+          ),
+          backgroundColor: const Color(0xFF00875A),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => LiveRecitationRoom(
+            roomId: 'room_vip_${DateTime.now().millisecondsSinceEpoch}',
+            circleTitle: 'جلسة خاصة 1-on-1: ${widget.circleTitle}',
+            isSheikh: false,
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الأصلية
+      backgroundColor: const Color(0xFFFCFBE8),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -117,22 +199,29 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
                           widget.sheikhName,
                           style: const TextStyle(
                             fontFamily: 'Dubai',
-                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E2822),
+                            fontSize: 16,
                           ),
                         ),
                         const SizedBox(height: 2),
                         const Text(
-                          'مجاز في القراءات العشر | مقرأة الحرمين',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                          'إجازة بالسند المتصل برواية حفص عن عاصم',
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 12,
+                            color: Color(0xFF00875A),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 2),
                         Row(
                           children: const [
                             Icon(Icons.star, color: Colors.amber, size: 14),
                             SizedBox(width: 4),
-                            Text('4.9 (140 تقييم)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            Text(
+                              '4.9 (184 تقييم) • 1,240 ساعة تدريس',
+                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
                           ],
                         ),
                       ],
@@ -141,223 +230,233 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // عنوان الجلسة
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00875A).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF00875A).withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.menu_book, color: Color(0xFF00875A)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('موضوع الجلسة المقررة:', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        Text(
-                          widget.circleTitle,
-                          style: const TextStyle(
-                            fontFamily: 'Dubai',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Color(0xFF00875A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 22),
-
-            // 1. اختيار اليوم
+            // نوع الجلسة (مجانية بدون خصم vs خاصة بخصم 35 ر.س)
             const Text(
-              '1. اختر موعد الجلسة:',
+              'اختر نوع الجلسة والرسوم:',
               style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: List.generate(_availableDays.length, (index) {
-                  final isSelected = _selectedDayIndex == index;
-                  final item = _availableDays[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 10.0),
-                    child: InkWell(
-                      onTap: () => setState(() => _selectedDayIndex = index),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFF00875A) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: isSelected ? const Color(0xFF00875A) : Colors.grey.shade300),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                // كارت الحلقة العامة المجانية
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _isPaidSession = false),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: !_isPaidSession ? const Color(0xFFE8F5E9) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: !_isPaidSession ? const Color(0xFF00875A) : Colors.grey.shade300,
+                          width: !_isPaidSession ? 2 : 1,
                         ),
-                        child: Column(
-                          children: [
-                            Text(
-                              item['day']!,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: const [
+                              Text('🟢', style: TextStyle(fontSize: 18)),
+                              Text(
+                                'مجاناً 100%',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF00875A),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              item['date']!,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white70 : Colors.grey,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'حلقة عامة مفتوحة',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'بدون خصم من المحفظة',
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // كارت الجلسة الخاصة المدفوعة
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _isPaidSession = true),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _isPaidSession ? const Color(0xFFFFFDF5) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _isPaidSession ? const Color(0xFFD4AF37) : Colors.grey.shade300,
+                          width: _isPaidSession ? 2 : 1,
                         ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: const [
+                              Text('⭐', style: TextStyle(fontSize: 18)),
+                              Text(
+                                'خاصة VIP',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFFD4AF37),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'جلسة فردية خاصة',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'خصم 35 ر.س من المحفظة',
+                            style: TextStyle(fontSize: 10, color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // الأيام المتاحة
+            const Text(
+              'اختر اليوم المناسب:',
+              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 70,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _availableDays.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final day = _availableDays[index];
+                  final isSelected = index == _selectedDayIndex;
+                  return InkWell(
+                    onTap: () => setState(() => _selectedDayIndex = index),
+                    child: Container(
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF00875A) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFF00875A) : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            day['day']!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            day['date']!,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isSelected ? Colors.white70 : Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
-                }),
+                },
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // 2. اختيار الساعة
+            // المواعيد المتاحة
             const Text(
-              '2. اختر وقت الجلسة المتاح:',
+              'اختر الموعد المتاح:',
               style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: List.generate(_availableTimes.length, (index) {
-                final isSelected = _selectedTimeIndex == index;
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 3,
+              ),
+              itemCount: _availableTimes.length,
+              itemBuilder: (context, index) {
+                final time = _availableTimes[index];
+                final isSelected = index == _selectedTimeIndex;
                 return InkWell(
                   onTap: () => setState(() => _selectedTimeIndex = index),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF191919) : Colors.white,
+                      color: isSelected ? const Color(0xFF00875A).withOpacity(0.12) : Colors.white,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: isSelected ? const Color(0xFF191919) : Colors.grey.shade300),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFF00875A) : Colors.grey.shade300,
+                        width: isSelected ? 2 : 1,
+                      ),
                     ),
                     child: Text(
-                      _availableTimes[index],
+                      time,
                       style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Dubai',
                         fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? const Color(0xFF00875A) : Colors.black87,
                       ),
                     ),
                   ),
                 );
-              }),
+              },
             ),
-            const SizedBox(height: 22),
-
-            // 3. نمط الجلسة في ZEGOCLOUD (صوتية أو فيديو)
-            const Text(
-              '3. نوع الاتصال المفضل:',
-              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Text('🎙️ مكالمة صوتية عالية النقاء'),
-                    selected: !_isVideoCall,
-                    selectedColor: const Color(0xFF00875A),
-                    labelStyle: TextStyle(
-                      color: !_isVideoCall ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                    onSelected: (val) => setState(() => _isVideoCall = !val),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Text('📹 مكالمة فيديو كول'),
-                    selected: _isVideoCall,
-                    selectedColor: const Color(0xFF00875A),
-                    labelStyle: TextStyle(
-                      color: _isVideoCall ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                    onSelected: (val) => setState(() => _isVideoCall = val),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
-
-            // 4. طبعة المصحف
-            const Text(
-              '4. طبعة المصحف المعتمدة للتسميع:',
-              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _selectedEdition == 'الشمرلي' ? const Color(0xFF00875A).withOpacity(0.12) : Colors.white,
-                      side: BorderSide(color: _selectedEdition == 'الشمرلي' ? const Color(0xFF00875A) : Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () => setState(() => _selectedEdition = 'الشمرلي'),
-                    child: const Text('📖 طبعة الشمرلي (المصرية)', style: TextStyle(color: Color(0xFF00875A), fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _selectedEdition == 'مجمع الملك فهد' ? const Color(0xFF00875A).withOpacity(0.12) : Colors.white,
-                      side: BorderSide(color: _selectedEdition == 'مجمع الملك فهد' ? const Color(0xFF00875A) : Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () => setState(() => _selectedEdition = 'مجمع الملك فهد'),
-                    child: const Text('📖 مجمع الملك فهد', style: TextStyle(color: Color(0xFF00875A), fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
             // زر تأكيد الحجز
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00875A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
-                ),
-                onPressed: _confirmBooking,
-                child: const Text(
-                  'تأكيد الحجز ودخول الجلسة المباشرة',
-                  style: TextStyle(
-                    fontFamily: 'Dubai',
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00875A),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _confirmBooking,
+              child: Text(
+                !_isPaidSession
+                    ? '✓ تأكيد حجز الموعد مجاناً (بدون خصم من المحفظة)'
+                    : '🔒 تأكيد حجز الجلسة الخاصة (35.00 ر.س من المحفظة)',
+                style: const TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
           ],
         ),
       ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/zego_cloud_service.dart';
-import '../evaluation/evaluation_rubric_screen.dart';
 
 class LiveRecitationRoom extends StatefulWidget {
   final String roomId;
@@ -22,18 +21,57 @@ class LiveRecitationRoom extends StatefulWidget {
 class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   bool _isMicMuted = false;
   bool _isSpeakerOn = true;
-  String _selectedEdition = 'شمرلي'; // 'شمرلي' أو 'الملك فهد'
-  int _currentPage = 293; // سورة مريم
+  bool _isHandRaised = false;
+  bool _isStudentMicApproved = false;
 
-  // Sheikh Evaluation metrics (من العقد: الخطأ، التلعثم، الصواب، أحكام التجويد)
-  int _correctScore = 5;
-  int _fluencyScore = 4;
-  int _tajweedScore = 5;
+  int _currentAyahIndex = 1;
+
+  final List<String> _ayahs = [
+    'كٓهيعٓصٓ ۝١',
+    'ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ۝٢',
+    'إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا ۝٣',
+    'قَالَ رَبِّ إِنِّى وَهَنَ ٱلْعَظْمُ مِنِّى وَٱشْتَعَلَ ٱلرَّأْسُ شَيْبًۭا ۝٤',
+    'وَلَمْ أَكُنۢ بِدُعَآئِكَ رَبِّ شَقِيًّۭا ۝٥',
+    'وَإِنِّى خِفْتُ ٱلْمَوَٰلِىَ مِن وَرَآءِى وَكَانَتِ ٱمْرَأَتِى عَاقِرًۭا فَهَبْ لِى مِن لَّدُنكَ وَلِيًّۭا ۝٦',
+  ];
+
+  void _toggleRaiseHand() {
+    setState(() {
+      _isHandRaised = !_isHandRaised;
+    });
+
+    if (_isHandRaised) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✋ تم رفع يدك! بانتظار إذن فضيلة الشيخ للتسميع...'),
+          backgroundColor: Color(0xFFD4AF37),
+        ),
+      );
+
+      // محاكاة موافقة الشيخ التلقائية بعد ثانيتين
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        setState(() {
+          _isStudentMicApproved = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ وافق الشيخ عبد الله على طلبك! المايك مفتوح لك الآن للتسميع.'),
+            backgroundColor: Color(0xFF00875A),
+          ),
+        );
+      });
+    } else {
+      setState(() {
+        _isStudentMicApproved = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: const Color(0xFF141F18),
       appBar: AppBar(
         backgroundColor: Colors.black87,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -41,140 +79,131 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           children: [
             Text(
               widget.circleTitle,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
             ),
             const Text(
-              'متصل الآن عبر ZEGOCLOUD فائقة النقاء',
-              style: TextStyle(color: AppColors.gold, fontSize: 11),
+              'متصل عبر ZEGOCLOUD (صوت فائق النقاء 48kHz)',
+              style: TextStyle(color: Color(0xFF2ECC71), fontSize: 10),
             ),
           ],
         ),
         actions: [
-          // ZEGOCLOUD Live Voice Call Button
           IconButton(
-            icon: const Icon(Icons.headset_mic, color: Color(0xFF2ECC71)),
-            tooltip: 'غرفة صوتية عبر ZEGOCLOUD',
+            icon: const Icon(Icons.picture_in_picture, color: Color(0xFFFFDF73)),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ZegoRecitationCallPage(
-                    callID: widget.roomId,
-                    userID: widget.isSheikh ? 'sheikh_01' : 'student_01',
-                    userName: widget.isSheikh ? 'الشيخ المشرف' : 'الطالب محمد',
-                    circleTitle: widget.circleTitle,
-                    isSheikh: widget.isSheikh,
-                    callType: ZegoCallType.voice,
-                  ),
-                ),
-              );
-            },
-          ),
-          // ZEGOCLOUD Live Video Call Button
-          IconButton(
-            icon: const Icon(Icons.videocam, color: Colors.amber),
-            tooltip: 'فيديو كول مباشر عبر ZEGOCLOUD',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ZegoRecitationCallPage(
-                    callID: widget.roomId,
-                    userID: widget.isSheikh ? 'sheikh_01' : 'student_01',
-                    userName: widget.isSheikh ? 'الشيخ المشرف' : 'الطالب محمد',
-                    circleTitle: widget.circleTitle,
-                    isSheikh: widget.isSheikh,
-                    callType: ZegoCallType.video,
-                  ),
-                ),
-              );
-            },
-          ),
-          // Quran Edition Selector (الشمرلي / الملك فهد)
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.menu_book, color: AppColors.gold),
-            onSelected: (val) {
-              setState(() {
-                _selectedEdition = val;
-              });
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('تم التحويل إلى: طبعة $val'),
-                  duration: const Duration(seconds: 1),
-                ),
+                const SnackBar(content: Text('📱 يستمر البث الصوتي بالخلفية.')),
               );
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'الشمرلي', child: Text('طبعة الشمرلي')),
-              const PopupMenuItem(value: 'مجمع الملك فهد', child: Text('طبعة مجمع الملك فهد')),
-            ],
-          ),
-          // Sheikh Evaluation & Certificate Button
-          IconButton(
-            icon: const Icon(Icons.workspace_premium, color: AppColors.gold),
-            tooltip: 'تقييم التلاوة وإصدار الشهادة',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => EvaluationRubricScreen(
-                    studentName: 'أحمد عبد المنعم موسى',
-                    sheikhName: 'الشيخ عبد الله السويسي',
-                    surahTested: widget.circleTitle,
-                  ),
-                ),
-              );
+              Navigator.of(context).pop();
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          // Quran Page View (Interactive Shared Screen)
+          // شريط المتحدث الحالي
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: const Color(0xFF0C140F),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 12,
+                      backgroundColor: const Color(0xFF00875A),
+                      child: Text(_isStudentMicApproved ? '👤' : '👳‍♂️', style: const TextStyle(fontSize: 12)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _isStudentMicApproved
+                          ? 'الطالب أحمد يتحدث ويسمع الآن 🎙️'
+                          : 'الشيخ عبد الله السويسي يتحدث الآن 🎙️',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const Text('👥 28 طالباً', style: TextStyle(color: Colors.amber, fontSize: 11)),
+              ],
+            ),
+          ),
+
+          // صفحة المصحف الشريف المتزامن مع التلاوة
           Expanded(
             child: Container(
               margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFDF7), // Paper parchment color
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 6)],
+                color: const Color(0xFFFFFDF5),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Stack(
+              child: Column(
                 children: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
-                            style: TextStyle(
-                              fontFamily: 'Dubai',
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.brown.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'كهيعص ۝ ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُ زَكَرِيَّا ۝ إِذْ نَادَىٰ رَبَّهُ نِدَاءً خَفِيًّا ۝ قَالَ رَبِّ إِنِّي وَهَنَ الْعَظْمُ مِنِّي وَاشْتَعَلَ الرَّأْسُ شَيْبًا وَلَمْ أَكُن بِدُعَائِكَ رَبِّ شَقِيًّا ۝',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'Dubai',
-                              fontSize: 17,
-                              height: 2.2,
-                              color: Colors.brown.shade900,
-                            ),
-                          ),
-                        ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        '📖 سورة مريم (مكية) - الآيات 1 إلى 6',
+                        style: TextStyle(color: Color(0xFF6D4C41), fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      Text(
+                        'طبعة الشمرلي الأصلية',
+                        style: TextStyle(color: Colors.grey, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 4,
+                          runSpacing: 8,
+                          children: List.generate(_ayahs.length, (index) {
+                            final isHighlighted = index + 1 == _currentAyahIndex;
+                            return InkWell(
+                              onTap: () => setState(() => _currentAyahIndex = index + 1),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isHighlighted ? const Color(0xFFFFE899) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  _ayahs[index],
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    height: 2.2,
+                                    fontFamily: 'Amiri',
+                                    fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+                                    color: isHighlighted ? const Color(0xFF3B2C00) : Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
                       ),
                     ),
                   ),
-                  // Edition Watermark
-                  Positioned(
-                    bottom: 8,
-                    left: 16,
-                    child: Text(
-                      'طبعة: $_selectedEdition | صفحة: $_currentPage',
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+
+                  // تقييم التجويد المباشر للشيخ
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBF8ED),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade200),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: const [
+                        Text('التجويد: 5/5 ⭐', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00875A))),
+                        Text('المخارج: 5/5 ⭐', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00875A))),
+                        Text('التقييم: 100%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2ECC71))),
+                      ],
                     ),
                   ),
                 ],
@@ -182,99 +211,71 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
             ),
           ),
 
-          // Sheikh Live Evaluation Panel (Only for Sheikh)
-          if (widget.isSheikh)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.black54,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildScoreButton('الصواب', _correctScore, (v) => setState(() => _correctScore = v)),
-                  _buildScoreButton('التلعثم', _fluencyScore, (v) => setState(() => _fluencyScore = v)),
-                  _buildScoreButton('التجويد', _tajweedScore, (v) => setState(() => _tajweedScore = v)),
-                ],
-              ),
-            ),
-
-          // Audio Controls Bar
+          // زر رفع اليد للطلب من الشيخ
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            color: const Color(0xFF101C14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'طلب التسميع أمام الشيخ:',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isHandRaised ? Colors.amber : const Color(0xFF00875A),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  onPressed: _toggleRaiseHand,
+                  icon: const Icon(Icons.pan_tool, size: 16, color: Colors.white),
+                  label: Text(
+                    _isHandRaised ? 'خفض اليد ✋' : 'رفع اليد للتسميع ✋',
+                    style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // أدوات التحكم (مايك، سماعة، إنهاء)
+          Container(
+            padding: const EdgeInsets.all(14),
             color: Colors.black87,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Mic Button
                 IconButton(
+                  iconSize: 32,
                   icon: Icon(
                     _isMicMuted ? Icons.mic_off : Icons.mic,
-                    color: _isMicMuted ? Colors.red : Colors.white,
-                    size: 28,
+                    color: _isStudentMicApproved ? const Color(0xFF2ECC71) : Colors.white,
                   ),
                   onPressed: () {
-                    setState(() {
-                      _isMicMuted = !_isMicMuted;
-                    });
+                    if (!_isStudentMicApproved) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('🔒 يرجى رفع اليد أولاً ليأذن لك الشيخ بالتسميع.')),
+                      );
+                      return;
+                    }
+                    setState(() => _isMicMuted = !_isMicMuted);
                   },
                 ),
-                // Speaker Button
                 IconButton(
-                  icon: Icon(
-                    _isSpeakerOn ? Icons.volume_up : Icons.volume_off,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isSpeakerOn = !_isSpeakerOn;
-                    });
-                  },
+                  iconSize: 32,
+                  icon: Icon(_isSpeakerOn ? Icons.volume_up : Icons.volume_off, color: Colors.white),
+                  onPressed: () => setState(() => _isSpeakerOn = !_isSpeakerOn),
                 ),
-                // End Call Button
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  ),
-                  icon: const Icon(Icons.call_end, color: Colors.white, size: 20),
-                  label: const Text('مغادرة', style: TextStyle(color: Colors.white)),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+                IconButton(
+                  iconSize: 36,
+                  icon: const Icon(Icons.call_end, color: Colors.red),
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildScoreButton(String label, int score, Function(int) onChanged) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-        Row(
-          children: [
-            InkWell(
-              onTap: () => onChanged(score > 1 ? score - 1 : 1),
-              child: const Icon(Icons.remove_circle_outline, color: Colors.white54, size: 18),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6.0),
-              child: Text(
-                '$score/5',
-                style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ),
-            InkWell(
-              onTap: () => onChanged(score < 5 ? score + 1 : 5),
-              child: const Icon(Icons.add_circle_outline, color: Colors.white54, size: 18),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

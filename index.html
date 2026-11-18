@@ -1217,6 +1217,83 @@
       flex-shrink: 0;
     }
     
+  
+    /* Live Recitation Room & Speaking Wave Animations */
+    @keyframes speakingPulse {
+      0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+      70% { box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+    }
+    .speaking-pulse {
+      animation: speakingPulse 1.5s infinite;
+    }
+
+    @keyframes raisingHandPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7); }
+      50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+    }
+    .raising-hand-pulse {
+      animation: raisingHandPulse 1.2s infinite;
+      background: linear-gradient(135deg, #D4AF37, #B8860B) !important;
+      color: #191919 !important;
+    }
+
+    @keyframes waveMotion {
+      0%, 100% { height: 6px; }
+      50% { height: 24px; }
+    }
+    .rec-wave-bar {
+      width: 4px;
+      height: 12px;
+      background: #00875A;
+      border-radius: 2px;
+      display: inline-block;
+      margin: 0 2px;
+      animation: waveMotion 0.8s infinite ease-in-out;
+    }
+    .rec-wave-bar:nth-child(2) { animation-delay: 0.15s; }
+    .rec-wave-bar:nth-child(3) { animation-delay: 0.3s; }
+    .rec-wave-bar:nth-child(4) { animation-delay: 0.45s; }
+    .rec-wave-bar:nth-child(5) { animation-delay: 0.6s; }
+
+    /* Interactive Ayah Highlighter */
+    .call-ayah {
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    .call-ayah:hover {
+      background: rgba(212,175,55,0.15);
+    }
+    .ayah-active {
+      background: #FFE899 !important;
+      color: #3b2c00;
+      box-shadow: 0 0 6px rgba(212,175,55,0.4);
+      font-weight: bold;
+    }
+
+    /* Floating background call bar */
+    #floating-call-bar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 420px;
+      background: #14241b;
+      color: #fff;
+      border: 1.5px solid #00875A;
+      border-radius: 16px;
+      padding: 10px 16px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 9998;
+      backdrop-filter: blur(8px);
+    }
   </style>
 </head>
 <body>
@@ -2108,66 +2185,104 @@
           </div>
         </div>
 
-        <!-- SCREEN 6: LIVE RECITATION CALL (Voice Rooms & Video Call) -->
-        <div id="screen-call" class="app-screen">
+        <!-- SCREEN 6: LIVE RECITATION CALL (Voice Rooms & Video Call with Raise Hand & Synchronized Mushaf) -->
+        <div id="screen-call" class="app-screen" style="display: flex; flex-direction: column;">
+          <!-- Live Room Top Bar -->
           <div style="background: #0c140f; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-            <div>
-              <h4 style="font-size: 14px;" id="call-room-title">حلقة التسميع المباشر</h4>
-              <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-                <span style="width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; box-shadow: 0 0 6px #2ecc71;"></span>
-                <small style="color: #2ecc71; font-weight: bold; font-size: 11px;">متصل عبر ZEGOCLOUD (24ms)</small>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px; cursor: pointer; color: #fff; transform: scaleX(-1); display: inline-block;" onclick="minimizeCallToBackground()" title="تصغير الغرفة للاستماع في الخلفية">➜</span>
+              <div>
+                <h4 style="font-size: 13px; color: #fff; margin: 0;" id="call-room-title">مقرأة سورة مريم - برواية حفص</h4>
+                <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; box-shadow: 0 0 6px #2ecc71;"></span>
+                  <small style="color: #2ecc71; font-weight: bold; font-size: 10px;">Zego Live Token04 (22ms • صوت 48kHz)</small>
+                </div>
               </div>
             </div>
-            <div style="display: flex; gap: 6px;">
-              <!-- Call Mode Toggle -->
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <!-- View mode toggle: Voice vs Video vs Mushaf Focus -->
               <button onclick="setCallMode('voice')" id="mode-voice-btn" style="background: #00875A; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
                 🎙️ صوتية
               </button>
               <button onclick="setCallMode('video')" id="mode-video-btn" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
-                📹 فيديو
+                📹 مرئية
               </button>
-              <button onclick="showZegoConfigModal()" style="background: #D4AF37; color: #111; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
-                ⚙️ Zego
+              <button onclick="minimizeCallToBackground()" style="background: rgba(255,255,255,0.1); color: #FFDF73; border: 1px solid rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;" title="استمرار الصوت بالخلفية">
+                📱 تصغير
               </button>
             </div>
           </div>
 
+          <!-- Live Speaker Indicator Banner -->
+          <div id="speaker-status-bar" style="background: #112017; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; color: #ddd;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="sheikh-avatar-indicator" class="speaking-pulse" style="width: 26px; height: 26px; border-radius: 50%; background: #00875A; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff;">👳‍♂️</span>
+              <span id="speaker-status-text"><strong>الشيخ عبد الله السويسي</strong> يتحدث الآن 🎙️</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-size: 11px; color: #FFDF73;">👥 28 طالباً</span>
+            </div>
+          </div>
+
           <!-- VOICE ROOM VIEW -->
-          <div id="view-voice-call" style="display: flex; flex-direction: column; flex: 1;">
-            <!-- Animated Audio Wave Banner -->
-            <div style="background: #0a110d; text-align: center; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-              <img src="assets/animation/call.gif" alt="Live Audio Waves" style="height: 38px; filter: hue-rotate(90deg);">
+          <div id="view-voice-call" style="display: flex; flex-direction: column; flex: 1; overflow-y: auto;">
+            <!-- Live Audio Wave Header -->
+            <div style="background: #0a110d; text-align: center; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: center; align-items: center; gap: 4px;">
+              <span style="font-size: 11px; color: #888;">بث صوتي مباشر:</span>
+              <div class="rec-wave-bar"></div>
+              <div class="rec-wave-bar"></div>
+              <div class="rec-wave-bar"></div>
+              <div class="rec-wave-bar"></div>
+              <div class="rec-wave-bar"></div>
             </div>
 
-            <!-- Mushaf Page Sheet -->
-            <div style="flex: 1; background: #FFFDF5; color: #222; padding: 20px; display: flex; flex-direction: column; justify-content: center; text-align: center;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <div style="color: #6d4c41; font-weight: bold; font-size: 14px;">سُورَةُ مَرْيَمَ (مَكِّيَّة)</div>
-                <button onclick="toggleMushafEdition()" id="mushaf-btn" style="background: rgba(0,0,0,0.06); color: #555; border: 1px solid #ccc; padding: 3px 8px; border-radius: 6px; font-size: 10px; cursor: pointer;">
-                  📖 طبعة الشمرلي
+            <!-- Synchronized Interactive Mushaf Sheet -->
+            <div id="call-mushaf-container" style="flex: 1; background: #FFFDF5; color: #222; padding: 16px 14px; display: flex; flex-direction: column; text-align: center;">
+              <!-- Mushaf Top Controls -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ede8d5; padding-bottom: 6px;">
+                <div style="color: #6d4c41; font-weight: bold; font-size: 13px;" id="mushaf-surah-title">📖 سُورَةُ مَرْيَمَ (مَكِّيَّة) - الآيات 1 إلى 6</div>
+                <button onclick="toggleMushafEdition()" id="mushaf-btn" style="background: #f4eee1; color: #6d4c41; border: 1px solid #d4c5a9; padding: 3px 8px; border-radius: 6px; font-size: 10px; cursor: pointer; font-weight: bold;">
+                  طبعة الشمرلي الأصلية
                 </button>
               </div>
-              <div style="font-size: 17px; line-height: 2.2; font-family: 'Amiri', 'Traditional Arabic', serif;">
-                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ<br>
-                كٓهيعٓصٓ ۝ ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ۝ إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا ۝ قَالَ رَبِّ إِنِّى وَهَنَ ٱلْعَظْمُ مِنِّى وَٱشْتَعَلَ ٱلرَّأْسُ شَيْبًۭا...
+
+              <!-- Verses Container with Clickable Ayah Highlighting -->
+              <div style="font-size: 17px; line-height: 2.3; font-family: 'Amiri', 'Traditional Arabic', serif; margin: auto 0; text-align: justify; text-align-last: center; direction: rtl; padding: 4px;">
+                <span class="call-ayah ayah-active" id="ayah-1" onclick="highlightAyah(1)">كٓهيعٓصٓ ۝١</span>
+                <span class="call-ayah" id="ayah-2" onclick="highlightAyah(2)">ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ۝٢</span>
+                <span class="call-ayah" id="ayah-3" onclick="highlightAyah(3)">إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا ۝٣</span>
+                <span class="call-ayah" id="ayah-4" onclick="highlightAyah(4)">قَالَ رَبِّ إِنِّى وَهَنَ ٱلْعَظْمُ مِنِّى وَٱشْتَعَلَ ٱلرَّأْسُ شَيْبًۭا ۝٤</span>
+                <span class="call-ayah" id="ayah-5" onclick="highlightAyah(5)">وَلَمْ أَكُنۢ بِدُعَآئِكَ رَبِّ شَقِيًّۭا ۝٥</span>
+                <span class="call-ayah" id="ayah-6" onclick="highlightAyah(6)">وَإِنِّى خِفْتُ ٱلْمَوَٰلِىَ مِن وَرَآءِى وَكَانَتِ ٱمْرَأَتِى عَاقِرًۭا فَهَبْ لِى مِن لَّدُنكَ وَلِيًّۭا ۝٦</span>
               </div>
-              <div style="margin-top: 14px; font-size: 11px; color: #888;" id="edition-desc">
-                طبعة الشمرلي المصرية الأصلية | صفحة 293
+
+              <!-- Ayah Nav Buttons -->
+              <div style="display: flex; justify-content: center; gap: 8px; margin: 10px 0 6px 0;">
+                <button type="button" onclick="prevAyah()" style="background: #f0ebe0; border: 1px solid #ccc; border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer;">◀ الآية السابقة</button>
+                <button type="button" onclick="nextAyah()" style="background: #00875A; color: #fff; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer; font-weight: bold;">الآية التالية ▶</button>
+              </div>
+
+              <!-- Sheikh Live Correction Tags -->
+              <div style="background: #fbf8ed; border: 1px dashed #dcd3b8; border-radius: 8px; padding: 6px 10px; font-size: 11px; color: #5a4928; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 4px;">
+                <span>✨ <strong>أحكام الآية:</strong></span>
+                <span style="color: #00875A;">✓ مد لازم حرفي مخفف (6 حركات)</span>
+                <span style="color: #00875A;">✓ إخفاء حقيقي بغنة</span>
+                <span style="color: #00875A;">✓ قلقلة صغرى</span>
               </div>
             </div>
 
-            <!-- Sheikh 5-point Rubric -->
-            <div style="background: #141f18; padding: 8px 12px; display: flex; justify-content: space-around; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.1);">
-              <div style="text-align: center;"><div>الخطأ</div><strong style="color: #4CAF50;">0</strong></div>
-              <div style="text-align: center;"><div>التلعثم</div><strong style="color: #FFC107;">1</strong></div>
-              <div style="text-align: center;"><div>أحكام التجويد</div><strong style="color: #D4AF37;">5/5 ⭐</strong></div>
-              <div style="text-align: center;"><div>الدرجة الكلية</div><strong style="color: #2ecc71;">98%</strong></div>
+            <!-- Sheikh Real-Time Evaluation Rubric -->
+            <div style="background: #141f18; padding: 8px 12px; display: flex; justify-content: space-around; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.1); color: #aaa;">
+              <div style="text-align: center;"><div style="font-size: 10px;">الخطأ</div><strong id="rubric-err" style="color: #4CAF50; font-size: 13px;">0</strong></div>
+              <div style="text-align: center;"><div style="font-size: 10px;">التلعثم</div><strong id="rubric-hes" style="color: #FFC107; font-size: 13px;">0</strong></div>
+              <div style="text-align: center;"><div style="font-size: 10px;">أحكام التجويد</div><strong style="color: #D4AF37; font-size: 13px;">5/5 ⭐</strong></div>
+              <div style="text-align: center;"><div style="font-size: 10px;">الدرجة الحالية</div><strong style="color: #2ecc71; font-size: 13px;">100%</strong></div>
             </div>
           </div>
 
           <!-- VIDEO CALL VIEW -->
           <div id="view-video-call" style="display: none; flex-direction: column; flex: 1; position: relative; background: #000; overflow: hidden;">
-            <!-- Main Video (Sheikh Video Stream) -->
+            <!-- Main Video (Sheikh Stream) -->
             <video autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
               <source src="assets/videos/onboarding_video_2.mp4" type="video/mp4">
             </video>
@@ -2178,40 +2293,44 @@
               <span>الشيخ المشرف (بث حي Zego)</span>
             </div>
 
-            <!-- Student Floating PIP Camera Window -->
-            <div id="student-pip-box" style="position: absolute; bottom: 80px; left: 14px; width: 110px; height: 155px; background: #1c2e24; border-radius: 14px; border: 2px solid #00875A; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-              <div id="pip-camera-placeholder">
-                <div style="font-size: 32px; margin-bottom: 4px;">👤</div>
-                <div style="font-size: 10px; color: #a8c4b2; font-weight: bold;">كاميرا الطالب</div>
-                <small style="font-size: 8px; color: #2ecc71;">نشطة ✓</small>
-              </div>
-            </div>
-
-            <!-- Floating Video Quran Overlay Button -->
-            <div style="position: absolute; bottom: 85px; right: 14px;">
-              <button onclick="toggleVideoQuranOverlay()" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); color: #D4AF37; border: 1px solid #D4AF37; padding: 8px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer;">
-                📖 عرض آيات التلاوة
-              </button>
-            </div>
-
-            <!-- Floating Quran Overlay Panel -->
-            <div id="video-quran-panel" style="display: none; position: absolute; top: 60px; left: 14px; right: 14px; background: rgba(255,253,245,0.96); backdrop-filter: blur(10px); color: #222; padding: 14px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); text-align: center; border: 1px solid #c2a649;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <strong style="color: #6d4c41; font-size: 12px;">سورة مريم - آية 1 إلى 5</strong>
-                <span style="cursor: pointer; font-size: 16px; color: #888;" onclick="toggleVideoQuranOverlay()">✕</span>
-              </div>
-              <p style="font-size: 13px; line-height: 2; font-family: 'Amiri', serif;">
-                كٓهيعٓصٓ ۝ ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ۝ إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا...
-              </p>
+            <!-- Student Floating PIP Camera -->
+            <div id="student-pip-box" style="position: absolute; bottom: 80px; left: 14px; width: 100px; height: 145px; background: #1c2e24; border-radius: 14px; border: 2px solid #00875A; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+              <div style="font-size: 28px; margin-bottom: 2px;">👤</div>
+              <div style="font-size: 10px; color: #a8c4b2; font-weight: bold;">كاميرا الطالب</div>
+              <small style="font-size: 8px; color: #2ecc71;">نشطة ✓</small>
             </div>
           </div>
 
-          <!-- Unified Audio/Video Action Controls -->
-          <div style="background: #0c140f; padding: 14px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.08);">
-            <button id="mic-toggle-btn" onclick="toggleMute()" style="width: 48px; height: 48px; border-radius: 50%; background: #00875A; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="كتم/تشغيل المايك">🎙️</button>
-            <button id="cam-toggle-btn" onclick="toggleCamera()" style="width: 48px; height: 48px; border-radius: 50%; background: #333; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="تشغيل/إيقاف الكاميرا">📹</button>
-            <button onclick="alert('🔊 تم تفعيل مكبر الصوت')" style="width: 48px; height: 48px; border-radius: 50%; background: #333; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="مكبر الصوت">🔊</button>
-            <button onclick="openScreen('chapters')" style="width: 48px; height: 48px; border-radius: 50%; background: #c62828; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="إنهاء المكالمة">📞</button>
+          <!-- Raise Hand Student Action Banner (Above Controls) -->
+          <div style="background: #101c14; padding: 8px 14px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 11px; color: #bbb;" id="raise-hand-status-msg">
+              هل ترغب في التسميع أمام الشيخ؟ ارفع يدك للحصول على المايك:
+            </div>
+            <!-- Raise Hand Button -->
+            <button id="btn-raise-hand" onclick="toggleRaiseHand()" style="display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: #D4AF37; color: #191919; border: none; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(212,175,55,0.4);">
+              <span>✋</span>
+              <span id="btn-raise-hand-text">رفع اليد للتسميع</span>
+            </button>
+          </div>
+
+          <!-- Interactive Action Controls (Mic, Cam, Speaker, End) -->
+          <div style="background: #0c140f; padding: 12px 14px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.08);">
+            <!-- Mic button -->
+            <button id="mic-toggle-btn" onclick="toggleMute()" style="width: 48px; height: 48px; border-radius: 50%; background: #00875A; border: none; color: #fff; font-size: 20px; cursor: pointer; transition: all 0.2s;" title="كتم/تشغيل المايك">
+              🎙️
+            </button>
+            <!-- Camera button -->
+            <button id="cam-toggle-btn" onclick="toggleCamera()" style="width: 48px; height: 48px; border-radius: 50%; background: #333; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="تشغيل/إيقاف الكاميرا">
+              📹
+            </button>
+            <!-- Speaker button -->
+            <button onclick="alert('🔊 تم تفعيل مكبر الصوت')" style="width: 48px; height: 48px; border-radius: 50%; background: #333; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="مكبر الصوت">
+              🔊
+            </button>
+            <!-- Leave call button -->
+            <button onclick="leaveCallWithChoice()" style="width: 48px; height: 48px; border-radius: 50%; background: #c62828; border: none; color: #fff; font-size: 20px; cursor: pointer;" title="مغادرة الغرفة">
+              📞
+            </button>
           </div>
         </div>
 
@@ -2276,7 +2395,7 @@
           </div>
         </div>
 
-        <!-- SCREEN 8: CIRCLE BOOKING SCREEN (حجز موعد مع المقرئ) -->
+        <!-- SCREEN 8: CIRCLE BOOKING SCREEN (حجز موعد مع المقرئ مع شرط الخصم للحلقات المدفوعة فقط) -->
         <div id="screen-booking" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
           <!-- Top Bar -->
           <div style="background: #00875A; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
@@ -2290,8 +2409,8 @@
           <div style="padding: 16px;">
             <!-- Sheikh Profile Card -->
             <div style="background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #e2e1d0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 16px;">
-              <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
-                <div style="width: 56px; height: 56px; border-radius: 50%; background: #00875A; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid #D4AF37;">
+              <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
+                <div style="width: 54px; height: 54px; border-radius: 50%; background: #00875A; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid #D4AF37;">
                   👳‍♂️
                 </div>
                 <div style="flex: 1;">
@@ -2300,9 +2419,37 @@
                   <div style="font-size: 11px; color: #777; margin-top: 2px;">⭐ 4.9 (184 تقييم) • 1,240 ساعة تدريس</div>
                 </div>
               </div>
-              <div style="background: #F4F9F5; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #2c583f; display: flex; justify-content: space-between;">
+              <div style="background: #F4F9F5; border-radius: 10px; padding: 8px 12px; font-size: 11px; color: #2c583f; display: flex; justify-content: space-between; align-items: center;">
                 <span>🎯 التخصص: إتقان التجويد ومخارج الحروف</span>
-                <span style="font-weight: bold; color: #00875A;">مجاناً للمشتركين</span>
+                <span style="font-weight: bold; color: #00875A;">رصيد محفظتك: <span class="wallet-cash-balance-val">150.00</span> ر.س</span>
+              </div>
+            </div>
+
+            <!-- SESSION TYPE: FREE (NO DEDUCTION) vs PAID (DEDUCTED FROM WALLET) -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 8px;">اختر باقة ونوع الجلسة:</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <!-- Option 1: Free Circle (No Wallet Deduction) -->
+                <div id="booking-type-free-card" class="booking-session-type-card active" onclick="selectBookingSessionType('free')" style="border: 2px solid #00875A; background: #E8F5E9; border-radius: 12px; padding: 12px 10px; cursor: pointer; transition: all 0.2s;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 18px;">🟢</span>
+                    <span style="background: #00875A; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 6px; font-weight: bold;">مجاناً 100%</span>
+                  </div>
+                  <div style="font-weight: bold; font-size: 13px; color: #191919;">حلقة عامة مفتوحة</div>
+                  <div style="font-size: 10px; color: #00875A; font-weight: bold; margin-top: 4px;">بدون أي خصم من المحفظة (0 ر.س)</div>
+                  <div style="font-size: 10px; color: #666; margin-top: 2px;">تسميع دوري مع زملائك</div>
+                </div>
+
+                <!-- Option 2: Paid VIP 1-on-1 Session (Deducted from Wallet) -->
+                <div id="booking-type-paid-card" class="booking-session-type-card" onclick="selectBookingSessionType('paid')" style="border: 1px solid #ddd; background: #fff; border-radius: 12px; padding: 12px 10px; cursor: pointer; transition: all 0.2s;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 18px;">⭐</span>
+                    <span style="background: #D4AF37; color: #191919; font-size: 9px; padding: 2px 6px; border-radius: 6px; font-weight: bold;">خاصة VIP</span>
+                  </div>
+                  <div style="font-weight: bold; font-size: 13px; color: #191919;">جلسة فردية خاصة</div>
+                  <div style="font-size: 10px; color: #c62828; font-weight: bold; margin-top: 4px;">خصم 35.00 ر.س من المحفظة</div>
+                  <div style="font-size: 10px; color: #666; margin-top: 2px;">45 دقيقة 1-on-1 بالسند</div>
+                </div>
               </div>
             </div>
 
@@ -2310,22 +2457,22 @@
             <div style="margin-bottom: 16px;">
               <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 8px;">اختر اليوم المناسب:</div>
               <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
-                <div class="booking-day-chip active" onclick="selectBookingDay(this)">
+                <div class="booking-day-chip active" onclick="selectBookingDay(this, 'اليوم الثلاثاء 17 نوفمبر')">
                   <div style="font-size: 11px;">اليوم</div>
                   <div style="font-size: 14px; font-weight: bold;">الثلاثاء</div>
                   <div style="font-size: 10px; opacity: 0.8;">17 نوفمبر</div>
                 </div>
-                <div class="booking-day-chip" onclick="selectBookingDay(this)">
+                <div class="booking-day-chip" onclick="selectBookingDay(this, 'غداً الأربعاء 18 نوفمبر')">
                   <div style="font-size: 11px;">غداً</div>
                   <div style="font-size: 14px; font-weight: bold;">الأربعاء</div>
                   <div style="font-size: 10px; opacity: 0.8;">18 نوفمبر</div>
                 </div>
-                <div class="booking-day-chip" onclick="selectBookingDay(this)">
+                <div class="booking-day-chip" onclick="selectBookingDay(this, 'الخميس 19 نوفمبر')">
                   <div style="font-size: 11px;">الخميس</div>
                   <div style="font-size: 14px; font-weight: bold;">19</div>
                   <div style="font-size: 10px; opacity: 0.8;">نوفمبر</div>
                 </div>
-                <div class="booking-day-chip" onclick="selectBookingDay(this)">
+                <div class="booking-day-chip" onclick="selectBookingDay(this, 'الجمعة 20 نوفمبر')">
                   <div style="font-size: 11px;">الجمعة</div>
                   <div style="font-size: 14px; font-weight: bold;">20</div>
                   <div style="font-size: 10px; opacity: 0.8;">نوفمبر</div>
@@ -2337,147 +2484,185 @@
             <div style="margin-bottom: 16px;">
               <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 8px;">اختر الموعد المتاح:</div>
               <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                <div class="booking-slot-chip active" onclick="selectBookingSlot(this)">
+                <div class="booking-slot-chip active" onclick="selectBookingSlot(this, '04:00 PM')">
                   <span>🕒</span> 04:00 PM - متاح
                 </div>
-                <div class="booking-slot-chip" onclick="selectBookingSlot(this)">
+                <div class="booking-slot-chip" onclick="selectBookingSlot(this, '05:30 PM')">
                   <span>🕒</span> 05:30 PM - متاح
                 </div>
-                <div class="booking-slot-chip" onclick="selectBookingSlot(this)">
+                <div class="booking-slot-chip" onclick="selectBookingSlot(this, '07:00 PM')">
                   <span>🕒</span> 07:00 PM - متاح
                 </div>
-                <div class="booking-slot-chip" onclick="selectBookingSlot(this)">
+                <div class="booking-slot-chip" onclick="selectBookingSlot(this, '08:30 PM')">
                   <span>🕒</span> 08:30 PM - متاح
                 </div>
               </div>
             </div>
 
-            <!-- Session Type (Voice Room vs Video Call) -->
-            <div style="margin-bottom: 16px;">
-              <div style="font-size: 14px; font-weight: bold; color: #191919; margin-bottom: 8px;">نوع الجلسة (ZEGOCLOUD):</div>
-              <div style="display: flex; gap: 10px;">
-                <div id="book-mode-voice" class="booking-type-card active" onclick="selectBookingMode('voice')">
-                  <div style="font-size: 24px; margin-bottom: 4px;">🎙️</div>
-                  <div style="font-weight: bold; font-size: 13px;">غرفة صوتية</div>
-                  <small style="font-size: 10px; color: #555;">صوت عالي النقاء 48kHz</small>
-                </div>
-                <div id="book-mode-video" class="booking-type-card" onclick="selectBookingMode('video')">
-                  <div style="font-size: 24px; margin-bottom: 4px;">📹</div>
-                  <div style="font-weight: bold; font-size: 13px;">مكالمة مرئية</div>
-                  <small style="font-size: 10px; color: #555;">كاميرا + مصحف تفاعلي</small>
-                </div>
+            <!-- Summary Box -->
+            <div id="booking-cost-summary-box" style="background: #fff; border-radius: 12px; padding: 12px 14px; border: 1px solid #e0dfce; margin-bottom: 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 12px; color: #555;">رسوم الحجز المقررة:</span>
+                <strong id="booking-cost-text" style="font-size: 15px; color: #00875A;">0.00 ر.س (مجاناً)</strong>
               </div>
-            </div>
-
-            <!-- Mushaf Edition -->
-            <div style="background: #fff; border-radius: 12px; padding: 12px; border: 1px solid #e0dfce; margin-bottom: 20px;">
-              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">طبعة المصحف المعتمدة للحلقة:</div>
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span id="booking-mushaf-label" style="font-weight: bold; font-size: 13px; color: #00875A;">📖 طبعة الشمرلي المصرية الأصلية (20 سطر)</span>
-                <button type="button" onclick="toggleBookingMushaf()" style="background: #eef6f1; border: 1px solid #00875A; color: #00875A; border-radius: 8px; font-size: 11px; padding: 4px 10px; cursor: pointer; font-weight: bold;">تغيير</button>
+              <div id="booking-wallet-status-note" style="font-size: 11px; color: #666;">
+                ✓ لن يتم خصم أي مبالغ من محفظتك لأن هذه الحلقة عامة ومجانية بالكامل.
               </div>
             </div>
 
             <!-- Submit Booking Button -->
-            <button onclick="confirmBookingSuccess()" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
-              ✓ تأكيد حجز الموعد الآن (مجاناً)
+            <button id="booking-submit-confirm-btn" onclick="executeBooking()" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
+              ✓ تأكيد حجز الموعد مجاناً (بدون خصم من المحفظة)
             </button>
           </div>
         </div>
 
-        <!-- SCREEN 9: COMPETITIONS SCREEN (مسابقات إتقان الكبرى) -->
+        <!-- SCREEN 9: COMPETITIONS SCREEN (مسابقات إتقان الكبرى مع رفع المشاركات ولوحة المتصدرين) -->
         <div id="screen-competitions" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
           <!-- Top Bar -->
           <div style="background: linear-gradient(135deg, #1c3d2a, #00875A); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('reels')">➜</span>
-              <span style="font-size: 16px; font-weight: bold;">مسابقات إتقان الكبرى</span>
+              <span style="font-size: 16px; font-weight: bold;">مسابقات إتقان الكبرى 🥇</span>
             </div>
-            <img src="assets/images/badg_gold.png" alt="Gold Badge" style="height: 28px;">
+            <img src="assets/images/badg_gold.png" alt="Gold Badge" style="height: 28px; cursor: pointer;" onclick="alert('🏆 جائزة المركز الأول: 50,000 ر.س نقداً مع درع التميز القرآني!')">
           </div>
 
           <div style="padding: 16px;">
             <!-- Grand Prize Hero Banner -->
             <div style="background: linear-gradient(135deg, #FFDF73, #D4AF37, #997514); border-radius: 16px; padding: 18px; color: #191919; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(212,175,55,0.3); position: relative; overflow: hidden;">
               <div style="position: absolute; left: -10px; bottom: -15px; opacity: 0.2; font-size: 80px;">🏆</div>
-              <div style="display: inline-block; background: #191919; color: #FFDF73; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">نسخة رمضان 1447 هـ / 2026 م</div>
+              <div style="display: inline-block; background: #191919; color: #FFDF73; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 8px;">نسخة رمضان 1447 هـ / 2026 م</div>
               <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 4px;">مسابقة فرسان إتقان السنوية</h2>
               <p style="font-size: 13px; font-weight: 500; opacity: 0.9; margin-bottom: 10px;">لحفظ القرآن الكريم كاملاً وتجويده وإتقان مخارج الحروف</p>
-              <div style="background: rgba(255,255,255,0.95); border-radius: 10px; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between;">
+              
+              <div style="background: rgba(255,255,255,0.95); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                 <span style="font-size: 12px; font-weight: bold; color: #333;">مجموع الجوائز النقدية:</span>
-                <span style="font-size: 16px; font-weight: bold; color: #00875A;">100,000 ر.س 💰</span>
+                <span style="font-size: 17px; font-weight: bold; color: #00875A;">100,000 ر.س 💰</span>
+              </div>
+
+              <!-- Countdown Timer -->
+              <div style="font-size: 11px; color: #222; background: rgba(255,255,255,0.7); padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                <span>⏳ متبقي على إغلاق التقديم:</span>
+                <strong>14 يوم و 06 ساعات</strong>
               </div>
             </div>
 
+            <!-- Fast Submission Callout Button -->
+            <button onclick="openCompetitionSubmitModal('الفرع الأول: القرآن الكريم كاملاً')" style="width: 100%; padding: 13px; background: #191919; color: #FFDF73; border: 1.5px solid #FFDF73; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; margin-bottom: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+              <span>🎙️</span>
+              <span>تسجيل ورفع تلاوة المسابقة للتحكيم الآن</span>
+            </button>
+
+            <!-- User Submissions Pin Container -->
+            <div id="my-comp-submissions" style="display: none; margin-bottom: 16px;"></div>
+
             <!-- Competition Branches / Tracks -->
-            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">فروع المسابقة:</div>
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">فروع المسابقة المتاحة:</div>
             
             <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <div style="font-weight: bold; font-size: 14px; color: #00875A;">الفرع الأول: القرآن الكريم كاملاً</div>
                 <div style="font-size: 11px; color: #666; margin-top: 2px;">مع الإتقان وأحكام الجزرية ومخارج الحروف</div>
-                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">جائزة المركز الأول: 50,000 ريال</div>
+                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">🥇 جائزة المركز الأول: 50,000 ر.س</div>
               </div>
-              <button onclick="registerForTrack('الفرع الأول: القرآن الكريم كاملاً')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 6px 14px; font-weight: bold; cursor: pointer;">سجل</button>
+              <button onclick="openCompetitionSubmitModal('الفرع الأول: حفظ القرآن الكريم كاملاً')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 7px 14px; font-weight: bold; cursor: pointer;">سجل تلاوتك</button>
             </div>
 
             <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <div style="font-weight: bold; font-size: 14px; color: #00875A;">الفرع الثاني: حفظ 15 جزءاً متتالياً</div>
                 <div style="font-size: 11px; color: #666; margin-top: 2px;">تلاوة متقنة مع أحكام الترتيل والتنغيم</div>
-                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">جائزة المركز الأول: 30,000 ريال</div>
+                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">🥇 جائزة المركز الأول: 30,000 ر.س</div>
               </div>
-              <button onclick="registerForTrack('الفرع الثاني: 15 جزءاً')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 6px 14px; font-weight: bold; cursor: pointer;">سجل</button>
+              <button onclick="openCompetitionSubmitModal('الفرع الثاني: حفظ 15 جزءاً')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 7px 14px; font-weight: bold; cursor: pointer;">سجل تلاوتك</button>
             </div>
 
-            <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <div style="font-weight: bold; font-size: 14px; color: #00875A;">الفرع الثالث: سورة البقرة وآل عمران</div>
                 <div style="font-size: 11px; color: #666; margin-top: 2px;">حفظ وتدبر وأحكام التجويد الأساسية</div>
-                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">جائزة المركز الأول: 20,000 ريال</div>
+                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">🥇 جائزة المركز الأول: 20,000 ر.س</div>
               </div>
-              <button onclick="registerForTrack('الفرع الثالث: البقرة وآل عمران')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 6px 14px; font-weight: bold; cursor: pointer;">سجل</button>
+              <button onclick="openCompetitionSubmitModal('الفرع الثالث: سورة البقرة وآل عمران')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 7px 14px; font-weight: bold; cursor: pointer;">سجل تلاوتك</button>
             </div>
 
-            <!-- Leaderboard -->
-            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">لوحة شرف الأوائل (المتصدرين):</div>
-            <div style="background: #fff; border-radius: 14px; border: 1px solid #e3e2d1; overflow: hidden; margin-bottom: 20px;">
-              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="font-size: 18px;">🥇</span>
-                  <div>
-                    <div style="font-weight: bold; font-size: 13px;">أحمد محمود الدوسري</div>
-                    <small style="font-size: 10px; color: #888;">الفرع الأول • الرياض</small>
-                  </div>
-                </div>
-                <span style="font-weight: bold; color: #00875A; font-size: 13px;">99.8% ⭐</span>
+            <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e3e2d1; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: bold; font-size: 14px; color: #00875A;">الفرع الرابع: أجمل صوت بالترتيل والمقامات</div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">حسن الأداء وجمال النبرة ومخارج الحروف</div>
+                <div style="font-size: 12px; color: #D4AF37; font-weight: bold; margin-top: 4px;">🥇 جائزة المركز الأول: 10,000 ر.س</div>
               </div>
-              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="font-size: 18px;">🥈</span>
-                  <div>
-                    <div style="font-weight: bold; font-size: 13px;">عمر بن عبد العزيز المصري</div>
-                    <small style="font-size: 10px; color: #888;">الفرع الثاني • القاهرة</small>
-                  </div>
-                </div>
-                <span style="font-weight: bold; color: #00875A; font-size: 13px;">99.2% ⭐</span>
-              </div>
-              <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="font-size: 18px;">🥉</span>
-                  <div>
-                    <div style="font-weight: bold; font-size: 13px;">ياسين خالد الكندري</div>
-                    <small style="font-size: 10px; color: #888;">الفرع الثالث • الكويت</small>
-                  </div>
-                </div>
-                <span style="font-weight: bold; color: #00875A; font-size: 13px;">98.7% ⭐</span>
-              </div>
+              <button onclick="openCompetitionSubmitModal('الفرع الرابع: أجمل صوت بالترتيل')" style="background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 12px; padding: 7px 14px; font-weight: bold; cursor: pointer;">سجل تلاوتك</button>
             </div>
 
-            <!-- Big Register Button -->
-            <button onclick="registerForTrack('المسابقة العامة')" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00875A, #005F3F); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
-              🏆 تقديم طلب المشاركة في المسابقة
-            </button>
+            <!-- Leaderboard (لوحة شرف الأوائل) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div style="font-size: 15px; font-weight: bold; color: #191919;">لوحة المتصدرين والأوائل:</div>
+              <span style="font-size: 11px; color: #00875A; font-weight: bold;">تحديث سحابي مباشر ⚡</span>
+            </div>
+
+            <div id="leaderboard-container" style="background: #fff; border-radius: 14px; border: 1px solid #e3e2d1; overflow: hidden; margin-bottom: 20px;">
+              <!-- Rank 1 -->
+              <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0; background: #fffdf5;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 24px;">🥇</span>
+                  <div>
+                    <div style="font-weight: bold; font-size: 13px; color: #191919;">أحمد محمود الدوسري</div>
+                    <small style="font-size: 10px; color: #888;">الفرع الأول • الرياض • سورة مريم (1-15)</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button onclick="playLeaderRecitation('أحمد محمود الدوسري', 'سورة مريم')" style="padding: 4px 8px; border-radius: 6px; background: #E8F5E9; color: #00875A; border: 1px solid #00875A; font-size: 11px; cursor: pointer; font-weight: bold;">▶️ استمع</button>
+                  <span style="font-weight: bold; color: #00875A; font-size: 13px;">99.8% ⭐</span>
+                </div>
+              </div>
+
+              <!-- Rank 2 -->
+              <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 24px;">🥈</span>
+                  <div>
+                    <div style="font-weight: bold; font-size: 13px; color: #191919;">عمر بن عبد العزيز المصري</div>
+                    <small style="font-size: 10px; color: #888;">الفرع الثاني • القاهرة • سورة الإسراء</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button onclick="playLeaderRecitation('عمر المصري', 'سورة الإسراء')" style="padding: 4px 8px; border-radius: 6px; background: #f5f5f5; color: #444; border: 1px solid #ccc; font-size: 11px; cursor: pointer;">▶️ استمع</button>
+                  <span style="font-weight: bold; color: #00875A; font-size: 13px;">99.2% ⭐</span>
+                </div>
+              </div>
+
+              <!-- Rank 3 -->
+              <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 24px;">🥉</span>
+                  <div>
+                    <div style="font-weight: bold; font-size: 13px; color: #191919;">ياسين خالد الكندري</div>
+                    <small style="font-size: 10px; color: #888;">الفرع الثالث • الكويت • سورة البقرة</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button onclick="playLeaderRecitation('ياسين الكندري', 'سورة البقرة')" style="padding: 4px 8px; border-radius: 6px; background: #f5f5f5; color: #444; border: 1px solid #ccc; font-size: 11px; cursor: pointer;">▶️ استمع</button>
+                  <span style="font-weight: bold; color: #00875A; font-size: 13px;">98.7% ⭐</span>
+                </div>
+              </div>
+
+              <!-- Rank 4 -->
+              <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-weight: bold; color: #888; font-size: 14px; width: 24px; text-align: center;">4</span>
+                  <div>
+                    <div style="font-weight: bold; font-size: 13px; color: #191919;">فاطمة الزهراء الشامي</div>
+                    <small style="font-size: 10px; color: #888;">الفرع الرابع • دمشق • ترتيل سورة الرحمن</small>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button onclick="playLeaderRecitation('فاطمة الزهراء', 'سورة الرحمن')" style="padding: 4px 8px; border-radius: 6px; background: #f5f5f5; color: #444; border: 1px solid #ccc; font-size: 11px; cursor: pointer;">▶️ استمع</button>
+                  <span style="font-weight: bold; color: #00875A; font-size: 13px;">98.4% ⭐</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3559,6 +3744,347 @@
 • مجموع الجوائز: 100,000 ريال سعودي.`);
     }
 
+    // ==========================================
+    // 1. ZEGOCLOUD LIVE ROOM LOGIC (Mic, Raise Hand, Synchronized Mushaf)
+    // ==========================================
+    let studentHandRaised = false;
+    let studentMicGranted = false;
+    let isStudentMuted = false;
+    let currentAyahIndex = 1;
+    const maxAyahs = 6;
+
+    function toggleRaiseHand() {
+      const btn = document.getElementById('btn-raise-hand');
+      const text = document.getElementById('btn-raise-hand-text');
+      const statusMsg = document.getElementById('raise-hand-status-msg');
+
+      if (!studentHandRaised) {
+        // Step 1: Raise Hand
+        studentHandRaised = true;
+        btn.classList.add('raising-hand-pulse');
+        text.innerText = 'بانتظار إذن الشيخ... ⏳';
+        statusMsg.innerHTML = '<span style="color: #D4AF37; font-weight: bold;">✋ تم رفع يدك! أنت رقم 1 في قائمة الانتظار أمام الشيخ.</span>';
+        
+        // Auto Sheikh Approval Simulation after 1.5s
+        setTimeout(() => {
+          if (!studentHandRaised) return;
+          studentMicGranted = true;
+          btn.classList.remove('raising-hand-pulse');
+          btn.style.background = '#2ecc71';
+          btn.style.color = '#fff';
+          text.innerText = 'خفض اليد وإنهاء التسميع ✋';
+          statusMsg.innerHTML = '<span style="color: #2ecc71; font-weight: bold;">✅ وافق الشيخ عبد الله على طلبك! المايك مفتوح لك الآن للتسميع.</span>';
+          
+          // Switch active speaker to student
+          const spkText = document.getElementById('speaker-status-text');
+          const spkAvatar = document.getElementById('sheikh-avatar-indicator');
+          if (spkText) spkText.innerHTML = '<strong>الطالب أحمد</strong> يتحدث ويسمع الآن 🎙️';
+          if (spkAvatar) spkAvatar.innerText = '👤';
+
+          // Update mic button
+          const micBtn = document.getElementById('mic-toggle-btn');
+          if (micBtn) {
+            micBtn.style.background = '#2ecc71';
+            micBtn.classList.add('speaking-pulse');
+          }
+          
+          alert('🔔 إشعار من الشيخ عبد الله السويسي:\n"تفضل يا بني بالقراءة من أول سورة مريم، استعذ بالله وابدأ."');
+        }, 1500);
+
+      } else {
+        // Step 2: Lower Hand
+        studentHandRaised = false;
+        studentMicGranted = false;
+        btn.classList.remove('raising-hand-pulse');
+        btn.style.background = '#D4AF37';
+        btn.style.color = '#191919';
+        text.innerText = 'رفع اليد للتسميع ✋';
+        statusMsg.innerText = 'هل ترغب في التسميع أمام الشيخ؟ ارفع يدك للحصول على المايك:';
+
+        // Revert speaker to Sheikh
+        const spkText = document.getElementById('speaker-status-text');
+        const spkAvatar = document.getElementById('sheikh-avatar-indicator');
+        if (spkText) spkText.innerHTML = '<strong>الشيخ عبد الله السويسي</strong> يتحدث الآن 🎙️';
+        if (spkAvatar) spkAvatar.innerText = '👳‍♂️';
+
+        const micBtn = document.getElementById('mic-toggle-btn');
+        if (micBtn) {
+          micBtn.style.background = '#00875A';
+          micBtn.classList.remove('speaking-pulse');
+        }
+      }
+    }
+
+    function toggleMute() {
+      if (!studentMicGranted) {
+        alert('🔒 يرجى رفع اليد أولاً (زر ✋) ليأذن لك فضيلة الشيخ بالتسميع وتفعيل المايك.');
+        return;
+      }
+      isStudentMuted = !isStudentMuted;
+      const micBtn = document.getElementById('mic-toggle-btn');
+      if (isStudentMuted) {
+        micBtn.style.background = '#c62828';
+        micBtn.innerText = '🔇';
+        micBtn.classList.remove('speaking-pulse');
+      } else {
+        micBtn.style.background = '#2ecc71';
+        micBtn.innerText = '🎙️';
+        micBtn.classList.add('speaking-pulse');
+      }
+    }
+
+    function highlightAyah(num) {
+      currentAyahIndex = num;
+      document.querySelectorAll('.call-ayah').forEach(a => a.classList.remove('ayah-active'));
+      const target = document.getElementById('ayah-' + num);
+      if (target) {
+        target.classList.add('ayah-active');
+      }
+    }
+
+    function nextAyah() {
+      if (currentAyahIndex < maxAyahs) {
+        highlightAyah(currentAyahIndex + 1);
+      }
+    }
+
+    function prevAyah() {
+      if (currentAyahIndex > 1) {
+        highlightAyah(currentAyahIndex - 1);
+      }
+    }
+
+    function minimizeCallToBackground() {
+      openScreen('chapters');
+      const floatBar = document.getElementById('floating-call-bar');
+      if (floatBar) floatBar.style.display = 'flex';
+    }
+
+    function leaveCallWithChoice() {
+      const floatBar = document.getElementById('floating-call-bar');
+      if (floatBar) floatBar.style.display = 'flex';
+      openScreen('chapters');
+    }
+
+    function endCallCompletely() {
+      const floatBar = document.getElementById('floating-call-bar');
+      if (floatBar) floatBar.style.display = 'none';
+      studentHandRaised = false;
+      studentMicGranted = false;
+    }
+
+    // ==========================================
+    // 2. BOOKING SESSIONS (CONDITIONAL WALLET DEDUCTION)
+    // ==========================================
+    let selectedBookingType = 'free'; // 'free' or 'paid'
+    let selectedBookingDayText = 'اليوم الثلاثاء 17 نوفمبر';
+    let selectedBookingSlotText = '04:00 PM';
+
+    function selectBookingSessionType(type) {
+      selectedBookingType = type;
+      const freeCard = document.getElementById('booking-type-free-card');
+      const paidCard = document.getElementById('booking-type-paid-card');
+      const costText = document.getElementById('booking-cost-text');
+      const noteText = document.getElementById('booking-wallet-status-note');
+      const submitBtn = document.getElementById('booking-submit-confirm-btn');
+
+      if (type === 'free') {
+        freeCard.style.border = '2px solid #00875A';
+        freeCard.style.background = '#E8F5E9';
+        paidCard.style.border = '1px solid #ddd';
+        paidCard.style.background = '#fff';
+
+        costText.innerText = '0.00 ر.س (مجاناً)';
+        costText.style.color = '#00875A';
+        noteText.innerHTML = '✓ لن يتم خصم أي مبالغ من محفظتك لأن هذه الحلقة عامة ومجانية بالكامل.';
+        submitBtn.style.background = '#00875A';
+        submitBtn.innerText = '✓ تأكيد حجز الموعد مجاناً (بدون خصم من المحفظة)';
+      } else {
+        paidCard.style.border = '2px solid #D4AF37';
+        paidCard.style.background = '#FFFDF5';
+        freeCard.style.border = '1px solid #ddd';
+        freeCard.style.background = '#fff';
+
+        costText.innerText = '35.00 ر.س (جلسة خاصة VIP)';
+        costText.style.color = '#c62828';
+        noteText.innerHTML = '⚠️ سيتم خصم <strong>35.00 ر.س</strong> مباشرة من رصيدك النقدي بالمحفظة عند التأكيد.';
+        submitBtn.style.background = 'linear-gradient(135deg, #00875A, #004D33)';
+        submitBtn.innerText = '🔒 تأكيد حجز الجلسة الخاصة (35.00 ر.س من المحفظة)';
+      }
+    }
+
+    function selectBookingDay(el, dayText) {
+      document.querySelectorAll('.booking-day-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      if (dayText) selectedBookingDayText = dayText;
+    }
+
+    function selectBookingSlot(el, slotText) {
+      document.querySelectorAll('.booking-slot-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      if (slotText) selectedBookingSlotText = slotText;
+    }
+
+    function executeBooking() {
+      if (selectedBookingType === 'free') {
+        // FREE SESSION: ZERO DEDUCTION FROM WALLET
+        alert('✅ تم تأكيد حجز الحلقة العامة بنجاح!\n--------------------------------------------------\n• نوع الجلسة: حلقة تسميع عامة (مجاناً 100%)\n• الرسوم: 0.00 ر.س\n• رصيدك بالمحفظة: ' + currentWalletBalance.toFixed(2) + ' ر.س (لم يتم خصم أي مبلغ)\n• المقرئ: الشيخ عبد الله السويسي\n• الموعد: ' + selectedBookingDayText + ' - ' + selectedBookingSlotText + '\n• تم حفظ الموعد في جدول circle_bookings على Supabase.');
+        openScreen('mychapters');
+      } else {
+        // PAID SESSION: DEDUCT FROM CASH WALLET
+        const sessionPrice = 35.00;
+        if (currentWalletBalance < sessionPrice) {
+          alert('⚠️ رصيدك المالي الحالي بالمحفظة (' + currentWalletBalance.toFixed(2) + ' ر.س) لا يكفي لحجز الجلسة الفردية الخاصة (' + sessionPrice.toFixed(2) + ' ر.س).\nيرجى شحن محفظتك أولاً.');
+          openWalletPaymentModal();
+          return;
+        }
+
+        currentWalletBalance -= sessionPrice;
+        updateAllWalletDisplays();
+
+        const txnRef = 'TXN_BOOKING_' + Date.now();
+        
+        // Add to transaction history
+        const hist = document.getElementById('wallet-tx-history');
+        if (hist) {
+          const item = document.createElement('div');
+          item.style.cssText = 'padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0; background: #fff;';
+          item.innerHTML = '<div><div style="font-weight: bold; font-size: 13px;">حجز حلقة خاصة مع الشيخ عبد الله (-35.00 ر.س)</div><small style="font-size: 10px; color: #888;">الآن • حلقة مدفوعة • ' + txnRef + '</small></div><span style="color: #c62828; font-weight: bold; font-size: 13px;">-35.00 ر.س</span>';
+          hist.insertBefore(item, hist.firstChild);
+        }
+
+        alert('✅ تم تأكيد حجز الجلسة الفردية الخاصة بنجاح!\n--------------------------------------------------\n• نوع الجلسة: جلسة خاصة 1-on-1 (45 دقيقة بالسند المتصل)\n• المبلغ المخصوم من المحفظة: ' + sessionPrice.toFixed(2) + ' ر.س\n• الرقم المرجعي المالي: ' + txnRef + '\n• رصيدك النقدي المتبقي بالمحفظة: ' + currentWalletBalance.toFixed(2) + ' ر.س\n• تم التوثيق وتثبيت الموعد في سحابة Supabase.');
+        openScreen('mychapters');
+      }
+    }
+
+    // ==========================================
+    // 3. COMPETITION SYSTEM & SUBMISSIONS & LEADERBOARD
+    // ==========================================
+    let isRecordingComp = false;
+    let recTimerInterval = null;
+    let recSeconds = 0;
+    let userHasRecordedRecitation = false;
+
+    function openCompetitionSubmitModal(trackName) {
+      const modal = document.getElementById('modal-submit-competition');
+      const trackLabel = document.getElementById('comp-modal-track-name');
+      if (trackLabel && trackName) trackLabel.innerText = trackName;
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeCompetitionSubmitModal() {
+      const modal = document.getElementById('modal-submit-competition');
+      if (modal) modal.style.display = 'none';
+      if (isRecordingComp) stopCompetitionRecording();
+    }
+
+    function toggleCompetitionRecording() {
+      if (!isRecordingComp) {
+        startCompetitionRecording();
+      } else {
+        stopCompetitionRecording();
+      }
+    }
+
+    function startCompetitionRecording() {
+      isRecordingComp = true;
+      recSeconds = 0;
+      userHasRecordedRecitation = false;
+      
+      const btn = document.getElementById('comp-rec-toggle-btn');
+      const text = document.getElementById('comp-rec-btn-text');
+      const waves = document.getElementById('comp-rec-waves');
+      const status = document.getElementById('comp-rec-status-text');
+      const playBtn = document.getElementById('comp-play-recorded-btn');
+
+      if (btn) btn.style.background = '#191919';
+      if (text) text.innerText = 'إيقاف التسجيل ⏹️';
+      if (waves) waves.style.opacity = '1';
+      if (status) status.innerText = 'جارٍ تسجيل تلاوتك الآن بجودة صوت عالية...';
+      if (playBtn) playBtn.style.display = 'none';
+
+      recTimerInterval = setInterval(() => {
+        recSeconds++;
+        const mins = String(Math.floor(recSeconds / 60)).padStart(2, '0');
+        const secs = String(recSeconds % 60).padStart(2, '0');
+        const timer = document.getElementById('comp-record-timer');
+        if (timer) timer.innerText = mins + ':' + secs + ' / 03:00';
+
+        if (recSeconds >= 180) {
+          stopCompetitionRecording();
+        }
+      }, 1000);
+    }
+
+    function stopCompetitionRecording() {
+      isRecordingComp = false;
+      clearInterval(recTimerInterval);
+      userHasRecordedRecitation = true;
+
+      const btn = document.getElementById('comp-rec-toggle-btn');
+      const text = document.getElementById('comp-rec-btn-text');
+      const waves = document.getElementById('comp-rec-waves');
+      const status = document.getElementById('comp-rec-status-text');
+      const playBtn = document.getElementById('comp-play-recorded-btn');
+
+      if (btn) btn.style.background = '#c62828';
+      if (text) text.innerText = 'إعادة التسجيل 🎙️';
+      if (waves) waves.style.opacity = '0.3';
+      if (status) status.innerHTML = '✓ تم تسجيل التلاوة بنجاح (' + recSeconds + ' ثانية). يمكنك الاستماع قبل الإرسال:';
+      if (playBtn) playBtn.style.display = 'inline-flex';
+    }
+
+    function playBackUserRecording() {
+      alert('▶️ جارٍ الاستماع إلى تلاوتك المسجلة:\nسورة مريم - برواية حفص عن عاصم (مدة المقطع: ' + recSeconds + ' ثانية). الصوت واضح ومتقن.');
+    }
+
+    function simulateFileUpload() {
+      userHasRecordedRecitation = true;
+      const status = document.getElementById('comp-rec-status-text');
+      const playBtn = document.getElementById('comp-play-recorded-btn');
+      if (status) status.innerHTML = '✓ تم اختيار ملف التلاوة: <strong>Telawa_Maryam_Hafs.mp3</strong> (3.4 MB)';
+      if (playBtn) playBtn.style.display = 'inline-flex';
+      alert('📁 تم اختيار ملف التلاوة بنجاح جاهز للإرسال.');
+    }
+
+    function submitCompetitionRecitation() {
+      if (!userHasRecordedRecitation && recSeconds === 0) {
+        alert('⚠️ يرجى تسجيل التلاوة أولاً بالضغط على زر المايك 🎙️ أو اختيار ملف صوتي.');
+        return;
+      }
+
+      const track = document.getElementById('comp-modal-track-name').innerText;
+      const surah = document.getElementById('comp-surah-select').value;
+      const entryId = 'COMP_2026_' + Math.floor(10000 + Math.random() * 90000);
+
+      closeCompetitionSubmitModal();
+
+      // Pin submission to screen-competitions
+      const subContainer = document.getElementById('my-comp-submissions');
+      if (subContainer) {
+        subContainer.style.display = 'block';
+        subContainer.innerHTML = '<div style="background: linear-gradient(135deg, #1c3d2a, #00875A); color: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 4px 12px rgba(0,135,90,0.25);">' +
+          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">' +
+            '<span style="background: #FFDF73; color: #191919; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 8px;">✓ مشاركتك معتمدة بالسحابة</span>' +
+            '<small style="font-size: 11px; opacity: 0.9;">كود: ' + entryId + '</small>' +
+          '</div>' +
+          '<div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">الطالب: أحمد - ' + track + '</div>' +
+          '<div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">📖 ' + surah + '</div>' +
+          '<div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 10px; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">' +
+            '<span>⏳ حالة التحكيم: تقييم مبدئي ممتاز (98.6%)</span>' +
+            '<span style="color: #FFDF73; font-weight: bold;">المركز 4 حالياً ⭐</span>' +
+          '</div>' +
+        '</div>';
+      }
+
+      alert('🎉 مبارك! تم رفع تلاوتك واعتماد مشاركتك في المسابقة بنجاح!\n--------------------------------------------------\n• كود المشاركة: ' + entryId + '\n• ' + track + '\n• موضع التلاوة: ' + surah + '\n• تم حفظ الملف في سحابة Supabase وعرضه في لوحة المتصدرين.');
+    }
+
+    function playLeaderRecitation(name, surah) {
+      alert('▶️ جارٍ تشغيل تلاوة المتصدر: ' + name + '\n📖 ' + surah + '\n(صوت نقي مسجل برواية حفص عن عاصم - تقييم اللجنة 99.8%)');
+    }
+
     // --- Wallet Screen Functions (Direct Cash Balance - No Points) ---
     let currentWalletBalance = 150.00;
     let selectedPackageAmount = 100.00;
@@ -4176,6 +4702,110 @@ ${text}
       <div id="country-list-container" style="flex: 1; overflow-y: auto; max-height: 380px; border-radius: 12px; border: 1px solid #eee; background: #fff;">
         <!-- Populated via renderCountryList() -->
       </div>
+    </div>
+  </div>
+
+
+  <!-- 5. COMPETITION RECITATION SUBMISSION MODAL -->
+  <div class="etqan-interactive-modal" id="modal-submit-competition" style="display: none; align-items: flex-end; z-index: 10003;" onclick="closeCompetitionSubmitModal()">
+    <div class="modal-card" style="width: 100%; max-width: 440px; border-radius: 24px 24px 0 0; padding: 20px; max-height: 85vh; overflow-y: auto;" onclick="event.stopPropagation()">
+      <div style="width: 40px; height: 4px; background: #ddd; border-radius: 4px; margin: 0 auto 14px auto;"></div>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="modal-title" style="font-size: 17px; font-weight: bold; color: #191919;">
+          <span>🏆</span> تقديم تلاوة المسابقة للتحكيم
+        </div>
+        <span onclick="closeCompetitionSubmitModal()" style="cursor: pointer; font-size: 18px; color: #888; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #f0f0f0;">✕</span>
+      </div>
+
+      <!-- Selected Track Pill -->
+      <div style="background: #E8F5E9; border: 1px solid #00875A; border-radius: 10px; padding: 8px 12px; margin-bottom: 14px;">
+        <div style="font-size: 10px; color: #00875A; font-weight: bold;">الفرع المختار:</div>
+        <strong id="comp-modal-track-name" style="font-size: 13px; color: #191919;">الفرع الأول: القرآن الكريم كاملاً</strong>
+      </div>
+
+      <!-- Surah and Ayah Selectors -->
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 6px;">موضع التلاوة المخصص للمسابقة:</label>
+        <select id="comp-surah-select" style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 13px; background: #fff; outline: none; margin-bottom: 8px;">
+          <option value="سورة مريم (الآيات 1 إلى 15)">سورة مريم (الآيات 1 إلى 15) - طبعة الشمرلي</option>
+          <option value="سورة البقرة (الآيات 284 إلى 286)">سورة البقرة (الآيات 284 إلى 286 - خواتيم البقرة)</option>
+          <option value="سورة الكهف (الآيات 1 إلى 10)">سورة الكهف (الآيات 1 إلى 10 - أوائل الكهف)</option>
+          <option value="سورة الرحمن (الآيات 1 إلى 25)">سورة الرحمن (الآيات 1 إلى 25)</option>
+          <option value="سورة الملك (الآيات 1 إلى 14)">سورة الملك (الآيات 1 إلى 14)</option>
+        </select>
+      </div>
+
+      <!-- Riwaya Selector -->
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 6px;">رواية القراءة:</label>
+        <select id="comp-riwaya-select" style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 13px; background: #fff; outline: none;">
+          <option value="حفص عن عاصم طريق الشاطبية">رواية حفص عن عاصم (طريق الشاطبية)</option>
+          <option value="ورش عن نافع من طريق الأزرق">رواية ورش عن نافع (من طريق الأزرق)</option>
+          <option value="قالون عن نافع">رواية قالون عن نافع</option>
+          <option value="الدوري عن أبي عمرو">رواية الدوري عن أبي عمرو</option>
+        </select>
+      </div>
+
+      <!-- Audio Recording Station -->
+      <div style="background: #F8FAF9; border: 1.5px dashed #00875A; border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 16px;">
+        <div id="comp-rec-waves" style="height: 30px; display: flex; justify-content: center; align-items: center; gap: 4px; margin-bottom: 8px; opacity: 0.3;">
+          <div class="rec-wave-bar"></div>
+          <div class="rec-wave-bar"></div>
+          <div class="rec-wave-bar"></div>
+          <div class="rec-wave-bar"></div>
+          <div class="rec-wave-bar"></div>
+          <div class="rec-wave-bar"></div>
+          <div class="rec-wave-bar"></div>
+        </div>
+
+        <div id="comp-record-timer" style="font-size: 20px; font-weight: bold; color: #191919; font-family: monospace; margin-bottom: 8px;">00:00 / 03:00</div>
+        <div id="comp-rec-status-text" style="font-size: 12px; color: #666; margin-bottom: 12px;">اضغط على المايك لبدء تسجيل تلاوتك مباشرة</div>
+
+        <div style="display: flex; justify-content: center; gap: 10px; align-items: center;">
+          <!-- Record / Stop Button -->
+          <button type="button" id="comp-rec-toggle-btn" onclick="toggleCompetitionRecording()" style="display: flex; align-items: center; gap: 6px; padding: 10px 18px; background: #c62828; color: #fff; border: none; border-radius: 24px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(198,40,40,0.3);">
+            <span>🎙️</span>
+            <span id="comp-rec-btn-text">بدء التسجيل</span>
+          </button>
+
+          <!-- Play Back Button -->
+          <button type="button" id="comp-play-recorded-btn" onclick="playBackUserRecording()" style="display: none; align-items: center; gap: 6px; padding: 10px 16px; background: #00875A; color: #fff; border: none; border-radius: 24px; font-size: 13px; font-weight: bold; cursor: pointer;">
+            <span>▶️</span>
+            <span>استماع</span>
+          </button>
+        </div>
+
+        <div style="margin-top: 12px;">
+          <label style="font-size: 11px; color: #00875A; text-decoration: underline; cursor: pointer;" onclick="simulateFileUpload()">
+            أو اختر ملف تلاوة مسجل مسبقاً (MP3 / M4A)
+          </label>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button onclick="submitCompetitionRecitation()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00875A, #004D33); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
+        📤 اعتماد ورفع التلاوة إلى سحابة Supabase
+      </button>
+    </div>
+  </div>
+
+  <!-- FLOATING CALL MINI-BAR (FOR BACKGROUND AUDIO RECITATION) -->
+  <div id="floating-call-bar" onclick="openScreen('call'); this.style.display = 'none';">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="speaking-pulse" style="width: 28px; height: 28px; border-radius: 50%; background: #00875A; display: flex; align-items: center; justify-content: center; font-size: 14px;">👳‍♂️</span>
+      <div>
+        <div style="font-size: 12px; font-weight: bold; color: #FFDF73;">مقرأة سورة مريم جارية بالخلفية 🔊</div>
+        <small style="font-size: 10px; color: #bbb;">الشيخ عبد الله السويسي • Zego Audio Active</small>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button onclick="event.stopPropagation(); openScreen('call'); document.getElementById('floating-call-bar').style.display = 'none';" style="background: #00875A; color: #fff; border: none; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer;">
+        العودة للغرفة
+      </button>
+      <button onclick="event.stopPropagation(); endCallCompletely();" style="background: #c62828; color: #fff; border: none; padding: 4px 8px; border-radius: 8px; font-size: 11px; cursor: pointer;" title="إنهاء">
+        ✕
+      </button>
     </div>
   </div>
 
