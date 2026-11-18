@@ -1,0 +1,147 @@
+[
+    {
+        "id": 1,
+        "name_ar": "إذاعة القرآن الكريم",
+        "name_en": "Holy Quran Radio",
+        "status": 1,
+        "url": "https:\/\/s.misrquran.gov.eg\/x0o7t9r",
+        "created_at": "2026-04-16T13:12:51.000000Z",
+        "updated_at": "2026-04-16T13:12:51.000000Z",
+        "logo_url": null,
+        "media": []
+    },
+    {
+        "id": 2,
+        "name_ar": "إذاعة القران الكريم السعودية مباشر راديو",
+        "name_en": "Saudi Holy Quran Radio Live",
+        "status": 1,
+        "url": "https:\/\/radioplus.sba.sa\/live\/4",
+        "created_at": "2026-04-16T13:13:32.000000Z",
+        "updated_at": "2026-04-16T13:13:32.000000Z",
+        "logo_url": null,
+        "media": []
+    },
+    {
+        "id": 3,
+        "name_ar": "إذاعة نداء الإسلام مباشر راديو",
+        "name_en": "Nidaa Al-Islam Radio Live",
+        "status": 1,
+        "url": "https:\/\/radioplus.sba.sa\/live\/1",
+        "created_at": "2026-04-16T13:14:17.000000Z",
+        "updated_at": "2026-04-16T13:14:17.000000Z",
+        "logo_url": null,
+        "media": []
+    },
+    {
+        "id": 4,
+        "name_ar": "إذاعة القرآن الكريم من مكة المكرمة",
+        "name_en": "Holy Quran Radio from Mecca",
+        "status": 1,
+        "url": "https:\/\/stream.radiojar.com\/4wqre23fytzuv",
+        "created_at": "2026-04-16T13:15:07.000000Z",
+        "updated_at": "2026-04-16T13:15:07.000000Z",
+        "logo_url": null,
+        "media": []
+    },
+    {
+        "id": 5,
+        "name_ar": "إذاعة القران الكريم قطر",
+        "name_en": "Holy Quran Radio Qatar",
+        "status": 1,
+        "url": "https:\/\/www.quranradio.qa\/",
+        "created_at": "2026-04-16T13:16:49.000000Z",
+        "updated_at": "2026-04-16T13:16:49.000000Z",
+        "logo_url": null,
+        "media": []
+    },
+    {
+        "id": 6,
+        "name_ar": "استمع إلى إذاعة القرآن الكريم من الشارقة مباشر",
+        "name_en": "Listen to the Holy Quran Radio from Sharjah live",
+        "status": 1,
+        "url": "https:\/\/makkahlive.org\/radio\/%D8%A7%D8%B0%D8%A7%D8%B9%D8%A9-%D8%A7%D9%84%D9%82%D8%B1%D8%A7%D9%86-%D8%A7%D9%84%D9%83%D8%B1%D9%8A%D9%85-%D8%A7%D9%84%D8%B4%D8%A7%D8%B1%D9%82%D8%A9",
+        "created_at": "2026-04-16T13:18:00.000000Z",
+        "updated_at": "2026-04-16T13:18:00.000000Z",
+        "logo_url": null,
+        "media": []
+    },
+    {
+        "id": 7,
+        "name_ar": "تيست",
+        "name_en": "test",
+        "status": 1,
+        "url": "http:\/\/72.61.163.197\/dashboard\/broadcasts\/7\/edit",
+        "created_at": "2026-05-03T11:59:24.000000Z",
+        "updated_at": "2026-08-09T13:09:24.000000Z",
+        "logo_url": null,
+        "media": []
+    },
+    {
+        "id": 8,
+        "name_ar": "تست اذاعه",
+        "name_en": "test",
+        "status": 1,
+        "url": "http:\/\/72.61.163.197\/dashboard\/broadcasts\/7\/edit",
+        "created_at": "2026-08-09T13:10:42.000000Z",
+        "updated_at": "2026-08-09T13:10:42.000000Z",
+        "logo_url": "http:\/\/72.61.163.197\/storage\/broadcast_logo\/60\/1001365141.jpg",
+        "media": [
+            {
+                "id": 60,
+                "model_type": "App\\Models\\Broadcast",
+                "model_id": 8,
+                "uuid": "e011982f-be8e-40f2-93bd-d60baf0d50c2",
+                "collection_name": "broadcast_logo",
+                "name": "1001365141",
+                "file_name": "1001365141.jpg",
+                "mime_type": "image\/jpeg",
+                "disk": "public",
+                "conversions_disk": "public",
+                "size": 50938,
+                "manipulations": [],
+                "custom_properties": [],
+                "generated_conversions": [],
+                "responsive_images": [],
+                "order_column": 1,
+                "created_at": "2026-08-09T13:10:42.000000Z",
+                "updated_at": "2026-08-09T13:10:42.000000Z",
+                "original_url": "http:\/\/72.61.163.197\/storage\/broadcast_logo\/60\/1001365141.jpg",
+                "preview_url": ""
+            }
+        ]
+    },
+    {
+        "id": 9,
+        "name_ar": "اذاعة احاديث",
+        "name_en": "kjhk",
+        "status": 1,
+        "url": "https:\/\/www.youtube.com\/",
+        "created_at": "2026-10-15T22:15:12.000000Z",
+        "updated_at": "2026-10-15T22:15:12.000000Z",
+        "logo_url": "http:\/\/72.61.163.197\/storage\/broadcast_logo\/66\/images-%282%29.jfif",
+        "media": [
+            {
+                "id": 66,
+                "model_type": "App\\Models\\Broadcast",
+                "model_id": 9,
+                "uuid": "e8b1a121-85fa-4cbe-bd28-d49758e3964f",
+                "collection_name": "broadcast_logo",
+                "name": "images (2)",
+                "file_name": "images-(2).jfif",
+                "mime_type": "image\/jpeg",
+                "disk": "public",
+                "conversions_disk": "public",
+                "size": 24387,
+                "manipulations": [],
+                "custom_properties": [],
+                "generated_conversions": [],
+                "responsive_images": [],
+                "order_column": 1,
+                "created_at": "2026-10-15T22:15:12.000000Z",
+                "updated_at": "2026-10-15T22:15:12.000000Z",
+                "original_url": "http:\/\/72.61.163.197\/storage\/broadcast_logo\/66\/images-%282%29.jfif",
+                "preview_url": ""
+            }
+        ]
+    }
+]

@@ -3404,10 +3404,47 @@
       }
     });
 
+    const API_BASE_URL = '/api/v1';
+    const BACKEND_TOKEN = '577|3N8zTqn3VLV3A55WMjTUU5d138LStrg6dPxNIKaC16da2a29';
+
+    // Live Reels Loader from Laravel API with fallback
+    async function fetchLiveReels() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/videos`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && json.data.length > 0) {
+            const apiReels = json.data.map(item => ({
+              id: item.id,
+              userName: item.user?.name || 'مستخدم إتقان',
+              userRole: item.user?.type === 'Sheikh' ? 'قارئ ومقرئ' : (item.user?.is_volunteer ? 'متطوع' : 'طالب علم'),
+              isVolunteer: !!item.user?.is_volunteer,
+              timeAgo: 'جديد',
+              avatar: item.user?.avatar_url || 'assets/images/profile.png',
+              caption: item.description || 'تلاوة قرآنية مباركة',
+              likes: item.likes_count || 0,
+              comments: item.comments_count || 0,
+              shares: 1,
+              isLiked: !!item.is_liked,
+              video: item.video_url || 'assets/videos/onboarding_video_1.mp4'
+            }));
+            reelsList.splice(0, reelsList.length, ...apiReels);
+            renderReel(0);
+            console.log('✅ Connected to Etqan Live Backend: Loaded ' + apiReels.length + ' real reels');
+          }
+        }
+      } catch (err) {
+        console.warn('Live API fallback active:', err);
+      }
+    }
+
     // Auto-init on page load
     window.addEventListener('DOMContentLoaded', () => {
       renderReel(0);
       switchCategory(document.querySelector('.cat-rail-btn.active'), 'القاعدة النورانية');
+      fetchLiveReels();
     });
 
 

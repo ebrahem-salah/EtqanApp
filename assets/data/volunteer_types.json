@@ -1,0 +1,34 @@
+[
+    {
+        "id": 1,
+        "name_ar": "إمام مسجد",
+        "name_en": "Masjid Imam",
+        "is_active": true,
+        "created_at": "2026-04-03T00:18:17.000000Z",
+        "updated_at": "2026-04-03T00:18:17.000000Z"
+    },
+    {
+        "id": 2,
+        "name_ar": "مؤذن",
+        "name_en": "Muezzin",
+        "is_active": true,
+        "created_at": "2026-04-03T00:18:17.000000Z",
+        "updated_at": "2026-04-03T00:18:17.000000Z"
+    },
+    {
+        "id": 3,
+        "name_ar": "محفظ قرآن",
+        "name_en": "Quran Teacher",
+        "is_active": true,
+        "created_at": "2026-04-03T00:18:18.000000Z",
+        "updated_at": "2026-04-03T00:18:18.000000Z"
+    },
+    {
+        "id": 4,
+        "name_ar": "عامل نظافة",
+        "name_en": "Cleaner",
+        "is_active": true,
+        "created_at": "2026-04-03T00:18:18.000000Z",
+        "updated_at": "2026-04-03T00:18:18.000000Z"
+    }
+]
