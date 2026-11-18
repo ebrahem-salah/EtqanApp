@@ -926,23 +926,224 @@
       transform: scale(0.9);
     }
     
+  
+    /* DUAL PHONE DISPLAY SYSTEM (Arabic on Right, English on Left) */
+    .dual-header-container {
+      text-align: center;
+      margin-bottom: 14px;
+      color: #fff;
+    }
+    .dual-header-container h1 {
+      font-size: 24px;
+      color: #D4AF37;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .dual-header-container p {
+      font-size: 13px;
+      color: #a0c2ac;
+      margin-bottom: 12px;
+    }
+    .view-mode-bar {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 30px;
+      padding: 4px;
+      gap: 6px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .view-mode-btn {
+      background: transparent;
+      color: #d0e4d6;
+      border: none;
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .view-mode-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .view-mode-btn.active {
+      background: #00875A;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(0, 135, 90, 0.5);
+    }
+    .view-mode-btn.en-btn.active {
+      background: #B78103;
+      box-shadow: 0 2px 10px rgba(183, 129, 3, 0.5);
+    }
+
+    .dual-phone-stage {
+      display: flex;
+      flex-direction: row; /* In LTR container: Left is English, Right is Arabic */
+      justify-content: center;
+      align-items: flex-start;
+      gap: 32px;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      transition: all 0.3s ease;
+    }
+    .phone-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.3s ease;
+    }
+    .phone-col-header {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 24px;
+      padding: 6px 18px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .phone-col-ar .phone-col-header {
+      border-color: #00875A;
+      color: #55efa0;
+    }
+    .phone-col-en .phone-col-header {
+      border-color: #D4AF37;
+      color: #ffd868;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #2ecc71;
+      display: inline-block;
+      box-shadow: 0 0 8px #2ecc71;
+      animation: pulseAnim 2s infinite;
+    }
+    .pulse-dot.gold {
+      background: #f1c40f;
+      box-shadow: 0 0 8px #f1c40f;
+    }
+    @keyframes pulseAnim {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .phone-wrapper {
+      width: 395px;
+      max-width: 100%;
+      height: 815px;
+    }
+
+    /* ENGLISH SPECIFIC LTR STYLING */
+    .phone-en {
+      direction: ltr !important;
+      text-align: left !important;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+    }
+    .phone-en * {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+    .phone-en .reels-header-top {
+      direction: ltr !important;
+    }
+    .phone-en .reels-competitions-badge span {
+      left: 14px;
+      font-size: 11px;
+      letter-spacing: 0.3px;
+    }
+    .phone-en .reels-actions-bar {
+      left: auto !important;
+      right: 14px !important;
+    }
+    .phone-en .reels-sheikh-info {
+      left: 14px !important;
+      right: 70px !important;
+      text-align: left !important;
+    }
+    .phone-en .reels-sheikh-info div {
+      text-align: left !important;
+    }
+    .phone-en .reels-flip-controls {
+      left: 14px !important;
+      right: auto !important;
+    }
+    .phone-en .chapters-main-layout {
+      flex-direction: row-reverse !important; /* Categories rail on Left, Subcategories on Right */
+    }
+    .phone-en .cat-rail {
+      border-left: none !important;
+      border-right: 1px solid #eaeae0 !important;
+    }
+    .phone-en .cat-rail-btn {
+      text-align: left !important;
+      font-size: 11px !important;
+    }
+    .phone-en .cat-rail-btn.library-btn {
+      direction: ltr !important;
+      justify-content: center !important;
+    }
+    .phone-en .etqan-fab {
+      left: auto !important;
+      right: 16px !important;
+    }
+    .phone-en .app-bottom-nav button span {
+      font-size: 11px !important;
+      letter-spacing: 0.2px;
+    }
+    .phone-en .status-bar {
+      direction: ltr !important;
+    }
+
+    @media (max-width: 920px) {
+      .dual-phone-stage {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 24px;
+      }
+      .phone-column {
+        width: 100%;
+        max-width: 410px;
+      }
+    }
+  
   </style>
 </head>
 <body>
 
-  <div class="master-header">
+  
+  <div class="dual-header-container">
     <h1>
-      <img src="assets/logo/etqan_logo_original.png" alt="Etqan Logo" style="height: 38px; vertical-align: middle;">
-      منظومة إتقان العالمية
+      <span>🕌</span>
+      تطبيق إتقان - المنظومة العالمية لتعليم القرآن والسنة
     </h1>
-    <p>جميع صور وأصول وفيديوهات وأيقونات التطبيق الأصلية مدمجة بالكامل</p>
-    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
-      <span style="background: rgba(0, 135, 90, 0.25); border: 1px solid #00875A; color: #2ecc71; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: bold;">
-        🟢 Supabase Cloud: ngokeoqlimctcjkbmgtn
-      </span>
-      <span style="background: rgba(212, 175, 55, 0.2); border: 1px solid #D4AF37; color: #D4AF37; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: bold;">
-        ⚡ ZegoCloud: 961728373
-      </span>
+    <p>المعاينة التفاعلية المزدوجة المتزامنة: 🇸🇦 النسخة العربية (اليمين - RTL) | 🇬🇧 English Version (اليسار - LTR)</p>
+    
+    <!-- View Switcher Bar -->
+    <div class="view-mode-bar">
+      <button class="view-mode-btn active" id="btn-mode-both" onclick="setDualMode('both')">
+        <span>📱</span> العرض المزدوج جنباً إلى جنب (Dual View)
+      </button>
+      <button class="view-mode-btn ar-btn" id="btn-mode-ar" onclick="setDualMode('ar')">
+        <span>🇸🇦</span> النسخة العربية فقط (اليمين)
+      </button>
+      <button class="view-mode-btn en-btn" id="btn-mode-en" onclick="setDualMode('en')">
+        <span>🇬🇧</span> English Version Only (Left)
+      </button>
     </div>
   </div>
 
@@ -998,8 +1199,317 @@
     </button>
   </div>
 
-  <!-- Phone Shell -->
-  <div class="phone-wrapper">
+  
+  <!-- DUAL PHONE DISPLAY SYSTEM -->
+  <div class="dual-phone-stage" id="dual-stage">
+    
+    
+    <!-- LEFT: ENGLISH PHONE (LTR) -->
+    <div class="phone-column phone-col-en" id="col-phone-en">
+      <div class="phone-col-header">
+        <span class="flag-icon">🇬🇧</span>
+        <strong>English Version (Left - LTR)</strong>
+        <span class="pulse-dot gold"></span>
+      </div>
+      <div class="phone-wrapper phone-en" dir="ltr" id="phone-en">
+        <div class="phone-screen">
+          <!-- Top Status Bar -->
+          <div class="status-bar light-text" id="phone-status-bar-en">
+            <span>6:12</span>
+            <span id="phone-title-indicator-en" style="font-size: 11px;">Etqan - Home (Reels)</span>
+            <span>📶 🔋 100%</span>
+          </div>
+
+          <div class="screens-container">
+            <!-- SCREEN 0: SPLASH SCREEN -->
+            <div id="screen-splash-en" class="app-screen" onclick="openScreen('onboarding')" style="cursor: pointer;">
+              <div class="splash-logo-box">
+                <img src="assets/logo/etqan_logo_original.png" alt="Etqan Logo">
+              </div>
+              <div class="splash-mosques-box">
+                <img src="assets/images/mosque_silhouette.png" alt="Mosque Silhouettes">
+              </div>
+              <button onclick="event.stopPropagation(); restartSplash()" style="position: absolute; bottom: 20px; z-index: 50; background: #006C35; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                🔄 Restart Animation
+              </button>
+            </div>
+
+            <!-- SCREEN 1: ONBOARDING SCREEN -->
+            <div id="screen-onboarding-en" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
+              <div style="background: #fff; width: 100%; margin: 0; padding: 0; line-height: 0; flex-shrink: 0; border-bottom: 1px solid rgba(0,0,0,0.04);">
+                <img src="assets/images/welcome_sheikh_illustration.png" alt="Welcome" style="width: 100%; height: auto; display: block;">
+              </div>
+              <div style="background: #FCFBE8; padding: 18px 22px 28px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <div style="display: flex; justify-content: center; gap: 6px; margin-bottom: 14px;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: #00875A;"></div>
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: #ccc;"></div>
+                  </div>
+                  <div style="text-align: center; margin-bottom: 24px;">
+                    <h2 style="font-size: 20px; font-weight: bold; color: #1E2822; margin-bottom: 6px;">Welcome to Etqan App</h2>
+                    <p style="font-size: 13px; color: #666; line-height: 1.5;">A global comprehensive platform for Quran, Sunnah, and Islamic sciences for all levels.</p>
+                  </div>
+                </div>
+                <div>
+                  <button onclick="openScreen('register')" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 26px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3); margin-bottom: 10px;">Create Account</button>
+                  <button onclick="openScreen('login')" style="width: 100%; padding: 13px; background: transparent; color: #00875A; border: 2px solid #00875A; border-radius: 26px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 14px;">Log In</button>
+                  <div style="text-align: center;">
+                    <a href="javascript:void(0)" onclick="openScreen('reels')" style="color: #666; font-size: 13px; text-decoration: none; font-weight: 500;">Continue as Guest &gt;</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SCREEN 2: REELS SCREEN (English LTR) -->
+            <div id="screen-reels-en" class="app-screen active" onclick="toggleReelPlayPause(event)" onwheel="handleReelWheel(event)" ontouchstart="handleReelTouchStart(event)" ontouchend="handleReelTouchEnd(event)" onmousedown="handleReelMouseDown(event)" onmouseup="handleReelMouseUp(event)">
+              <video class="reels-video-container" autoplay loop muted playsinline id="reels-video-en">
+                <source src="assets/videos/onboarding_video_1.mp4" type="video/mp4">
+              </video>
+              <div class="reels-overlay-gradient"></div>
+
+              <!-- Top Bar -->
+              <div class="reels-header-top">
+                <div class="reels-competitions-badge" onclick="openScreen('competitions'); event.stopPropagation();" title="Competitions">
+                  <img src="assets/images/badg_gold.png" alt="Competitions">
+                  <span>&lt; Competitions</span>
+                </div>
+                <div class="reels-header-tools" onclick="event.stopPropagation();">
+                  <div class="reels-tool-btn" onclick="alert('🔔 No new notifications')">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="#fff" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  </div>
+                  <div class="reels-tool-btn" onclick="alert('🔍 Search Quran Recitations & Reels')">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="#fff" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  </div>
+                  <div class="reels-tool-btn add-btn" onclick="showAddOptionsModal()">
+                    <span style="color: #00875A; font-size: 20px; font-weight: bold; line-height: 1; margin-top: -2px;">+</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Actions Bar (LTR) -->
+              <div class="reels-actions-bar" onclick="event.stopPropagation();">
+                <div class="reels-action-item" id="reel-like-item-en" onclick="toggleLikeCurrentReel()">
+                  <div class="reels-action-icon">
+                    <svg id="reel-like-svg-en" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  </div>
+                  <span class="action-label" id="reel-likes-num-en">4</span>
+                </div>
+                <div class="reels-action-item" onclick="openReelCommentsSheet()">
+                  <div class="reels-action-icon">
+                    <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                  </div>
+                  <span class="action-label" id="reel-comments-num-en">5</span>
+                </div>
+                <div class="reels-action-item" onclick="toggleFullscreenReel()">
+                  <div class="reels-action-icon">
+                    <svg viewBox="0 0 24 24" stroke="#fff" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                  </div>
+                </div>
+                <div class="reels-action-item" onclick="shareCurrentReel()">
+                  <div class="reels-action-icon">
+                    <svg viewBox="0 0 24 24" stroke="#fff" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Flip Controls -->
+              <div class="reels-flip-controls" onclick="event.stopPropagation()">
+                <button class="reels-flip-btn" onclick="prevReel()" title="Previous Reel (or Swipe Down)">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+                <button class="reels-flip-btn" onclick="nextReel()" title="Next Reel (or Swipe Up)">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+              </div>
+
+              <!-- Bottom Sheikh Info -->
+              <div class="reels-sheikh-info">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div class="reels-avatar-circle" id="reel-avatar-container-en">
+                    <img id="reel-avatar-img-en" src="assets/images/profile.png" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                  </div>
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <strong id="reel-sheikh-name-en" style="color: #fff; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,0.9);">Maryam Mostakhdamt</strong>
+                      <span class="reels-badge-volunteer" id="reel-volunteer-badge-en">Volunteer</span>
+                      <span id="reel-sheikh-role-en" style="font-size: 12px; color: rgba(255,255,255,0.85); text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Mosque Imam</span>
+                    </div>
+                    <div id="reel-time-text-en" style="font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px;">7 months ago</div>
+                  </div>
+                </div>
+                <div class="reels-caption-text" id="reel-caption-text-en">Wonderful, Masha'Allah!</div>
+              </div>
+            </div>
+
+            <!-- SCREEN 3: CHAPTERS SCREEN (English LTR) -->
+            <div id="screen-chapters-en" class="app-screen">
+              <div style="background: #fff; padding: 12px 18px; border-bottom: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 1px solid #e0e0d0; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.05); cursor: pointer;" onclick="alert('🔔 No new notifications')">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="#333" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                </div>
+                <h3 style="font-size: 18px; font-weight: bold; color: #191919;">Halaqat & Circles</h3>
+                <div style="width: 36px;"></div>
+              </div>
+
+              <div class="chapters-main-layout">
+                <!-- Subcategories on Right for LTR -->
+                <div class="subcat-rail-content" id="subcat-box-en">
+                  <!-- Dynamically populated -->
+                </div>
+
+                <!-- Categories Rail on Left for LTR -->
+                <div class="cat-rail">
+                  <div class="cat-rail-btn library-btn" onclick="openScreen('library')">
+                    <img src="assets/svgs/icon_library.svg" alt="Library" style="width: 16px; filter: brightness(0) invert(1);">
+                    <span>&lt; Library</span>
+                  </div>
+                  <div class="cat-rail-btn active" onclick="switchCategory(this, 'القاعدة النورانية')">Noorani Qaida</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'القرآن الكريم')">Holy Quran</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'مقرأة إهداء الثواب')">Thawab Recitation</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'السنة النبوية')">Prophetic Sunnah</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'علوم أخرى')">Other Sciences</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'الفتاوى')">Fatwas</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'الرقية الشرعية')">Ruqyah</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'الطفل المسلم')">Muslim Child</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'المرأة المسلمة')">Muslim Woman</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'قسم الفقه')">Fiqh</div>
+                  <div class="cat-rail-btn" onclick="switchCategory(this, 'قسم الابتهال')">Nasheed</div>
+                </div>
+              </div>
+
+              <div class="etqan-fab" onclick="showAddOptionsModal()" title="Add Circle">
+                <div class="etqan-fab-inner">+</div>
+              </div>
+            </div>
+
+            <!-- SCREEN 4: SHEIKHS SCREEN (English LTR) -->
+            <div id="screen-sheikhs-en" class="app-screen">
+              <div style="background: #fff; padding: 12px 16px; border-bottom: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 17px; font-weight: bold;">Scholars & Teachers</h3>
+                <span style="font-size: 18px; cursor: pointer;">🔍</span>
+              </div>
+              <div style="padding: 14px;">
+                <div class="sheikh-card-lux">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <div style="width: 46px; height: 46px; border-radius: 50%; background: #E8F5E9; display: flex; align-items: center; justify-content: center; font-size: 24px;">👳‍♂️</div>
+                      <div>
+                        <div style="font-weight: bold; font-size: 15px;">Sheikh Saad Ali</div>
+                        <span style="background: #E8F5E9; color: #00875A; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: bold;">Al-Taawun Foundation</span>
+                      </div>
+                    </div>
+                    <button style="background: #00875A; color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;" onclick="this.innerText='✓ Following'; this.style.background='#888';">+ Follow</button>
+                  </div>
+                  <div style="display: flex; justify-content: space-around; border-top: 1px solid #f0f0e0; padding-top: 10px; text-align: center; font-size: 11px;">
+                    <div><strong style="display: block; font-size: 14px;">124</strong>Friends</div>
+                    <div><strong style="display: block; font-size: 14px;">15</strong>Reels</div>
+                    <div><strong style="display: block; font-size: 14px;">48</strong>Circles</div>
+                    <div><strong style="display: block; font-size: 14px; color: #D4AF37;">⭐ 4.9</strong>Rating</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SCREEN 5: MY CHAPTERS SCREEN (English LTR) -->
+            <div id="screen-mychapters-en" class="app-screen">
+              <div style="background: #fff; padding: 12px 16px; border-bottom: 1px solid #eaeae0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 17px; font-weight: bold;">My Registered Circles</h3>
+                <span style="font-size: 18px; cursor: pointer;">📅</span>
+              </div>
+              <div style="padding: 14px;">
+                <div style="background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e0dfce; box-shadow: 0 2px 6px rgba(0,0,0,0.04); margin-bottom: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="background: #E8F5E9; color: #00875A; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: bold;">Live Today</span>
+                    <span style="color: #666; font-size: 11px;">5:00 PM - 6:00 PM</span>
+                  </div>
+                  <h4 style="font-size: 15px; font-weight: bold; color: #222; margin-bottom: 4px;">Tajweed Masterclass</h4>
+                  <p style="font-size: 12px; color: #555; margin-bottom: 10px;">Sheikh Abdullah Al-Suwaisi</p>
+                  <button onclick="openScreen('call')" style="width: 100%; padding: 10px; background: #00875A; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer;">🎙️ Enter Live Room</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SCREEN 13: MORE SCREEN (English LTR) -->
+            <div id="screen-more-en" class="app-screen" style="overflow-y: auto;">
+              <div style="background: #00875A; color: #fff; padding: 24px 18px 20px; border-radius: 0 0 20px 20px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                  <div style="width: 54px; height: 54px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px;">👤</div>
+                  <div>
+                    <div style="font-size: 17px; font-weight: bold;">Ahmed Student</div>
+                    <div style="font-size: 12px; opacity: 0.85;">Quran Memorizer</div>
+                  </div>
+                </div>
+              </div>
+              <div style="padding: 14px;">
+                <div style="background: #fff; border-radius: 12px; padding: 8px; border: 1px solid #e0dfce; margin-bottom: 12px;">
+                  <div onclick="openScreen('wallet')" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500;">
+                      <span>💰</span> Points Wallet
+                    </div>
+                    <span style="color: #888;">&gt;</span>
+                  </div>
+                  <div onclick="openScreen('competitions')" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500;">
+                      <span>🏆</span> Competitions & Prizes
+                    </div>
+                    <span style="color: #888;">&gt;</span>
+                  </div>
+                  <div onclick="openScreen('library')" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500;">
+                      <span>📚</span> Islamic Library
+                    </div>
+                    <span style="color: #888;">&gt;</span>
+                  </div>
+                  <div onclick="openScreen('radios')" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500;">
+                      <span>📻</span> Live Radios
+                    </div>
+                    <span style="color: #888;">&gt;</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Navigation Bar (English LTR) -->
+          <div class="app-bottom-nav">
+            <button class="nav-tab-item active" id="bnav-reels-en" onclick="openScreen('reels')">
+              <img src="assets/svgs/home.svg" alt="Home">
+              <span>Home</span>
+            </button>
+            <button class="nav-tab-item" id="bnav-chapters-en" onclick="openScreen('chapters')">
+              <img src="assets/svgs/chapters_tab_icon.svg" alt="Chapters">
+              <span>Chapters</span>
+            </button>
+            <button class="nav-tab-item" id="bnav-sheikhs-en" onclick="openScreen('sheikhs')">
+              <img src="assets/svgs/supervisors.svg" alt="Scholars">
+              <span>Scholars</span>
+            </button>
+            <button class="nav-tab-item" id="bnav-mychapters-en" onclick="openScreen('mychapters')">
+              <img src="assets/svgs/video_call.svg" alt="My Circles">
+              <span>My Circles</span>
+            </button>
+            <button class="nav-tab-item" id="bnav-more-en" onclick="openScreen('more')">
+              <img src="assets/svgs/more.svg" alt="More">
+              <span>More</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- RIGHT: ARABIC PHONE (RTL) -->
+    <div class="phone-column phone-col-ar" id="col-phone-ar">
+      <div class="phone-col-header">
+        <span class="flag-icon">🇸🇦</span>
+        <strong>النسخة العربية (اليمين - RTL)</strong>
+        <span class="pulse-dot"></span>
+      </div>
+      <div class="phone-wrapper phone-ar" dir="rtl" id="phone-ar">
+        <div class="phone-screen">
+
     <div class="phone-screen">
       
       <!-- Top Status Bar -->
@@ -2212,24 +2722,57 @@
           <img src="assets/svgs/more.svg" alt="More">
           <span>المزيد</span>
         </button>
-      </div>
-
       
-
+        </div>
+      </div>
     </div>
+
   </div>
 
   <script>
     let isShamarly = true;
     let isMuted = false;
 
-    function openScreen(screenId) {
-      document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
-      document.querySelectorAll('.pill-btn').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.nav-tab-item').forEach(t => t.classList.remove('active'));
+    
+    // Dual View Mode Controller
+    function setDualMode(mode) {
+      const colEn = document.getElementById('col-phone-en');
+      const colAr = document.getElementById('col-phone-ar');
+      const btnBoth = document.getElementById('btn-mode-both');
+      const btnAr = document.getElementById('btn-mode-ar');
+      const btnEn = document.getElementById('btn-mode-en');
 
-      const target = document.getElementById('screen-' + screenId);
-      if (target) target.classList.add('active');
+      [btnBoth, btnAr, btnEn].forEach(b => b.classList.remove('active'));
+
+      if (mode === 'both') {
+        if (colEn) colEn.style.display = 'flex';
+        if (colAr) colAr.style.display = 'flex';
+        btnBoth.classList.add('active');
+      } else if (mode === 'ar') {
+        if (colEn) colEn.style.display = 'none';
+        if (colAr) colAr.style.display = 'flex';
+        btnAr.classList.add('active');
+      } else if (mode === 'en') {
+        if (colEn) colEn.style.display = 'flex';
+        if (colAr) colAr.style.display = 'none';
+        btnEn.classList.add('active');
+      }
+    }
+
+    function openScreen(screenId) {
+      // 1. Switch Arabic Phone screens
+      document.querySelectorAll('#phone-ar .app-screen').forEach(s => s.classList.remove('active'));
+      const targetAr = document.querySelector('#phone-ar #screen-' + screenId);
+      if (targetAr) targetAr.classList.add('active');
+
+      // 2. Switch English Phone screens
+      document.querySelectorAll('#phone-en .app-screen').forEach(s => s.classList.remove('active'));
+      let targetEn = document.querySelector('#phone-en #screen-' + screenId + '-en') || document.querySelector('#phone-en #screen-' + screenId);
+      if (!targetEn && targetAr) {
+        // Fallback for screens shared with Arabic phone
+        targetEn = document.querySelector('#phone-en #screen-reels-en');
+      }
+      if (targetEn) targetEn.classList.add('active');
 
       const pillBtn = Array.from(document.querySelectorAll('.pill-btn')).find(b => b.getAttribute('onclick')?.includes(screenId));
       if (pillBtn) pillBtn.classList.add('active');
@@ -2371,6 +2914,33 @@
       activeReelIdx = idx;
 
       const reel = reelsList[activeReelIdx];
+
+      // English reel translation dictionary
+      const enReels = [
+        { userName: 'Maryam Mostakhdamt', userRole: 'Mosque Imam', isVolunteer: true, timeAgo: '7 months ago', caption: 'Wonderful, Masha\'Allah!' },
+        { userName: 'Ahmed', userRole: 'Mosque Imam', isVolunteer: true, timeAgo: '21 days ago', caption: 'Do what you love' },
+        { userName: 'Dr. Abdullah Al-Ruwaili', userRole: 'Recitation Supervisor', isVolunteer: false, timeAgo: '1 month ago', caption: 'One of the greatest causes of happiness in life' }
+      ];
+      const enReel = enReels[activeReelIdx] || enReels[0];
+
+      // Update English Phone Reel
+      const vEn = document.getElementById('reels-video-en');
+      if (vEn) { vEn.src = reel.video; vEn.load(); vEn.play().catch(()=>{}); }
+      const snEn = document.getElementById('reel-sheikh-name-en');
+      if (snEn) snEn.innerText = enReel.userName;
+      const srEn = document.getElementById('reel-sheikh-role-en');
+      if (srEn) srEn.innerText = enReel.userRole;
+      const stEn = document.getElementById('reel-time-text-en');
+      if (stEn) stEn.innerText = enReel.timeAgo;
+      const scEn = document.getElementById('reel-caption-text-en');
+      if (scEn) scEn.innerText = enReel.caption;
+      const saEn = document.getElementById('reel-avatar-img-en');
+      if (saEn) saEn.src = reel.avatar;
+      const slEn = document.getElementById('reel-likes-num-en');
+      if (slEn) slEn.innerText = reel.likes;
+      const smEn = document.getElementById('reel-comments-num-en');
+      if (smEn) smEn.innerText = reel.comments;
+
       const video = document.getElementById('reels-video');
       if (video) {
         video.src = reel.video;
@@ -2580,142 +3150,6 @@
       if (catName === 'القاعدة النورانية') {
         // Images 3, 4, 5
         box.innerHTML = `
-          <div class="subcat-level-card" onclick="openCallWithTitle('حلقة القاعدة النورانية - القسم الأول (المستوى الأول)')">
-            <div class="subcat-level-banner">
-              <div class="subcat-level-number-badge">1</div>
-              <div class="subcat-level-title">القسم الاول</div>
-            </div>
-            <div class="subcat-level-subtitle">المستوى الأول</div>
-          </div>
-          <div class="subcat-level-card" onclick="openCallWithTitle('حلقة القاعدة النورانية - القسم الثاني (المستوى الثاني)')">
-            <div class="subcat-level-banner">
-              <div class="subcat-level-number-badge">2</div>
-              <div class="subcat-level-title">القسم الثاني</div>
-            </div>
-            <div class="subcat-level-subtitle">المستوى الثاني</div>
-          </div>
-          <div class="subcat-level-card" onclick="openCallWithTitle('حلقة القاعدة النورانية - القسم الثالث (المستوى الثالث)')">
-            <div class="subcat-level-banner">
-              <div class="subcat-level-number-badge">3</div>
-              <div class="subcat-level-title">القسم الثالث</div>
-            </div>
-            <div class="subcat-level-subtitle">المستوى الثالث</div>
-          </div>
-        `;
-      } else if (catName === 'القرآن الكريم') {
-        // Images 6 & 7
-        box.innerHTML = `
-          <div class="subcat-grid-2col">
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: الحفظ')">
-              <img src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300" class="subcat-photo-img" alt="الحفظ">
-              <div class="subcat-photo-title">الحفظ</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: المراجعة')">
-              <img src="https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=300" class="subcat-photo-img" alt="المراجعة">
-              <div class="subcat-photo-title">المراجعة</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: التجويد')">
-              <div style="height: 85px; background: #fafaf5; display: flex; align-items: center; justify-content: center; font-size: 28px;">📖</div>
-              <div class="subcat-photo-title">التجويد</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: المدارسة')">
-              <img src="https://images.unsplash.com/photo-1509062522246-3755977927d7?w=300" class="subcat-photo-img" alt="المدارسة">
-              <div class="subcat-photo-title">المدارسة</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: المقرأة')">
-              <img src="https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?w=300" class="subcat-photo-img" alt="المقرأة">
-              <div class="subcat-photo-title">المقرأة</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: علوم القرآن')">
-              <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="علوم القرآن">
-              <div class="subcat-photo-title">علوم القرآن</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: القراءات العشر')">
-              <img src="https://images.unsplash.com/photo-1519817650390-64a93db51149?w=300" class="subcat-photo-img" alt="القراءات العشر">
-              <div class="subcat-photo-title">القراءات العشر</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: المقامات الصوتية')">
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300" class="subcat-photo-img" alt="المقامات الصوتية">
-              <div class="subcat-photo-title">المقامات الصوتية</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: التفسير')">
-              <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300" class="subcat-photo-img" alt="التفسير">
-              <div class="subcat-photo-title">التفسير</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة القرآن الكريم: القراءات')">
-              <div style="height: 85px; background: #fafaf5; display: flex; align-items: center; justify-content: center; font-size: 28px;">📜</div>
-              <div class="subcat-photo-title">القراءات</div>
-            </div>
-          </div>
-        `;
-      } else if (catName === 'مقرأة إهداء الثواب') {
-        // Image 8
-        box.innerHTML = `
-          <div class="subcat-grid-2col">
-            <div class="subcat-photo-card" onclick="openCallWithTitle('مقرأة إهداء الثواب: رجال')">
-              <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="رجال">
-              <div class="subcat-photo-title">رجال</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('مقرأة إهداء الثواب: نساء')">
-              <img src="https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=300" class="subcat-photo-img" alt="نساء">
-              <div class="subcat-photo-title">نساء</div>
-            </div>
-          </div>
-        `;
-      } else if (catName === 'السنة النبوية') {
-        // Image 9
-        box.innerHTML = `
-          <div class="subcat-grid-2col">
-            <div class="subcat-photo-card" onclick="openCallWithTitle('السنة النبوية: الحفظ')">
-              <img src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300" class="subcat-photo-img" alt="الحفظ">
-              <div class="subcat-photo-title">الحفظ</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('السنة النبوية: علوم الحديث')">
-              <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="علوم الحديث">
-              <div class="subcat-photo-title">علوم الحديث</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('السنة النبوية: شروح الأحاديث')">
-              <img src="https://images.unsplash.com/photo-1519817650390-64a93db51149?w=300" class="subcat-photo-img" alt="شروح الأحاديث">
-              <div class="subcat-photo-title">شروح الأحاديث</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('السنة النبوية: الإقراء لكتب السنة')">
-              <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300" class="subcat-photo-img" alt="الإقراء لكتب السنة">
-              <div class="subcat-photo-title">الإقراء لكتب السنة</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('السنة النبوية: القراءة بالإسناد')">
-              <div style="height: 85px; background: #fafaf5; display: flex; align-items: center; justify-content: center; font-size: 28px;">📜</div>
-              <div class="subcat-photo-title">القراءة بالإسناد</div>
-            </div>
-          </div>
-        `;
-      } else if (catName === 'علوم أخرى') {
-        // Image 10
-        box.innerHTML = `
-          <div class="subcat-grid-2col">
-            <div class="subcat-photo-card" onclick="openCallWithTitle('علوم أخرى: الفقه')">
-              <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="الفقه">
-              <div class="subcat-photo-title">الفقه</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('علوم أخرى: السيرة')">
-              <img src="https://images.unsplash.com/photo-1519817650390-64a93db51149?w=300" class="subcat-photo-img" alt="السيرة">
-              <div class="subcat-photo-title">السيرة</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('علوم أخرى: العقيدة')">
-              <img src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300" class="subcat-photo-img" alt="العقيدة">
-              <div class="subcat-photo-title">العقيدة</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('علوم أخرى: الرقائق')">
-              <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=300" class="subcat-photo-img" alt="الرقائق">
-              <div class="subcat-photo-title">الرقائق</div>
-            </div>
-            <div class="subcat-photo-card" onclick="openCallWithTitle('علوم أخرى: تيست')">
-              <div style="height: 85px; background: #fafaf5; display: flex; align-items: center; justify-content: center; font-size: 28px;">📷</div>
-              <div class="subcat-photo-title">تيست</div>
-            </div>
-          </div>
-        `;
-      } else {
-        box.innerHTML = `
           <div class="subcat-level-card" onclick="openCallWithTitle('حلقة: ${catName} (المستوى العام)')">
             <div class="subcat-level-banner">
               <div class="subcat-level-number-badge">★</div>
@@ -2724,6 +3158,75 @@
             <div class="subcat-level-subtitle">دروس ومجالس حية مباشرة</div>
           </div>
         `;
+      }
+
+      // Also populate English Subcategory Box if present
+      const boxEn = document.getElementById('subcat-box-en');
+      if (boxEn) {
+        if (catName === 'القاعدة النورانية') {
+          boxEn.innerHTML = `
+            <div class="subcat-level-card" onclick="openCallWithTitle('Noorani Qaida - Part 1 (Level 1)')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">1</div>
+                <div class="subcat-level-title">Part One</div>
+              </div>
+              <div class="subcat-level-subtitle">Level One</div>
+            </div>
+            <div class="subcat-level-card" onclick="openCallWithTitle('Noorani Qaida - Part 2 (Level 2)')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">2</div>
+                <div class="subcat-level-title">Part Two</div>
+              </div>
+              <div class="subcat-level-subtitle">Level Two</div>
+            </div>
+            <div class="subcat-level-card" onclick="openCallWithTitle('Noorani Qaida - Part 3 (Level 3)')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">3</div>
+                <div class="subcat-level-title">Part Three</div>
+              </div>
+              <div class="subcat-level-subtitle">Level Three</div>
+            </div>
+          `;
+        } else if (catName === 'القرآن الكريم') {
+          boxEn.innerHTML = `
+            <div class="subcat-grid-2col">
+              <div class="subcat-photo-card" onclick="openCallWithTitle('Quran: Memorization')">
+                <img src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300" class="subcat-photo-img" alt="Memorization">
+                <div class="subcat-photo-title">Memorization</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('Quran: Revision')">
+                <img src="https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=300" class="subcat-photo-img" alt="Revision">
+                <div class="subcat-photo-title">Revision</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('Quran: Tajweed')">
+                <div style="height: 85px; background: #fafaf5; display: flex; align-items: center; justify-content: center; font-size: 28px;">🎙️</div>
+                <div class="subcat-photo-title">Tajweed</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('Quran: Study')">
+                <img src="https://images.unsplash.com/photo-1509062522246-3755977927d7?w=300" class="subcat-photo-img" alt="Study">
+                <div class="subcat-photo-title">Study</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('Quran: Recitation Circle')">
+                <img src="https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?w=300" class="subcat-photo-img" alt="Circle">
+                <div class="subcat-photo-title">Halaqa</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('Quran: Sciences')">
+                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="Sciences">
+                <div class="subcat-photo-title">Sciences</div>
+              </div>
+            </div>
+          `;
+        } else {
+          boxEn.innerHTML = `
+            <div class="subcat-level-card" onclick="openCallWithTitle('Circle: ${catName}')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">★</div>
+                <div class="subcat-level-title">Islamic Circle</div>
+              </div>
+              <div class="subcat-level-subtitle">Live Interactive Session</div>
+            </div>
+          `;
+        }
       }
     }
 
