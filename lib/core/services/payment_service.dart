@@ -17,14 +17,14 @@ class PaymentResult {
   final String transactionId;
   final String message;
   final double amount;
-  final int pointsEarned;
+  final double balanceAdded;
 
   PaymentResult({
     required this.success,
     required this.transactionId,
     required this.message,
     required this.amount,
-    this.pointsEarned = 0,
+    this.balanceAdded = 0.0,
   });
 }
 
@@ -40,23 +40,21 @@ class PaymentService {
   static const String moyasarPublishableKey = 'pk_test_moyasar_etqan_live_2026';
   static const String stripePublishableKey = 'pk_test_stripe_etqan_live_2026';
 
-  /// معالجة عملية شحن المحفظة بالنقاط
-  /// [amountInSAR]: المبلغ بالريال السعودي
+  /// معالجة عملية شحن رصيد المحفظة المالي مباشرة (بدون نقاط)
+  /// [amountInSAR]: قيمة الشحن المباشرة بالريال السعودي
   /// [method]: وسيلة الدفع المختارة
   Future<PaymentResult> rechargeWallet({
     required double amountInSAR,
     required PaymentMethod method,
   }) async {
     try {
-      // 1 ريال = 10 نقاط في محفظة إتقان
-      final pointsToAdd = (amountInSAR * 10).toInt();
       final txnId = 'TXN_RECHARGE_${DateTime.now().millisecondsSinceEpoch}';
       final methodStr = _mapMethodToString(method);
 
-      // تسجيل المعاملة في السحابة
+      // تسجيل المعاملة في السحابة بالقيمة المالية الحقيقية
       await _supabase.recordWalletTransaction(
         amount: amountInSAR,
-        points: pointsToAdd,
+        points: amountInSAR.toInt(),
         paymentMethod: methodStr,
         transactionType: 'recharge',
         referenceNumber: txnId,
@@ -65,9 +63,9 @@ class PaymentService {
       return PaymentResult(
         success: true,
         transactionId: txnId,
-        message: 'تم شحن المحفظة بنجاح وإضافة $pointsToAdd نقطة إلى رصيدك.',
+        message: 'تم شحن المحفظة بنجاح وإضافة ${amountInSAR.toStringAsFixed(2)} ر.س إلى رصيدك.',
         amount: amountInSAR,
-        pointsEarned: pointsToAdd,
+        balanceAdded: amountInSAR,
       );
     } catch (e) {
       return PaymentResult(

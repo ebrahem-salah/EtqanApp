@@ -1540,7 +1540,7 @@
                 <div style="background: #fff; border-radius: 12px; padding: 8px; border: 1px solid #e0dfce; margin-bottom: 12px;">
                   <div onclick="openScreen('wallet')" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500;">
-                      <span>💰</span> Points Wallet
+                      <span>💳</span> Cash Wallet
                     </div>
                     <span style="color: #888;">&gt;</span>
                   </div>
@@ -1563,6 +1563,70 @@
                     <span style="color: #888;">&gt;</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- SCREEN: WALLET (ENGLISH LTR) -->
+            <div id="screen-wallet-en" class="app-screen" style="background: #FCFBE8; overflow-y: auto; direction: ltr; text-align: left;">
+              <!-- Top Bar -->
+              <div style="background: #00875A; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 20px; cursor: pointer;" onclick="openScreen('more')">←</span>
+                  <span style="font-size: 16px; font-weight: bold;">Etqan Cash Wallet</span>
+                </div>
+                <img src="assets/svgs/icon_wallet.svg" alt="Wallet" style="width: 22px; filter: brightness(0) invert(1);">
+              </div>
+
+              <div style="padding: 16px;">
+                <!-- Current Balance Card -->
+                <div style="background: linear-gradient(135deg, #00875A, #004D33); border-radius: 16px; padding: 20px; color: #fff; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(0,135,90,0.25); position: relative;">
+                  <div style="font-size: 12px; opacity: 0.85; margin-bottom: 6px;">Available Cash Balance:</div>
+                  <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;">
+                    <span class="wallet-cash-balance-val" style="font-size: 36px; font-weight: bold; color: #FFDF73;">150.00</span>
+                    <span style="font-size: 16px; font-weight: bold;">SAR</span>
+                  </div>
+                  <div style="font-size: 12px; background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: 8px; display: inline-block;">
+                    ✨ Direct Cash Balance for 1-on-1 Recitation Circles (No Points)
+                  </div>
+                </div>
+
+                <!-- Recharge Packages -->
+                <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">Select Top-Up Package:</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;">
+                  <div class="wallet-package-card" onclick="selectRechargePackage(this, 50, 0)">
+                    <div style="font-size: 12px; font-weight: bold; color: #555;">Silver</div>
+                    <div style="font-size: 22px; font-weight: bold; color: #00875A; margin: 4px 0;">50</div>
+                    <div style="font-size: 11px; font-weight: bold; color: #111;">SAR</div>
+                    <div style="font-size: 10px; color: #666; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">Direct Balance</div>
+                  </div>
+
+                  <div class="wallet-package-card active" onclick="selectRechargePackage(this, 100, 10)">
+                    <div style="font-size: 12px; font-weight: bold; color: #00875A;">Gold 🔥</div>
+                    <div style="font-size: 22px; font-weight: bold; color: #00875A; margin: 4px 0;">100</div>
+                    <div style="font-size: 11px; font-weight: bold; color: #111;">SAR</div>
+                    <div style="font-size: 10px; color: #00875A; font-weight: bold; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">+10 SAR Bonus</div>
+                  </div>
+
+                  <div class="wallet-package-card" onclick="selectRechargePackage(this, 200, 30)">
+                    <div style="font-size: 12px; font-weight: bold; color: #555;">Diamond</div>
+                    <div style="font-size: 22px; font-weight: bold; color: #00875A; margin: 4px 0;">200</div>
+                    <div style="font-size: 11px; font-weight: bold; color: #111;">SAR</div>
+                    <div style="font-size: 10px; color: #00875A; font-weight: bold; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">+30 SAR Bonus</div>
+                  </div>
+                </div>
+
+                <!-- Payment Methods -->
+                <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">Payment Gateway:</div>
+                <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;">
+                  <div class="pay-method-chip active" onclick="selectPayMethod(this, 'Mada')">💳 Mada</div>
+                  <div class="pay-method-chip" onclick="selectPayMethod(this, 'Apple Pay')">🍎 Apple Pay</div>
+                  <div class="pay-method-chip" onclick="selectPayMethod(this, 'Visa / Master')">💳 Visa / Master</div>
+                  <div class="pay-method-chip" onclick="selectPayMethod(this, 'STC Pay')">⚡ STC Pay</div>
+                </div>
+
+                <button onclick="executeRecharge()" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 20px;">
+                  💳 Confirm Direct Top-Up (100 SAR)
+                </button>
               </div>
             </div>
 
@@ -2417,104 +2481,109 @@
           </div>
         </div>
 
-        <!-- SCREEN 10: WALLET & PAYMENT SCREEN (محفظة الطالب ورصيد الجلسات) -->
+        <!-- SCREEN 10: WALLET & PAYMENT SCREEN (محفظة إتقان المالية - رصيد نقدي مباشر) -->
         <div id="screen-wallet" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
           <!-- Top Bar -->
           <div style="background: #00875A; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <span style="font-size: 20px; cursor: pointer; transform: scaleX(-1); display: inline-block;" onclick="openScreen('more')">➜</span>
-              <span style="font-size: 16px; font-weight: bold;">محفظة إتقان ورصيد النقاط</span>
+              <span style="font-size: 16px; font-weight: bold;">محفظة إتقان المالية (رصيد نقدي)</span>
             </div>
             <img src="assets/svgs/icon_wallet.svg" alt="Wallet" style="width: 22px; filter: brightness(0) invert(1);">
           </div>
 
           <div style="padding: 16px;">
-            <!-- Current Balance Card -->
+            <!-- Current Balance Card (Cash Currency SAR) -->
             <div style="background: linear-gradient(135deg, #00875A, #004D33); border-radius: 16px; padding: 20px; color: #fff; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(0,135,90,0.25); position: relative; overflow: hidden;">
-              <div style="font-size: 12px; opacity: 0.85; margin-bottom: 6px;">الرصيد الحالي المتاح:</div>
+              <div style="font-size: 12px; opacity: 0.85; margin-bottom: 6px;">الرصيد النقدي المتاح بالمحفظة:</div>
               <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;">
-                <span id="wallet-balance-num" style="font-size: 36px; font-weight: bold; color: #FFDF73;">120</span>
-                <span style="font-size: 16px; font-weight: bold;">نقطة</span>
+                <span class="wallet-cash-balance-val" style="font-size: 36px; font-weight: bold; color: #FFDF73;">150.00</span>
+                <span style="font-size: 16px; font-weight: bold;">ر.س</span>
               </div>
               <div style="font-size: 12px; background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: 8px; display: inline-block;">
-                ✨ يعادل 6 جلسات تسميع فردية مع كبار القراء
+                ✨ رصيد مالي حقيقي مباشر لحجز المقارئ وجلسات التسميع (بدون نقاط)
               </div>
             </div>
 
-            <!-- Recharge Packages -->
-            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">باقات شحن الرصيد:</div>
+            <!-- Recharge Packages (Direct Cash SAR) -->
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">باقات شحن الرصيد المالي المباشر:</div>
             
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;">
-              <div class="wallet-package-card" onclick="selectRechargePackage(this, 50, 50)">
-                <div style="font-size: 12px; font-weight: bold;">المبتدئ</div>
-                <div style="font-size: 20px; font-weight: bold; color: #00875A; margin: 4px 0;">50</div>
-                <div style="font-size: 10px; color: #666;">نقطة</div>
-                <div style="font-size: 11px; font-weight: bold; color: #333; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">50 ر.س</div>
+              <div class="wallet-package-card" onclick="selectRechargePackage(this, 50, 0)">
+                <div style="font-size: 12px; font-weight: bold; color: #555;">باقة فضية</div>
+                <div style="font-size: 22px; font-weight: bold; color: #00875A; margin: 4px 0;">50</div>
+                <div style="font-size: 11px; font-weight: bold; color: #111;">ر.س</div>
+                <div style="font-size: 10px; color: #666; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">رصيد نقدي كامل</div>
               </div>
 
-              <div class="wallet-package-card active" onclick="selectRechargePackage(this, 120, 100)">
+              <div class="wallet-package-card active" onclick="selectRechargePackage(this, 100, 10)">
                 <div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #D4AF37; color: #191919; font-size: 9px; padding: 2px 6px; border-radius: 8px; font-weight: bold; white-space: nowrap;">الأكثر طلباً 🔥</div>
-                <div style="font-size: 12px; font-weight: bold;">المتقن</div>
-                <div style="font-size: 20px; font-weight: bold; color: #00875A; margin: 4px 0;">120</div>
-                <div style="font-size: 10px; color: #666;">100 + 20 هدية</div>
-                <div style="font-size: 11px; font-weight: bold; color: #333; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">100 ر.س</div>
+                <div style="font-size: 12px; font-weight: bold; color: #00875A;">باقة ذهبية</div>
+                <div style="font-size: 22px; font-weight: bold; color: #00875A; margin: 4px 0;">100</div>
+                <div style="font-size: 11px; font-weight: bold; color: #111;">ر.س</div>
+                <div style="font-size: 10px; color: #00875A; font-weight: bold; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">+10 ر.س رصيد إضافي</div>
               </div>
 
-              <div class="wallet-package-card" onclick="selectRechargePackage(this, 310, 200)">
-                <div style="font-size: 12px; font-weight: bold;">السنوية</div>
-                <div style="font-size: 20px; font-weight: bold; color: #00875A; margin: 4px 0;">310</div>
-                <div style="font-size: 10px; color: #666;">250 + 60 هدية</div>
-                <div style="font-size: 11px; font-weight: bold; color: #333; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">200 ر.س</div>
+              <div class="wallet-package-card" onclick="selectRechargePackage(this, 200, 30)">
+                <div style="font-size: 12px; font-weight: bold; color: #555;">باقة ماسية</div>
+                <div style="font-size: 22px; font-weight: bold; color: #00875A; margin: 4px 0;">200</div>
+                <div style="font-size: 11px; font-weight: bold; color: #111;">ر.س</div>
+                <div style="font-size: 10px; color: #00875A; font-weight: bold; margin-top: 6px; border-top: 1px dashed #ddd; padding-top: 4px;">+30 ر.س رصيد إضافي</div>
               </div>
             </div>
 
             <!-- Payment Methods -->
             <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">طرق الدفع الإلكتروني المعتمدة:</div>
-            <div style="display: flex; gap: 8px; margin-bottom: 18px;">
+            <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;">
               <div class="pay-method-chip active" onclick="selectPayMethod(this, 'مدى (Mada)')">
-                💳 مدى
+                💳 مدى (Mada)
               </div>
               <div class="pay-method-chip" onclick="selectPayMethod(this, 'Apple Pay')">
                 🍎 Apple Pay
               </div>
-              <div class="pay-method-chip" onclick="selectPayMethod(this, 'بطاقة ائتمانية Visa/Master')">
-                💳 Visa/Master
+              <div class="pay-method-chip" onclick="selectPayMethod(this, 'Visa / MasterCard')">
+                💳 Visa / MasterCard
+              </div>
+              <div class="pay-method-chip" onclick="selectPayMethod(this, 'STC Pay')">
+                ⚡ STC Pay
+              </div>
+              <div class="pay-method-chip" onclick="selectPayMethod(this, 'فوري Fawry')">
+                🟢 فوري (Fawry)
               </div>
             </div>
 
             <!-- Recharge Action Button -->
-            <button onclick="executeRecharge()" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
-              💳 إتمام عملية الشحن الآن
+            <button id="wallet-action-submit-btn" onclick="executeRecharge()" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
+              💳 إتمام الشحن المالي المباشر (100 ر.س)
             </button>
 
-            <!-- Transaction History -->
-            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">سجل الحركات الأخير:</div>
-            <div style="background: #fff; border-radius: 14px; border: 1px solid #e3e2d1; overflow: hidden;">
+            <!-- Transaction History (Cash entries) -->
+            <div style="font-size: 15px; font-weight: bold; color: #191919; margin-bottom: 10px;">سجل الحركات المالية الموثق (سحابة Supabase):</div>
+            <div id="wallet-tx-history" style="background: #fff; border-radius: 14px; border: 1px solid #e3e2d1; overflow: hidden;">
               <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
                 <div>
-                  <div style="font-weight: bold; font-size: 13px;">شحن باقة المتقن (+120 نقطة)</div>
-                  <small style="font-size: 10px; color: #888;">15 نوفمبر 2026 • بطاقة مدى</small>
+                  <div style="font-weight: bold; font-size: 13px;">شحن رصيد باقة ذهبية (+110.00 ر.س)</div>
+                  <small style="font-size: 10px; color: #888;">18 نوفمبر 2026 • مدى • TXN_RECHARGE_98214</small>
                 </div>
-                <span style="color: #00875A; font-weight: bold; font-size: 13px;">+100 ر.س</span>
+                <span style="color: #00875A; font-weight: bold; font-size: 13px;">+100.00 ر.س</span>
               </div>
               <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0;">
                 <div>
-                  <div style="font-weight: bold; font-size: 13px;">حجز حلقة تسميع مع الشيخ عبد الله</div>
-                  <small style="font-size: 10px; color: #888;">12 نوفمبر 2026 • خصم نقاط</small>
+                  <div style="font-weight: bold; font-size: 13px;">حجز جلسة تسميع مع الشيخ عبد الله</div>
+                  <small style="font-size: 10px; color: #888;">17 نوفمبر 2026 • خصم مباشر</small>
                 </div>
-                <span style="color: #c62828; font-weight: bold; font-size: 13px;">-20 نقطة</span>
+                <span style="color: #c62828; font-weight: bold; font-size: 13px;">-35.00 ر.س</span>
               </div>
               <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                  <div style="font-weight: bold; font-size: 13px;">مكافأة الفوز في مسابقة التجويد</div>
-                  <small style="font-size: 10px; color: #888;">10 نوفمبر 2026 • هدية نظام</small>
+                  <div style="font-weight: bold; font-size: 13px;">مكافأة الفوز في مسابقة التجويد الكبرى</div>
+                  <small style="font-size: 10px; color: #888;">15 نوفمبر 2026 • مكافأة نقدية</small>
                 </div>
-                <span style="color: #00875A; font-weight: bold; font-size: 13px;">+10 نقاط ⭐</span>
+                <span style="color: #00875A; font-weight: bold; font-size: 13px;">+50.00 ر.س ⭐</span>
               </div>
             </div>
           </div>
         </div>
-
 
         <!-- SCREEN 11: ISLAMIC LIBRARY SCREEN (المكتبة الإسلامية والمتون) -->
         <div id="screen-library" class="app-screen" style="background: #FCFBE8; overflow-y: auto;">
@@ -3490,17 +3559,35 @@
 • مجموع الجوائز: 100,000 ريال سعودي.`);
     }
 
-    // --- Wallet Screen Functions ---
-    let currentWalletBalance = 120;
-    let selectedPackagePts = 120;
-    let selectedPackagePrice = 100;
+    // --- Wallet Screen Functions (Direct Cash Balance - No Points) ---
+    let currentWalletBalance = 150.00;
+    let selectedPackageAmount = 100.00;
+    let selectedPackageBonus = 10.00;
     let selectedPayMethodName = 'مدى (Mada)';
+    let quickModalRechargeAmount = 100.00;
+    let quickModalPaymentMethod = 'مدى (Mada)';
 
-    function selectRechargePackage(el, pts, price) {
+    function updateAllWalletDisplays() {
+      // Update all cash balance elements across both phones
+      document.querySelectorAll('.wallet-cash-balance-val').forEach(el => {
+        el.innerText = currentWalletBalance.toFixed(2);
+      });
+      const legacyDisplay = document.getElementById('wallet-points-display');
+      if (legacyDisplay) {
+        legacyDisplay.innerText = currentWalletBalance.toFixed(0);
+      }
+    }
+
+    function selectRechargePackage(el, amount, bonus) {
       document.querySelectorAll('.wallet-package-card').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
-      selectedPackagePts = pts;
-      selectedPackagePrice = price;
+      selectedPackageAmount = amount;
+      selectedPackageBonus = bonus || 0;
+      
+      const btn = document.getElementById('wallet-action-submit-btn');
+      if (btn) {
+        btn.innerText = '💳 إتمام الشحن المالي المباشر (' + amount + ' ر.س)';
+      }
     }
 
     function selectPayMethod(el, name) {
@@ -3510,15 +3597,49 @@
     }
 
     function executeRecharge() {
-      currentWalletBalance += selectedPackagePts;
-      const balEl = document.getElementById('wallet-balance-num');
-      if (balEl) balEl.innerText = currentWalletBalance;
-      alert(`💳 تمت عملية الشحن بنجاح!
---------------------------------------------------
-• الباقة: ${selectedPackagePts} نقطة (${selectedPackagePrice} ر.س)
-• طريقة الدفع: ${selectedPayMethodName}
-• رصيدك الجديد: ${currentWalletBalance} نقطة
-• تم تسجيل الحركة في جدول wallet_transactions على Supabase.`);
+      const addedTotal = selectedPackageAmount + selectedPackageBonus;
+      currentWalletBalance += addedTotal;
+      updateAllWalletDisplays();
+
+      const txnRef = 'TXN_RECHARGE_' + Date.now();
+      
+      // Prepend to transaction history
+      const hist = document.getElementById('wallet-tx-history');
+      if (hist) {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0efe0; background: #F8FAF9;';
+        item.innerHTML = '<div><div style="font-weight: bold; font-size: 13px;">شحن رصيد مالي مباشر (+' + addedTotal.toFixed(2) + ' ر.س)</div><small style="font-size: 10px; color: #888;">الآن • ' + selectedPayMethodName + ' • ' + txnRef + '</small></div><span style="color: #00875A; font-weight: bold; font-size: 13px;">+' + selectedPackageAmount.toFixed(2) + ' ر.س</span>';
+        hist.insertBefore(item, hist.firstChild);
+      }
+
+      alert('💳 تمت عملية الشحن المالي المباشر بنجاح!\n--------------------------------------------------\n• المبلغ المشحون: ' + selectedPackageAmount.toFixed(2) + ' ر.س' + (selectedPackageBonus > 0 ? ' (+ ' + selectedPackageBonus.toFixed(2) + ' ر.س بونص إضافي)' : '') + '\n• وسيلة الدفع: ' + selectedPayMethodName + '\n• الرقم المرجعي المالي: ' + txnRef + '\n• رصيدك المتاح حالياً بالمحفظة: ' + currentWalletBalance.toFixed(2) + ' ر.س\n• تم التوثيق فورياً في سحابة Supabase (جدول wallet_transactions).');
+    }
+
+    function selectQuickRecharge(el, amount, bonus) {
+      document.querySelectorAll('.quick-recharge-chip').forEach(c => {
+        c.style.border = '1px solid #ddd';
+        c.style.background = '#fff';
+      });
+      el.style.border = '2px solid #00875A';
+      el.style.background = '#E8F5E9';
+      quickModalRechargeAmount = amount;
+      
+      const submitBtn = document.getElementById('modal-wallet-confirm-btn');
+      if (submitBtn) {
+        submitBtn.innerText = '🔒 تأكيد الشحن المالي المباشر (' + amount + ' ر.س)';
+      }
+    }
+
+    function selectModalPaymentChip(el, method) {
+      document.querySelectorAll('#modal-wallet-payment .payment-chip').forEach(c => {
+        c.classList.remove('selected');
+        const check = c.querySelector('.chip-check');
+        if (check) { check.innerText = '○'; check.style.opacity = '0.5'; }
+      });
+      el.classList.add('selected');
+      const check = el.querySelector('.chip-check');
+      if (check) { check.innerText = '✓'; check.style.opacity = '1'; }
+      quickModalPaymentMethod = method;
     }
 
     // --- Library Functions ---
@@ -3639,7 +3760,47 @@ ${text}
     // Initialize reels on load
     renderReel(0);
   
-    // INTERACTIVE MODALS LOGIC
+    // INTERACTIVE MODALS LOGIC (OTP with Country Search & Cash Wallet)
+    // Comprehensive Country Database with 34 Arab and International Countries
+    const countryDatabase = [
+      { code: 'SA', nameAr: 'المملكة العربية السعودية', nameEn: 'Saudi Arabia', dialCode: '+966', flag: '🇸🇦', example: '54 123 4567' },
+      { code: 'EG', nameAr: 'جمهورية مصر العربية', nameEn: 'Egypt', dialCode: '+20', flag: '🇪🇬', example: '10 1234 5678' },
+      { code: 'AE', nameAr: 'الإمارات العربية المتحدة', nameEn: 'United Arab Emirates', dialCode: '+971', flag: '🇦🇪', example: '50 123 4567' },
+      { code: 'KW', nameAr: 'دولة الكويت', nameEn: 'Kuwait', dialCode: '+965', flag: '🇰🇼', example: '9123 4567' },
+      { code: 'QA', nameAr: 'دولة قطر', nameEn: 'Qatar', dialCode: '+974', flag: '🇶🇦', example: '5512 3456' },
+      { code: 'BH', nameAr: 'مملكة البحرين', nameEn: 'Bahrain', dialCode: '+973', flag: '🇧🇭', example: '3612 3456' },
+      { code: 'OM', nameAr: 'سلطنة عُمان', nameEn: 'Oman', dialCode: '+968', flag: '🇴🇲', example: '9123 4567' },
+      { code: 'JO', nameAr: 'المملكة الأردنية الهاشمية', nameEn: 'Jordan', dialCode: '+962', flag: '🇯🇴', example: '79 123 4567' },
+      { code: 'PS', nameAr: 'دولة فلسطين', nameEn: 'Palestine', dialCode: '+970', flag: '🇵🇸', example: '59 123 4567' },
+      { code: 'MA', nameAr: 'المملكة المغربية', nameEn: 'Morocco', dialCode: '+212', flag: '🇲🇦', example: '612 345 678' },
+      { code: 'DZ', nameAr: 'الجمهورية الجزائرية', nameEn: 'Algeria', dialCode: '+213', flag: '🇩🇿', example: '551 234 567' },
+      { code: 'TN', nameAr: 'الجمهورية التونسية', nameEn: 'Tunisia', dialCode: '+216', flag: '🇹🇳', example: '20 123 456' },
+      { code: 'LY', nameAr: 'دولة ليبيا', nameEn: 'Libya', dialCode: '+218', flag: '🇱🇾', example: '91 234 5678' },
+      { code: 'SD', nameAr: 'جمهورية السودان', nameEn: 'Sudan', dialCode: '+249', flag: '🇸🇩', example: '91 234 5678' },
+      { code: 'YE', nameAr: 'الجمهورية اليمنية', nameEn: 'Yemen', dialCode: '+967', flag: '🇾🇪', example: '77 123 4567' },
+      { code: 'IQ', nameAr: 'جمهورية العراق', nameEn: 'Iraq', dialCode: '+964', flag: '🇮🇶', example: '780 123 4567' },
+      { code: 'SY', nameAr: 'الجمهورية العربية السورية', nameEn: 'Syria', dialCode: '+963', flag: '🇸🇾', example: '93 123 4567' },
+      { code: 'LB', nameAr: 'الجمهورية اللبنانية', nameEn: 'Lebanon', dialCode: '+961', flag: '🇱🇧', example: '70 123 456' },
+      { code: 'TR', nameAr: 'تركيا', nameEn: 'Turkey', dialCode: '+90', flag: '🇹🇷', example: '512 345 6789' },
+      { code: 'GB', nameAr: 'المملكة المتحدة (بريطانيا)', nameEn: 'United Kingdom', dialCode: '+44', flag: '🇬🇧', example: '7123 456789' },
+      { code: 'US', nameAr: 'الولايات المتحدة الأمريكية', nameEn: 'United States', dialCode: '+1', flag: '🇺🇸', example: '202 555 0123' },
+      { code: 'CA', nameAr: 'كندا', nameEn: 'Canada', dialCode: '+1', flag: '🇨🇦', example: '416 555 0123' },
+      { code: 'DE', nameAr: 'ألمانيا', nameEn: 'Germany', dialCode: '+49', flag: '🇩🇪', example: '151 23456789' },
+      { code: 'FR', nameAr: 'فرنسا', nameEn: 'France', dialCode: '+33', flag: '🇫🇷', example: '6 12 34 56 78' },
+      { code: 'MY', nameAr: 'ماليزيا', nameEn: 'Malaysia', dialCode: '+60', flag: '🇲🇾', example: '12 345 6789' },
+      { code: 'ID', nameAr: 'إندونيسيا', nameEn: 'Indonesia', dialCode: '+62', flag: '🇮🇩', example: '812 3456 7890' },
+      { code: 'PK', nameAr: 'باكستان', nameEn: 'Pakistan', dialCode: '+92', flag: '🇵🇰', example: '300 1234567' },
+      { code: 'IN', nameAr: 'الهند', nameEn: 'India', dialCode: '+91', flag: '🇮🇳', example: '91234 56789' },
+      { code: 'AU', nameAr: 'أستراليا', nameEn: 'Australia', dialCode: '+61', flag: '🇦🇺', example: '412 345 678' },
+      { code: 'NL', nameAr: 'هولندا', nameEn: 'Netherlands', dialCode: '+31', flag: '🇳🇱', example: '6 12345678' },
+      { code: 'IT', nameAr: 'إيطاليا', nameEn: 'Italy', dialCode: '+39', flag: '🇮🇹', example: '312 345 6789' },
+      { code: 'ES', nameAr: 'إسبانيا', nameEn: 'Spain', dialCode: '+34', flag: '🇪🇸', example: '612 34 56 78' },
+      { code: 'SE', nameAr: 'السويد', nameEn: 'Sweden', dialCode: '+46', flag: '🇸🇪', example: '70 123 45 67' },
+      { code: 'CH', nameAr: 'سويسرا', nameEn: 'Switzerland', dialCode: '+41', flag: '🇨🇭', example: '78 123 45 67' }
+    ];
+
+    let activeSelectedCountry = countryDatabase[0];
+
     function openOtpModal() {
       document.getElementById('modal-otp-login').style.display = 'flex';
       document.getElementById('otp-step-1').style.display = 'block';
@@ -3647,7 +3808,7 @@ ${text}
     }
 
     function sendOtpCode() {
-      const phone = document.getElementById('otp-phone-input').value;
+      const phone = document.getElementById('otp-phone-input').value.trim();
       if (!phone) { alert('يرجى إدخال رقم الجوال'); return; }
       document.getElementById('otp-step-1').style.display = 'none';
       document.getElementById('otp-step-2').style.display = 'block';
@@ -3655,19 +3816,111 @@ ${text}
 
     function confirmOtpLogin() {
       closeInteractiveModals();
-      alert('✅ تم التحقق من رمز OTP بنجاح عبر سحابة Supabase!\nالمستخدم موثق وجاهز.');
+      const fullPhone = activeSelectedCountry.dialCode + ' ' + document.getElementById('otp-phone-input').value.trim();
+      alert('✅ تم التحقق من رمز OTP بنجاح عبر سحابة Supabase!\nالمستخدم موثق برقم: ' + fullPhone);
       openScreen('reels');
+    }
+
+    function openCountryPicker() {
+      document.getElementById('modal-country-picker').style.display = 'flex';
+      renderCountryList(countryDatabase);
+      const searchInp = document.getElementById('country-search-input');
+      if (searchInp) {
+        searchInp.value = '';
+        setTimeout(() => searchInp.focus(), 150);
+      }
+    }
+
+    function closeCountryPicker() {
+      document.getElementById('modal-country-picker').style.display = 'none';
+    }
+
+    function renderCountryList(list) {
+      const container = document.getElementById('country-list-container');
+      if (!container) return;
+      if (list.length === 0) {
+        container.innerHTML = '<div style="padding: 24px; text-align: center; color: #888; font-size: 13px;">🔍 لا توجد نتائج مطابقة لبحثك</div>';
+        return;
+      }
+      container.innerHTML = list.map(c => {
+        return '<div class="country-picker-row" onclick="selectCountryItem(\'' + c.code + '\', \'' + c.flag + '\', \'' + c.dialCode + '\', \'' + c.nameAr + '\', \'' + c.example + '\')" style="display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid #f2f2f2; cursor: pointer; transition: background 0.15s;">' +
+          '<div style="display: flex; align-items: center; gap: 12px;">' +
+            '<span style="font-size: 22px;">' + c.flag + '</span>' +
+            '<div>' +
+              '<div style="font-weight: bold; font-size: 13px; color: #191919;">' + c.nameAr + '</div>' +
+              '<div style="font-size: 11px; color: #888;">' + c.nameEn + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="direction: ltr; font-weight: 700; color: #00875A; font-size: 13px; background: #E8F5E9; padding: 4px 8px; border-radius: 6px;">' +
+            c.dialCode +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function filterCountryPicker(query) {
+      const q = query.trim().toLowerCase();
+      const clearBtn = document.getElementById('country-search-clear');
+      if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
+      if (!q) {
+        renderCountryList(countryDatabase);
+        return;
+      }
+
+      const filtered = countryDatabase.filter(c => {
+        const cleanDial = c.dialCode.replace('+', '');
+        return c.nameAr.toLowerCase().includes(q) ||
+               c.nameEn.toLowerCase().includes(q) ||
+               c.dialCode.includes(q) ||
+               cleanDial.includes(q) ||
+               c.code.toLowerCase().includes(q);
+      });
+
+      renderCountryList(filtered);
+    }
+
+    function clearCountrySearch() {
+      const searchInp = document.getElementById('country-search-input');
+      if (searchInp) {
+        searchInp.value = '';
+        searchInp.focus();
+      }
+      filterCountryPicker('');
+    }
+
+    function selectCountryItem(code, flag, dialCode, nameAr, example) {
+      activeSelectedCountry = countryDatabase.find(c => c.code === code) || { code, flag, dialCode, nameAr, example };
+      
+      const flagEl = document.getElementById('selected-flag');
+      const dialEl = document.getElementById('selected-dial-code');
+      const hintEl = document.getElementById('country-name-hint');
+      const phoneInput = document.getElementById('otp-phone-input');
+
+      if (flagEl) flagEl.innerText = flag;
+      if (dialEl) dialEl.innerText = dialCode;
+      if (hintEl) hintEl.innerText = nameAr + ' (' + dialCode + ')';
+      if (phoneInput) {
+        phoneInput.placeholder = example;
+        phoneInput.value = example;
+      }
+
+      closeCountryPicker();
+      if (phoneInput) phoneInput.focus();
     }
 
     function openWalletPaymentModal() {
       document.getElementById('modal-wallet-payment').style.display = 'flex';
+      updateAllWalletDisplays();
     }
 
     function processWalletPayment() {
       closeInteractiveModals();
-      alert('💳 تم الدفع بنجاح عبر بوابة مدى (Moyasar Gateway)!\nتمت إضافة 500 نقطة إلى محفظتك السحابية.\nرقم العملية: TXN_MADA_' + Date.now());
-      const walletScore = document.getElementById('wallet-points-display');
-      if (walletScore) walletScore.innerText = '550';
+      currentWalletBalance += quickModalRechargeAmount;
+      updateAllWalletDisplays();
+
+      const txnRef = 'TXN_RECHARGE_' + Date.now();
+      alert('💳 تم شحن رصيد المحفظة المالي بنجاح عبر بوابة ' + quickModalPaymentMethod + '!\n--------------------------------------------------\n• المبلغ المضاف: ' + quickModalRechargeAmount.toFixed(2) + ' ر.س\n• رقم العملية الفريد: ' + txnRef + '\n• رصيدك المالي الحالي بالمحفظة: ' + currentWalletBalance.toFixed(2) + ' ر.س\n• تم توثيق المعاملة في سحابة Supabase.');
     }
 
     function openNotificationsCenter() {
@@ -3749,18 +4002,40 @@ ${text}
     </div>
   </div>
 
-  <!-- 1. Real Phone OTP Login Modal -->
+  <!-- 1. Real Phone OTP Login Modal (With International Country Search) -->
   <div class="etqan-interactive-modal" id="modal-otp-login">
     <div class="modal-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <div class="modal-title"><span>📱</span> التحقق برمز الجوال (OTP)</div>
+        <div class="modal-title"><span>📱</span> التحقق برقم الجوال السحابي (OTP)</div>
         <span onclick="closeInteractiveModals()" style="cursor: pointer; font-size: 20px; color: #888;">✕</span>
       </div>
-      <p style="font-size: 12px; color: #666; margin-bottom: 12px;">أدخل رقم جوالك لتصلك رسالة SMS بكود التحقق السحابي عبر Supabase:</p>
+      <p style="font-size: 12px; color: #666; margin-bottom: 12px;">أدخل رقم جوالك مع اختيار كود الدولة لتصلك رسالة SMS فورية بكود التحقق عبر سحابة Supabase:</p>
       
       <div id="otp-step-1">
-        <input type="tel" id="otp-phone-input" placeholder="+966 5X XXX XXXX" value="+966 54 123 4567" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 15px; margin-bottom: 14px; direction: ltr; text-align: center;">
-        <button onclick="sendOtpCode()" style="width: 100%; padding: 13px; background: #00875A; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer;">📩 إرسال كود التحقق</button>
+        <!-- International Country Selector Bar -->
+        <label style="font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 6px;">رقم الجوال ومفتاح الدولة:</label>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px; direction: ltr;">
+          <!-- Clickable Country Selector Trigger -->
+          <button type="button" onclick="openCountryPicker()" id="country-picker-btn" style="flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 10px 12px; background: #F8FAF9; border: 1.5px solid #00875A; border-radius: 10px; font-size: 14px; font-weight: bold; color: #191919; cursor: pointer; transition: all 0.2s;" title="انقر لتغيير كود الدولة">
+            <span id="selected-flag" style="font-size: 18px;">🇸🇦</span>
+            <span id="selected-dial-code" style="font-weight: 700; color: #00875A;">+966</span>
+            <span style="font-size: 10px; color: #666;">▼</span>
+          </button>
+          
+          <!-- Phone Number Input -->
+          <input type="tel" id="otp-phone-input" placeholder="54 123 4567" value="54 123 4567" style="flex: 1; min-width: 0; padding: 12px; border: 1.5px solid #ccc; border-radius: 10px; font-size: 15px; font-weight: 600; outline: none; background: #fff; letter-spacing: 0.5px;">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div id="country-hint" style="font-size: 11px; color: #555;">
+            الدولة المختارة: <strong id="country-name-hint" style="color: #00875A;">المملكة العربية السعودية (+966)</strong>
+          </div>
+          <span onclick="openCountryPicker()" style="font-size: 11px; color: #00875A; cursor: pointer; text-decoration: underline; font-weight: bold;">تغيير الدولة 🌍</span>
+        </div>
+
+        <button onclick="sendOtpCode()" style="width: 100%; padding: 13px; background: #00875A; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.25);">
+          📩 إرسال كود التحقق (OTP)
+        </button>
       </div>
 
       <div id="otp-step-2" style="display: none;">
@@ -3778,50 +4053,54 @@ ${text}
     </div>
   </div>
 
-  <!-- 2. Payment & Wallet Recharge Modal -->
+  <!-- 2. Payment & Wallet Recharge Modal (Direct Cash Without Points) -->
   <div class="etqan-interactive-modal" id="modal-wallet-payment">
     <div class="modal-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <div class="modal-title"><span>💳</span> شحن رصيد المحفظة</div>
+        <div class="modal-title"><span>💳</span> شحن رصيد المحفظة المالي</div>
         <span onclick="closeInteractiveModals()" style="cursor: pointer; font-size: 20px; color: #888;">✕</span>
       </div>
-      <p style="font-size: 12px; color: #666; margin-bottom: 10px;">اختر باقة النقاط المناسبة لحجز جلسات التسميع:</p>
+      <p style="font-size: 12px; color: #666; margin-bottom: 10px;">اختر مبلغ الشحن النقدي المباشر لمتابعة حجز الحلقات والجلسات (بدون نقاط):</p>
 
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px;">
-        <div style="border: 2px solid #00875A; background: #E8F5E9; border-radius: 10px; padding: 8px 4px; text-align: center; cursor: pointer;">
-          <strong style="color: #00875A; font-size: 14px; display: block;">500 نقطة</strong>
-          <small style="color: #555; font-size: 11px;">50 ر.س</small>
+        <div class="quick-recharge-chip" onclick="selectQuickRecharge(this, 50, 0)" style="border: 1px solid #ddd; background: #fff; border-radius: 10px; padding: 10px 4px; text-align: center; cursor: pointer;">
+          <strong style="color: #111; font-size: 15px; display: block;">50 ر.س</strong>
+          <small style="color: #666; font-size: 10px;">رصيد فوري</small>
         </div>
-        <div style="border: 1px solid #ddd; background: #fff; border-radius: 10px; padding: 8px 4px; text-align: center; cursor: pointer;">
-          <strong style="color: #111; font-size: 14px; display: block;">1000 نقطة</strong>
-          <small style="color: #555; font-size: 11px;">95 ر.س</small>
+        <div class="quick-recharge-chip selected" onclick="selectQuickRecharge(this, 100, 10)" style="border: 2px solid #00875A; background: #E8F5E9; border-radius: 10px; padding: 10px 4px; text-align: center; cursor: pointer;">
+          <strong style="color: #00875A; font-size: 15px; display: block;">100 ر.س</strong>
+          <small style="color: #00875A; font-size: 10px; font-weight: bold;">+10 ر.س بونص</small>
         </div>
-        <div style="border: 1px solid #ddd; background: #fff; border-radius: 10px; padding: 8px 4px; text-align: center; cursor: pointer;">
-          <strong style="color: #111; font-size: 14px; display: block;">2000 نقطة</strong>
-          <small style="color: #555; font-size: 11px;">180 ر.س</small>
+        <div class="quick-recharge-chip" onclick="selectQuickRecharge(this, 200, 30)" style="border: 1px solid #ddd; background: #fff; border-radius: 10px; padding: 10px 4px; text-align: center; cursor: pointer;">
+          <strong style="color: #111; font-size: 15px; display: block;">200 ر.س</strong>
+          <small style="color: #666; font-size: 10px;">+30 ر.س بونص</small>
         </div>
       </div>
 
-      <p style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 8px;">وسيلة الدفع:</p>
-      <div class="payment-chip selected">
+      <p style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 8px;">وسيلة الدفع المعتمدة:</p>
+      <div class="payment-chip selected" onclick="selectModalPaymentChip(this, 'مدى (Mada)')">
         <span>🇸🇦 مدى (Mada)</span>
-        <span>✓</span>
+        <span class="chip-check">✓</span>
       </div>
-      <div class="payment-chip">
+      <div class="payment-chip" onclick="selectModalPaymentChip(this, 'Apple Pay')">
         <span>🍏 Apple Pay</span>
-        <span style="opacity: 0.5;">○</span>
+        <span class="chip-check" style="opacity: 0.5;">○</span>
       </div>
-      <div class="payment-chip">
+      <div class="payment-chip" onclick="selectModalPaymentChip(this, 'فيزا / ماستركارد')">
         <span>💳 فيزا / ماستركارد</span>
-        <span style="opacity: 0.5;">○</span>
+        <span class="chip-check" style="opacity: 0.5;">○</span>
       </div>
-      <div class="payment-chip">
+      <div class="payment-chip" onclick="selectModalPaymentChip(this, 'STC Pay')">
         <span>⚡ STC Pay</span>
-        <span style="opacity: 0.5;">○</span>
+        <span class="chip-check" style="opacity: 0.5;">○</span>
+      </div>
+      <div class="payment-chip" onclick="selectModalPaymentChip(this, 'فوري (Fawry)')">
+        <span>🟢 فوري (Fawry - مصر والشرق الأوسط)</span>
+        <span class="chip-check" style="opacity: 0.5;">○</span>
       </div>
 
-      <button onclick="processWalletPayment()" style="width: 100%; margin-top: 10px; padding: 13px; background: linear-gradient(135deg, #00875A, #006C35); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
-        🔒 تأكيد الدفع الآمن (50 ر.س)
+      <button id="modal-wallet-confirm-btn" onclick="processWalletPayment()" style="width: 100%; margin-top: 10px; padding: 13px; background: linear-gradient(135deg, #00875A, #006C35); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,135,90,0.3);">
+        🔒 تأكيد الشحن المالي المباشر (100 ر.س)
       </button>
     </div>
   </div>
@@ -3862,5 +4141,43 @@ ${text}
     </div>
   </div>
     
+
+  <!-- 4. SEARCHABLE INTERNATIONAL COUNTRY CODE PICKER MODAL -->
+  <div class="etqan-interactive-modal" id="modal-country-picker" style="display: none; align-items: flex-end; z-index: 10002;" onclick="closeCountryPicker()">
+    <div class="modal-card" style="width: 100%; max-width: 440px; border-radius: 24px 24px 0 0; padding: 20px; max-height: 80vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+      <div style="width: 40px; height: 4px; background: #ddd; border-radius: 4px; margin: 0 auto 14px auto;"></div>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="modal-title" style="font-size: 17px; font-weight: bold; color: #191919;">
+          <span>🌍</span> اختيار الدولة ومفتاح الاتصال الدولي
+        </div>
+        <span onclick="closeCountryPicker()" style="cursor: pointer; font-size: 18px; color: #888; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #f0f0f0;">✕</span>
+      </div>
+
+      <!-- Live Search Input -->
+      <div style="position: relative; margin-bottom: 10px;">
+        <input type="text" id="country-search-input" placeholder="🔍 ابحث بالدولة أو الكود (مثال: مصر، 20، السعودية، 966)..." 
+               oninput="filterCountryPicker(this.value)" 
+               style="width: 100%; padding: 12px 14px; padding-left: 36px; border: 1.5px solid #00875A; border-radius: 12px; font-size: 13px; outline: none; background: #F8FAF9; box-sizing: border-box;">
+        <span id="country-search-clear" onclick="clearCountrySearch()" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; display: none; font-size: 14px;">✕</span>
+      </div>
+
+      <!-- Quick Arab Countries Pills -->
+      <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 8px; -webkit-overflow-scrolling: touch;">
+        <span onclick="filterCountryPicker('')" class="quick-c-pill" style="padding: 4px 10px; background: #00875A; color: #fff; border-radius: 14px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: bold;">الكل</span>
+        <span onclick="selectCountryItem('SA', '🇸🇦', '+966', 'المملكة العربية السعودية', '54 123 4567')" class="quick-c-pill" style="padding: 4px 10px; background: #E8F5E9; color: #00875A; border-radius: 14px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: bold;">🇸🇦 السعودية +966</span>
+        <span onclick="selectCountryItem('EG', '🇪🇬', '+20', 'جمهورية مصر العربية', '10 1234 5678')" class="quick-c-pill" style="padding: 4px 10px; background: #E8F5E9; color: #00875A; border-radius: 14px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: bold;">🇪🇬 مصر +20</span>
+        <span onclick="selectCountryItem('AE', '🇦🇪', '+971', 'الإمارات العربية', '50 123 4567')" class="quick-c-pill" style="padding: 4px 10px; background: #E8F5E9; color: #00875A; border-radius: 14px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: bold;">🇦🇪 الإمارات +971</span>
+        <span onclick="selectCountryItem('KW', '🇰🇼', '+965', 'الكويت', '9123 4567')" class="quick-c-pill" style="padding: 4px 10px; background: #E8F5E9; color: #00875A; border-radius: 14px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: bold;">🇰🇼 الكويت +965</span>
+        <span onclick="selectCountryItem('QA', '🇶🇦', '+974', 'قطر', '5512 3456')" class="quick-c-pill" style="padding: 4px 10px; background: #E8F5E9; color: #00875A; border-radius: 14px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: bold;">🇶🇦 قطر +974</span>
+      </div>
+
+      <!-- Countries List Container -->
+      <div id="country-list-container" style="flex: 1; overflow-y: auto; max-height: 380px; border-radius: 12px; border: 1px solid #eee; background: #fff;">
+        <!-- Populated via renderCountryList() -->
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
