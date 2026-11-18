@@ -175,3 +175,62 @@ INSERT INTO public.reels (user_name, user_role, is_volunteer, time_ago, avatar_u
 ('مريم مستخدمت', 'إمام مسجد', true, 'منذ 7 شهر', 'assets/images/profile.png', 'تحفه ما شاء الله', 'assets/videos/onboarding_video_1.mp4', 4, 5, 2),
 ('Ahmed', 'إمام مسجد', true, 'منذ 21 يوم', 'assets/images/welcome_sheikh_illustration.png', 'اعمل ما تحب', 'assets/videos/onboarding_video_2.mp4', 0, 0, 1),
 ('د / عبد الله الرويلي', 'مشرف مقرأة', false, 'منذ شهر', 'assets/images/profile.png', 'من اعظم اسباب تجعلك سعيداً في الحياه', 'assets/videos/onboarding_video_1.mp4', 234, 45, 18);
+
+-- =======================================================================
+-- 9. جدول حجوزات جلسات التسميع (Circle Bookings)
+-- =======================================================================
+CREATE TABLE IF NOT EXISTS public.circle_bookings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    student_name TEXT NOT NULL,
+    sheikh_name TEXT NOT NULL,
+    circle_title TEXT NOT NULL,
+    booking_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    time_slot TEXT NOT NULL, -- مثلاً: 05:00 م - 06:00 م
+    status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+    room_id TEXT NOT NULL, -- ZEGOCLOUD Room ID
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- =======================================================================
+-- 10. جدول المعاملات المالية وشحن المحفظة (Wallet Transactions)
+-- =======================================================================
+CREATE TABLE IF NOT EXISTS public.wallet_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    amount NUMERIC(10, 2) NOT NULL,
+    points_credited INTEGER NOT NULL DEFAULT 0,
+    payment_method TEXT NOT NULL CHECK (payment_method IN ('mada', 'visa', 'apple_pay', 'stc_pay', 'fawry', 'points')),
+    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('recharge', 'booking_fee', 'reward', 'refund')),
+    status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed')),
+    reference_number TEXT UNIQUE,
+    gateway_response JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- =======================================================================
+-- 11. جدول الإشعارات اللحظية وسجلات التنبيهات (Push Notifications)
+-- =======================================================================
+CREATE TABLE IF NOT EXISTS public.push_notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    notification_type TEXT NOT NULL CHECK (notification_type IN ('circle_live', 'booking_reminder', 'competition', 'wallet', 'general')),
+    is_read BOOLEAN DEFAULT false,
+    payload JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- =======================================================================
+-- بيانات أولية للحجوزات والمحفظة والإشعارات (Seed Data)
+-- =======================================================================
+INSERT INTO public.circle_bookings (student_name, sheikh_name, circle_title, booking_date, time_slot, status, room_id) VALUES
+('أحمد الطالب', 'الشيخ عبد الله السويسي', 'حلقة إتقان التجويد ومخارج الحروف', CURRENT_DATE, '05:00 م - 06:00 م', 'confirmed', 'circle_tajweed_101');
+
+INSERT INTO public.push_notifications (title, body, notification_type, is_read) VALUES
+('🕌 حلقة مباشرة الآن', 'الشيخ سعد علي بدأ حلقة تلاوة سورة البقرة الآن. انقر للانضمام.', 'circle_live', false),
+('📅 تذكير بموعد الجلسة', 'لديك جلسة تسميع مع الشيخ عبد الله السويسي اليوم الساعة 5:00 مساءً.', 'booking_reminder', false),
+('🏆 مسابقات إتقان الكبرى', 'تم فتح باب التسجيل في مسابقة القرآن الكريم السنوية بجوائز 50,000 ريال.', 'competition', true);
+

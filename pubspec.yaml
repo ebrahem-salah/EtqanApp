@@ -23,6 +23,7 @@ dependencies:
   audioplayers: ^6.0.0
   zego_uikit_prebuilt_call: ^4.16.0
   zego_uikit_prebuilt_live_streaming: ^3.7.0
+  crypto: ^3.0.3
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
