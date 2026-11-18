@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
+import '../../core/network/api_client.dart';
 import '../competitions/competitions_screen.dart';
 
 class ReelsHomeScreen extends StatefulWidget {
@@ -12,7 +13,56 @@ class ReelsHomeScreen extends StatefulWidget {
 
 class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
   final PageController _pageController = PageController();
+  final ApiClient _apiClient = ApiClient();
   int _currentIndex = 0;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLiveVideos();
+  }
+
+  Future<void> _loadLiveVideos() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await _apiClient.getVideos();
+      if (res.statusCode == 200 && res.data != null) {
+        final List items = res.data['data'] ?? [];
+        if (items.isNotEmpty) {
+          final liveReels = items.map<Map<String, dynamic>>((item) {
+            final user = item['user'] ?? {};
+            return {
+              'id': item['id'] ?? 1,
+              'userName': user['name'] ?? 'مستخدم إتقان',
+              'userRole': user['type'] == 'Sheikh' ? 'قارئ ومقرئ' : (user['is_volunteer'] == true ? 'متطوع' : 'طالب علم'),
+              'isVolunteer': user['is_volunteer'] == true,
+              'timeAgo': 'جديد',
+              'avatar': user['avatar_url'] ?? 'assets/images/profile.png',
+              'caption': item['description'] ?? 'تلاوة قرآنية مباركة',
+              'likes': item['likes_count'] ?? 0,
+              'comments': item['comments_count'] ?? 0,
+              'shares': 1,
+              'isLiked': item['is_liked'] == true,
+              'video_path': item['video_url'] ?? 'assets/videos/onboarding_video_1.mp4',
+            };
+          }).toList();
+
+          if (mounted) {
+            setState(() {
+              _reels.clear();
+              _reels.addAll(liveReels);
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   final List<Map<String, dynamic>> _reels = [
     {
@@ -153,7 +203,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           icon: reel['isLiked'] ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                           color: reel['isLiked'] ? Colors.redAccent : Colors.white,
                           label: reel['likes'].toString(),
-                          onTap: () {
+                          onTap: () async {
                             setState(() {
                               reel['isLiked'] = !reel['isLiked'];
                               if (reel['isLiked']) {
@@ -162,6 +212,11 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                                 reel['likes'] -= 1;
                               }
                             });
+                            try {
+                              if (reel['id'] != null) {
+                                await _apiClient.toggleLikeVideo(reel['id']);
+                              }
+                            } catch (_) {}
                           },
                         ),
                         const SizedBox(height: 16),

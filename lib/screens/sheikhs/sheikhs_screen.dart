@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
+import '../booking/circle_booking_screen.dart';
 
 class SheikhsScreen extends StatefulWidget {
   const SheikhsScreen({super.key});
@@ -9,12 +11,16 @@ class SheikhsScreen extends StatefulWidget {
 }
 
 class _SheikhsScreenState extends State<SheikhsScreen> {
+  final ApiClient _apiClient = ApiClient();
   String _searchQuery = '';
   int _selectedFilter = 0;
+  bool _isLoading = false;
 
   final List<String> _filters = ['الكل', 'المعتمدون', 'الأعلى تقييماً', 'المتاحون الآن'];
 
-  final List<Map<String, dynamic>> _sheikhs = [
+  List<Map<String, dynamic>> _liveSheikhs = [];
+
+  final List<Map<String, dynamic>> _fallbackSheikhs = [
     {
       'id': 1,
       'name': 'الشيخ سعد علي',
@@ -40,7 +46,7 @@ class _SheikhsScreenState extends State<SheikhsScreen> {
     {
       'id': 3,
       'name': 'الشيخ عبد الله السويسي',
-      'institution': 'جمعية تحفيظ القرآن بالسويس',
+      'institution': 'جمعية تحفيظ القرآن',
       'friends': 88,
       'videos': 12,
       'episodes': 34,
@@ -51,15 +57,64 @@ class _SheikhsScreenState extends State<SheikhsScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadLiveSheikhs();
+  }
+
+  Future<void> _loadLiveSheikhs() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await _apiClient.getSheikhs();
+      if (res.statusCode == 200 && res.data != null) {
+        final List items = res.data['data'] ?? [];
+        if (items.isNotEmpty) {
+          _liveSheikhs = items.map<Map<String, dynamic>>((s) {
+            final user = s['user'] ?? {};
+            return {
+              'id': s['id'] ?? 1,
+              'name': user['name'] ?? s['name'] ?? 'فضيلة الشيخ المقرئ',
+              'institution': s['institution']?['name'] ?? 'مؤسسة إتقان القرآنية',
+              'friends': s['students_count'] ?? 120,
+              'videos': s['videos_count'] ?? 10,
+              'episodes': s['classes_count'] ?? 35,
+              'rating': 4.9,
+              'is_following': false,
+              'specialty': s['specialization'] ?? 'تحفيظ وتجويد القرآن الكريم',
+              'avatar': user['avatar_url'],
+            };
+          }).toList();
+        }
+      }
+    } catch (_) {}
+
+    if (_liveSheikhs.isEmpty) {
+      _liveSheikhs = List.from(_fallbackSheikhs);
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final list = _liveSheikhs.where((s) {
+      final name = s['name'].toString().toLowerCase();
+      final specialty = s['specialty'].toString().toLowerCase();
+      final inst = s['institution'].toString().toLowerCase();
+      final q = _searchQuery.toLowerCase();
+      return name.contains(q) || specialty.contains(q) || inst.contains(q);
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAF8),
       appBar: AppBar(
         title: const Text('الشيوخ والمعلمون'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadLiveSheikhs,
           ),
         ],
       ),
@@ -99,19 +154,23 @@ class _SheikhsScreenState extends State<SheikhsScreen> {
                 final isSelected = _selectedFilter == index;
                 return Padding(
                   padding: const EdgeInsets.only(left: 8.0),
-                  child: ChoiceChip(
+                  child: FilterChip(
                     label: Text(_filters[index]),
                     selected: isSelected,
-                    selectedColor: AppColors.primary,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedFilter = index;
-                      });
+                    onSelected: (val) {
+                      setState(() => _selectedFilter = index);
                     },
+                    selectedColor: AppColors.primary.withOpacity(0.15),
+                    checkmarkColor: AppColors.primary,
+                    labelStyle: TextStyle(
+                      color: isSelected ? AppColors.primary : Colors.grey.shade700,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                    backgroundColor: Colors.white,
+                    side: BorderSide(
+                      color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                    ),
                   ),
                 );
               },
@@ -119,156 +178,111 @@ class _SheikhsScreenState extends State<SheikhsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Sheikh Cards List
+          // Sheikhs List
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _sheikhs.length,
-              itemBuilder: (context, index) {
-                final sheikh = _sheikhs[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Header Row
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: AppColors.primaryLight.withOpacity(0.3),
-                            child: const Icon(Icons.person, size: 32, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final sheikh = list[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      sheikh['name'],
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Icon(Icons.verified, color: Colors.blue, size: 16),
-                                  ],
+                                CircleAvatar(
+                                  radius: 26,
+                                  backgroundColor: const Color(0xFFE8F5E9),
+                                  child: const Text('👳‍♂️', style: TextStyle(fontSize: 26)),
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryLight.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(6),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            sheikh['name'],
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.verified, color: AppColors.primary, size: 16),
+                                        ],
                                       ),
-                                      child: Text(
+                                      const SizedBox(height: 2),
+                                      Text(
                                         sheikh['institution'],
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w600,
+                                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        sheikh['specialty'],
+                                        style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => CircleBookingScreen(
+                                          sheikhName: sheikh['name'],
+                                          circleTitle: 'جلسة خاصة: ${sheikh['specialty']}',
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      sheikh['specialty'],
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  child: const Text('حجز جلسة', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
-                          ),
-                          // Follow Button
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: sheikh['is_following'] ? Colors.grey.shade200 : AppColors.primary,
-                              foregroundColor: sheikh['is_following'] ? Colors.black87 : Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            const Divider(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildStat('⭐ التقييم', '${sheikh['rating']}'),
+                                _buildStat('👥 الطلاب', '${sheikh['friends']}'),
+                                _buildStat('🎥 التلاوات', '${sheikh['videos']}'),
+                                _buildStat('🕌 الحلقات', '${sheikh['episodes']}'),
+                              ],
                             ),
-                            onPressed: () {
-                              setState(() {
-                                sheikh['is_following'] = !sheikh['is_following'];
-                              });
-                            },
-                            child: Text(
-                              sheikh['is_following'] ? 'متابع' : '+ متابعة',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      const Divider(height: 1),
-                      const SizedBox(height: 12),
-                      // Stats Row: Friends, Videos, Episodes
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildStatItem('الأصدقاء', '${sheikh['friends']}'),
-                          _buildDivider(),
-                          _buildStatItem('الفيديوهات', '${sheikh['videos']}'),
-                          _buildDivider(),
-                          _buildStatItem('الحلقات', '${sheikh['episodes']}'),
-                          _buildDivider(),
-                          _buildStatItem('التقييم', '⭐ ${sheikh['rating']}'),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
+  Widget _buildStat(String label, String value) {
     return Column(
       children: [
-        Text(
-          value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-        ),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-        ),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
       ],
-    );
-  }
-
-  Widget _buildDivider() {
-    return Container(
-      height: 24,
-      width: 1,
-      color: Colors.grey.shade300,
     );
   }
 }

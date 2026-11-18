@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -9,8 +10,44 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  final ApiClient _apiClient = ApiClient();
   String _selectedCategory = 'الكل';
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLiveLibrary();
+  }
+
+  Future<void> _loadLiveLibrary() async {
+    try {
+      final res = await _apiClient.getLibraryBooks();
+      if (res.statusCode == 200 && res.data != null) {
+        final List items = res.data['data'] ?? [];
+        if (items.isNotEmpty) {
+          final liveBooks = items.map<Map<String, dynamic>>((b) => {
+            'id': b['id'],
+            'title': b['name_ar'] ?? b['name'] ?? 'كتاب إتقان',
+            'author': b['author'] ?? 'هيئة علماء إتقان',
+            'category': 'التجويد والقراءات',
+            'pages': b['pages_count'] ?? 120,
+            'hadiths': 50,
+            'color': const Color(0xFF00875A),
+            'icon': '📚',
+            'sampleChapter': 'المقدمة والمنهج',
+            'sampleText': 'كتاب معتمد في تعليم القرآن الكريم وتجويده.',
+          }).toList();
+
+          if (mounted) {
+            setState(() {
+              _books.insertAll(0, liveBooks);
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   final List<String> _categories = [
     'الكل',

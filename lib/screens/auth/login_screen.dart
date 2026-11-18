@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
+import '../../core/constants/country_codes.dart';
+import '../../core/widgets/country_picker_bottom_sheet.dart';
 import '../../providers/auth_provider.dart';
 import '../student/student_home_screen.dart';
 import 'register_screen.dart';
@@ -15,10 +17,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController(text: '123456789');
-  final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController(text: '0501111111');
+  final _passwordController = TextEditingController(text: 'password');
   bool _rememberMe = true;
   bool _obscurePassword = true;
+  String _selectedCountryCode = '+966';
+  String _selectedCountryFlag = '🇸🇦';
 
   @override
   void dispose() {
@@ -42,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await auth.login(phone, password);
+    final success = await auth.login(phone, password, countryCode: _selectedCountryCode);
 
     if ((success || phone.isNotEmpty) && mounted) {
       Navigator.of(context).pushReplacement(
@@ -108,26 +112,38 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Row(
                   children: [
                     // Flag chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: const [
-                          Text('🇸🇦', style: TextStyle(fontSize: 14)),
-                          SizedBox(width: 4),
-                          Text(
-                            '+966',
-                            style: TextStyle(
-                              color: Color(0xFF00875A),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                    GestureDetector(
+                      onTap: () async {
+                        final selected = await CountryPickerBottomSheet.show(context);
+                        if (selected != null) {
+                          setState(() {
+                            _selectedCountryCode = selected.dialCode;
+                            _selectedCountryFlag = selected.flag;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(_selectedCountryFlag, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(
+                              _selectedCountryCode,
+                              style: const TextStyle(
+                                color: Color(0xFF00875A),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                          Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
-                        ],
+                            const Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

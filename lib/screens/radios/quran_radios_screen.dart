@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
 
 class QuranRadiosScreen extends StatefulWidget {
   const QuranRadiosScreen({super.key});
@@ -9,10 +10,50 @@ class QuranRadiosScreen extends StatefulWidget {
 }
 
 class _QuranRadiosScreenState extends State<QuranRadiosScreen> with SingleTickerProviderStateMixin {
+  final ApiClient _apiClient = ApiClient();
   late AnimationController _animController;
   int _currentStationIndex = 0;
   bool _isPlaying = true;
   double _volume = 0.8;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    _loadLiveBroadcasts();
+  }
+
+  Future<void> _loadLiveBroadcasts() async {
+    try {
+      final res = await _apiClient.getBroadcasts();
+      if (res.statusCode == 200 && res.data != null) {
+        final List items = res.data['broadcasts']?['data'] ?? res.data['data'] ?? [];
+        if (items.isNotEmpty) {
+          final liveList = items.map<Map<String, dynamic>>((b) => {
+            'id': b['id'],
+            'name': b['name_ar'] ?? b['name'] ?? 'إذاعة إتقان',
+            'city': 'البث المباشر المعتمد',
+            'currentReciter': 'كبار القراء والمقرئين',
+            'currentSurah': 'تلاوات خاشعة وتفسير مبارك',
+            'frequency': 'بث سحابي عالي الدقة HD',
+            'listeners': 'مستمعين مباشر',
+            'streamUrl': b['stream_url'] ?? b['url'] ?? 'https://qurango.net/radio/tarateel',
+            'badge': 'مباشر 🔴',
+            'icon': '📻',
+          }).toList();
+
+          if (mounted) {
+            setState(() {
+              _stations.insertAll(0, liveList);
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   final List<Map<String, dynamic>> _stations = [
     {
