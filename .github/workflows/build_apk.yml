@@ -3,7 +3,7 @@ name: Build Etqan Android APK (تجميع تطبيق إتقان أندرويد)
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً بنقرة زر واحدة من الموقع
+  workflow_dispatch:
 
 jobs:
   build:
@@ -29,16 +29,22 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. تثبيت المكتبات (ZegoCloud + Supabase)
+      # 4. تثبيت الحزم والمكتبات
       - name: Install Dependencies
         run: flutter pub get
 
-      # 5. بناء ملف APK النهائي الجاهز للتثبيت
-      - name: Build Release APK
-        run: flutter build apk --release
+      # 5. تهيئة بيئة أندرويد وملف local.properties
+      - name: Configure Android Environment
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          chmod +x android/gradlew || true
 
-      # 6. رفع ملف الـ APK لتتمكن من تنزيله على هاتفك مباشرة
-      - name: Upload APK File
+      # 6. بناء ملف APK النهائي الجاهز للتثبيت
+      - name: Build Release APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      # 7. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: etqan-app-release
