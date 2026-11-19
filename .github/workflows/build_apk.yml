@@ -41,7 +41,7 @@ jobs:
 
       # 6. بناء ملف APK النهائي الجاهز للتثبيت
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
       # 7. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
       - name: Upload APK Artifact
