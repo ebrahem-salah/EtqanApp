@@ -180,8 +180,8 @@ class _MoreScreenPlaceholder extends StatelessWidget {
           // Menu Options
           _buildMenuTile(
             Icons.account_balance_wallet,
-            'محفظتي ورصيد النقاط',
-            '${user?.walletBalance.toStringAsFixed(0) ?? 100} نقطة',
+            'محفظتي ورصيد الحساب',
+            '${user?.walletBalance.toStringAsFixed(0) ?? 100} ر.س',
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const WalletScreen()),
