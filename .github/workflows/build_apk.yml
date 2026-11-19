@@ -21,31 +21,30 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 3. إعداد فلاتر في السحاب
+      # 3. إعداد فلاتر 3.24.5 المستقرة في السحاب
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
+          flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
 
-      # 4. تثبيت الحزم والمكتبات
-      - name: Install Dependencies
-        run: flutter pub get
-
-      # 5. تهيئة بيئة أندرويد وتوليد Gradle Wrapper
-      - name: Configure Android Environment & Generate Wrapper
+      # 4. توليد هيكل أندرويد المتوافق مع حزم فلاتر تلقائياً
+      - name: Scaffold Android & Install Dependencies
         run: |
-          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
-          cd android
-          gradle wrapper --gradle-version 8.3 || true
-          chmod +x gradlew || true
+          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
+          flutter create . --platforms=android --org com.etqan
+          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4G" >> android/gradle.properties
+          flutter pub get
 
-      # 6. بناء ملف APK النهائي الجاهز للتثبيت
+      # 5. بناء ملف APK النهائي الجاهز للتثبيت
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 7. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
+      # 6. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
