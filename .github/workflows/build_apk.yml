@@ -29,22 +29,21 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. توليد هيكل أندرويد الرسمي وتثبيت المكتبات
-      - name: Scaffold Android & Install Dependencies
-        run: |
-          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml || true
-          flutter create --project-name etqan . --platforms=android --org com.etqan
-          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml || true
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
-          echo "org.gradle.jvmargs=-Xmx4G" >> android/gradle.properties
-          flutter pub get
+      # 4. تثبيت المكتبات
+      - name: Install Dependencies
+        run: flutter pub get
 
-      # 5. بناء ملف APK النهائي الجاهز للتثبيت
+      # 5. تهيئة بيئة أندرويد
+      - name: Configure Android Environment
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          chmod +x android/gradlew || true
+
+      # 6. بناء ملف APK النهائي الجاهز للتثبيت
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 6. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
+      # 7. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
