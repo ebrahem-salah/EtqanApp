@@ -29,32 +29,21 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. تثبيت بيئة Gradle 7.6.4 الرسمية المتوافقة تماماً مع أندرويد
-      - name: Setup Gradle 7.6.4
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '7.6.4'
-
-      # 5. تهيئة بيئة أندرويد وتوليد الغلاف الرسمي
-      - name: Configure Android & Generate Wrapper
-        run: |
-          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
-          echo "android.useAndroidX=true" > android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
-          echo "org.gradle.jvmargs=-Xmx4G" >> android/gradle.properties
-          cd android
-          gradle wrapper --gradle-version 7.6.4
-          chmod +x gradlew
-
-      # 6. تثبيت المكتبات
+      # 4. تثبيت المكتبات
       - name: Install Dependencies
         run: flutter pub get
 
-      # 7. بناء ملف APK النهائي الجاهز للتثبيت
+      # 5. تهيئة بيئة أندرويد
+      - name: Configure Android
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          chmod +x android/gradlew
+
+      # 6. بناء ملف APK النهائي الجاهز للتثبيت
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 8. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
+      # 7. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
