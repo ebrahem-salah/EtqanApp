@@ -21,7 +21,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 3. إعداد فلاتر 3.24.5 المستقرة في السحاب
+      # 3. إعداد فلاتر 3.24.5 المستقرة
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
@@ -29,12 +29,12 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. توليد هيكل أندرويد المتوافق مع حزم فلاتر تلقائياً
+      # 4. توليد هيكل أندرويد الرسمي وتثبيت المكتبات
       - name: Scaffold Android & Install Dependencies
         run: |
-          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
-          flutter create . --platforms=android --org com.etqan
-          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml || true
+          flutter create --project-name etqan . --platforms=android --org com.etqan
+          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml || true
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
           echo "org.gradle.jvmargs=-Xmx4G" >> android/gradle.properties
