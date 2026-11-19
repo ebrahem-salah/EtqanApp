@@ -18,6 +18,12 @@ allprojects {
     }
 }
 
+ext.flutter = [
+    compileSdkVersion: 34,
+    targetSdkVersion: 34,
+    minSdkVersion: 21,
+]
+
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
@@ -27,6 +33,8 @@ subprojects {
 }
 
 subprojects {
+    project.ext.flutter = rootProject.ext.flutter
+
     def configureAndroid = { proj ->
         if (proj.hasProperty('android')) {
             proj.android {
@@ -37,6 +45,11 @@ subprojects {
                     compileSdkVersion 34
                 }
             }
+            try {
+                if (proj.android.extensions.findByName('flutter') == null) {
+                    proj.android.extensions.add('flutter', rootProject.ext.flutter)
+                }
+            } catch (Exception ignored) {}
         }
     }
     if (project.state.executed) {
