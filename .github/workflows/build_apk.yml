@@ -33,11 +33,13 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # 5. تهيئة بيئة أندرويد وملف local.properties
-      - name: Configure Android Environment
+      # 5. تهيئة بيئة أندرويد وتوليد Gradle Wrapper
+      - name: Configure Android Environment & Generate Wrapper
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
-          chmod +x android/gradlew || true
+          cd android
+          gradle wrapper --gradle-version 8.3 || true
+          chmod +x gradlew || true
 
       # 6. بناء ملف APK النهائي الجاهز للتثبيت
       - name: Build Release APK
