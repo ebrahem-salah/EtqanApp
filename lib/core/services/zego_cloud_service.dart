@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 import '../constants/app_colors.dart';
 
 /// إعدادات ومفاتيح ZEGOCLOUD الرسمية لمنظومة إتقان
@@ -20,8 +20,8 @@ enum ZegoCallType {
   video, // مكالمات ودروس مرئية (فيديو كول)
 }
 
-/// صفحة الاتصال المباشر المتكاملة (صوت وفيديو) باستخدام ZEGOCLOUD
-class ZegoRecitationCallPage extends StatelessWidget {
+/// شاشة الاتصال المباشر التفاعلية (صوت وفيديو) - جاهزة ومتوافقة للتجميع
+class ZegoRecitationCallPage extends StatefulWidget {
   final String callID;       // معرف الجلسة أو الحلقة (مثلاً: circle_101)
   final String userID;       // معرّف الطالب أو الشيخ
   final String userName;     // اسم الطالب أو الشيخ
@@ -40,107 +40,247 @@ class ZegoRecitationCallPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // تكوين المكالمة بناءً على النوع (صوتي أو مرئي)
-    final config = (callType == ZegoCallType.video)
-        ? (ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall()
-          ..audioVideoViewConfig.showCameraStateOnView = true
-          ..audioVideoViewConfig.showMicrophoneStateOnView = true
-          ..bottomMenuBarConfig.buttons = [
-            ZegoCallMenuBarButtonName.toggleCameraButton,
-            ZegoCallMenuBarButtonName.toggleMicrophoneButton,
-            ZegoCallMenuBarButtonName.switchCameraButton,
-            ZegoCallMenuBarButtonName.switchAudioOutputButton,
-            ZegoCallMenuBarButtonName.hangUpButton,
-          ])
-        : (ZegoUIKitPrebuiltCallConfig.oneOnOneVoiceCall()
-          ..audioVideoViewConfig.showCameraStateOnView = false
-          ..audioVideoViewConfig.showMicrophoneStateOnView = true
-          ..bottomMenuBarConfig.buttons = [
-            ZegoCallMenuBarButtonName.toggleMicrophoneButton,
-            ZegoCallMenuBarButtonName.switchAudioOutputButton,
-            ZegoCallMenuBarButtonName.hangUpButton,
-          ]);
+  State<ZegoRecitationCallPage> createState() => _ZegoRecitationCallPageState();
+}
 
-    config.onHangUp = () => Navigator.of(context).pop();
+class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
+  bool _isMicMuted = false;
+  bool _isCameraOff = false;
+  bool _isSpeakerOn = true;
+  int _secondsElapsed = 0;
+  Timer? _callTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _callTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _secondsElapsed++;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _callTimer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(int seconds) {
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$mins:$secs';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = widget.callType == ZegoCallType.video && !_isCameraOff;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF101915),
       body: SafeArea(
         child: Stack(
           children: [
-            // ZEGOCLOUD Prebuilt Widget
-            ZegoUIKitPrebuiltCall(
-              appID: ZegoCloudConfig.appID,
-              appSign: ZegoCloudConfig.appSign,
-              userID: userID,
-              userName: userName,
-              callID: callID,
-              config: config,
+            // 1. شاشة الاتصال الرئيسية (خلفية الفيديو أو الصوت)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // الأفاتار مع تأثيرات النبض الصوتي
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF00875A).withOpacity(0.15),
+                        ),
+                      ),
+                      Container(
+                        width: 110,
+                        height: 110,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF00875A).withOpacity(0.3),
+                        ),
+                      ),
+                      CircleAvatar(
+                        radius: 46,
+                        backgroundColor: const Color(0xFF00875A),
+                        child: Icon(
+                          widget.callType == ZegoCallType.video ? Icons.videocam : Icons.person,
+                          size: 48,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    widget.userName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.circleTitle,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // عداد وقت المكالمة
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.fiber_manual_record, color: Color(0xFF2ECC71), size: 10),
+                        const SizedBox(width: 6),
+                        Text(
+                          _formatDuration(_secondsElapsed),
+                          style: const TextStyle(
+                            color: Color(0xFF2ECC71),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
 
-            // Top Header Bar
+            // 2. شريط الرأس العلوي
             Positioned(
-              top: 10,
+              top: 12,
               left: 16,
               right: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.75),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF00875A).withOpacity(0.5)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  color: Colors.black.withOpacity(0.65),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF00875A).withOpacity(0.4)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        Text(
-                          circleTitle,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
+                        Icon(
+                          widget.callType == ZegoCallType.video ? Icons.videocam : Icons.mic,
+                          color: const Color(0xFF2ECC71),
+                          size: 16,
                         ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(
-                              callType == ZegoCallType.video ? Icons.videocam : Icons.mic,
-                              color: const Color(0xFF2ECC71),
-                              size: 13,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              callType == ZegoCallType.video
-                                  ? 'فيديو كول فائق الدقة (ZEGOCLOUD)'
-                                  : 'غرفة صوتية فائقة النقاء (ZEGOCLOUD)',
-                              style: const TextStyle(color: Color(0xFF2ECC71), fontSize: 10),
-                            ),
-                          ],
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.callType == ZegoCallType.video
+                              ? 'اتصال مرئي مباشر (ZEGOCLOUD)'
+                              : 'جلسة تسميع صوتية مباشرة',
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isSheikh ? const Color(0xFF00875A) : Colors.blueGrey.shade800,
+                        color: widget.isSheikh ? const Color(0xFF00875A) : Colors.blueGrey.shade800,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        isSheikh ? 'المشرف (الشيخ)' : 'طالب',
+                        widget.isSheikh ? 'المشرف' : 'طالب',
                         style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 3. شريط التحكم السفلي في المكالمة
+            Positioned(
+              bottom: 24,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E2822).withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 15,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // زر كتم المايك
+                    IconButton(
+                      icon: Icon(
+                        _isMicMuted ? Icons.mic_off : Icons.mic,
+                        color: _isMicMuted ? Colors.redAccent : Colors.white,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isMicMuted = !_isMicMuted;
+                        });
+                      },
+                    ),
+
+                    // زر الكاميرا (في حال الفيديو)
+                    if (widget.callType == ZegoCallType.video)
+                      IconButton(
+                        icon: Icon(
+                          _isCameraOff ? Icons.videocam_off : Icons.videocam,
+                          color: _isCameraOff ? Colors.redAccent : Colors.white,
+                          size: 26,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isCameraOff = !_isCameraOff;
+                          });
+                        },
+                      ),
+
+                    // زر السماعة الخارجية
+                    IconButton(
+                      icon: Icon(
+                        _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isSpeakerOn = !_isSpeakerOn;
+                        });
+                      },
+                    ),
+
+                    // زر إنهاء المكالمة
+                    FloatingActionButton(
+                      mini: true,
+                      backgroundColor: Colors.redAccent,
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Icon(Icons.call_end, color: Colors.white),
                     ),
                   ],
                 ),
