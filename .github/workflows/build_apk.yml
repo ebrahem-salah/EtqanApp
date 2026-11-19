@@ -21,10 +21,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 3. إعداد أحدث إصدار فلاتر المستقرة
+      # 3. إعداد فلاتر 3.27.4 المستقرة
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.27.4'
           channel: 'stable'
           cache: true
 
@@ -41,7 +42,7 @@ jobs:
 
       # 6. بناء ملف APK النهائي الجاهز للتثبيت
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
+        run: flutter build apk --release --no-tree-shake-icons
 
       # 7. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
       - name: Upload APK Artifact
