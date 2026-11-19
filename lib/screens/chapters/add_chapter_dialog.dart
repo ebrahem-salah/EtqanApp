@@ -4,6 +4,13 @@ import '../../core/constants/app_colors.dart';
 class AddChapterDialog extends StatefulWidget {
   const AddChapterDialog({super.key});
 
+  static Future<void> show(BuildContext context) {
+    return showDialog(
+      context: context,
+      builder: (context) => const AddChapterDialog(),
+    );
+  }
+
   @override
   State<AddChapterDialog> createState() => _AddChapterDialogState();
 }
@@ -33,7 +40,9 @@ class _AddChapterDialogState extends State<AddChapterDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
           child: Column(

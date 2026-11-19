@@ -51,10 +51,11 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
     if (!_isPaidSession) {
       // حلقة عامة مجانية: بدون أي خصم من رصيد المحفظة
       await SupabaseService().createBooking(
-        circleId: 'circle_free_${DateTime.now().millisecondsSinceEpoch}',
-        sheikhId: 'sheikh_swaisi',
-        bookedAt: DateTime.now(),
+        studentName: 'الطالب (أحمد)',
+        sheikhName: 'الشيخ محمد السويسي',
+        circleTitle: 'حلقة إتقان القرآن الكريم',
         timeSlot: '$selectedDay - $selectedTime',
+        roomId: 'circle_free_${DateTime.now().millisecondsSinceEpoch}',
       );
 
       if (!mounted) return;
@@ -112,10 +113,11 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
       });
 
       await SupabaseService().createBooking(
-        circleId: 'circle_vip_${DateTime.now().millisecondsSinceEpoch}',
-        sheikhId: 'sheikh_swaisi',
-        bookedAt: DateTime.now(),
+        studentName: 'الطالب (أحمد)',
+        sheikhName: 'الشيخ محمد السويسي',
+        circleTitle: 'جلسة خاصة VIP',
         timeSlot: '$selectedDay - $selectedTime',
+        roomId: 'circle_vip_${DateTime.now().millisecondsSinceEpoch}',
       );
 
       if (!mounted) return;

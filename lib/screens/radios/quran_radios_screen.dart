@@ -132,15 +132,6 @@ class _QuranRadiosScreenState extends State<QuranRadiosScreen> with SingleTicker
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-  }
-
-  @override
   void dispose() {
     _animController.dispose();
     super.dispose();
