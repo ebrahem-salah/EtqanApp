@@ -194,10 +194,23 @@
     }
 
     /* 0. SCREEN: SPLASH ANIMATION */
-    #screen-splash {
-      background: #FAF7DF url('assets/images/splash_arch_bg.png') center / cover no-repeat;
-      justify-content: center;
-      align-items: center;
+    #screen-splash,
+    #screen-splash-en {
+      background: #FAF7DF url('assets/images/splash_arch_bg.png') center / cover no-repeat !important;
+      justify-content: center !important;
+      align-items: center !important;
+    }
+
+    /* Strictly hide bottom navigation on splash, onboarding, auth, and call screens */
+    #phone-ar:has(#screen-splash.active) .app-bottom-nav,
+    #phone-ar:has(#screen-onboarding.active) .app-bottom-nav,
+    #phone-ar:has(#screen-login.active) .app-bottom-nav,
+    #phone-ar:has(#screen-register.active) .app-bottom-nav,
+    #phone-ar:has(#screen-call.active) .app-bottom-nav,
+    #phone-en:has(#screen-splash-en.active) .app-bottom-nav,
+    #phone-en:has(#screen-onboarding-en.active) .app-bottom-nav,
+    #phone-en:has(#screen-call.active) .app-bottom-nav {
+      display: none !important;
     }
     @keyframes logoZoomIn {
       0% { transform: scale(0.15); opacity: 0; }
@@ -1395,14 +1408,14 @@
 
           <div class="screens-container">
             <!-- SCREEN 0: SPLASH SCREEN -->
-            <div id="screen-splash-en" class="app-screen" onclick="openScreen('onboarding')" style="cursor: pointer;">
-              <div class="splash-logo-box">
+            <div id="screen-splash-en" class="app-screen" onclick="openScreen('onboarding')" style="cursor: pointer;" title="Click to enter onboarding">
+              <div class="splash-logo-box" id="anim-logo-en">
                 <img src="assets/logo/etqan_logo_original.png" alt="Etqan Logo">
               </div>
-              <div class="splash-mosques-box">
+              <div class="splash-mosques-box" id="anim-mosques-en">
                 <img src="assets/images/mosque_silhouette.png" alt="Mosque Silhouettes">
               </div>
-              <button onclick="event.stopPropagation(); restartSplash()" style="position: absolute; bottom: 20px; z-index: 50; background: #006C35; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer;">
+              <button onclick="event.stopPropagation(); restartSplash()" style="position: absolute; bottom: 20px; z-index: 50; background: #006C35; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,108,53,0.35);">
                 🔄 Restart Animation
               </button>
             </div>
@@ -1794,15 +1807,19 @@
               </div>
             </div>
 
-            <!-- Action Buttons -->
+            <!-- Action Buttons (Unified with English layout) -->
             <div>
-              <button style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px;" onclick="openScreen('login')">
-                <span style="font-size: 16px;">👤</span>
-                <span>تسجيل الدخول</span>
+              <button onclick="openScreen('register')" style="width: 100%; padding: 14px; background: #00875A; color: #fff; border: none; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,135,90,0.25);">
+                إنشاء حساب جديد
               </button>
-              <button style="width: 100%; padding: 14px; background: #191919; color: #fff; border: none; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer;" onclick="openScreen('reels')">
-                الاستمرار كزائر للتطبيق
+              <button onclick="openScreen('login')" style="width: 100%; padding: 13px; background: #fff; color: #00875A; border: 2px solid #00875A; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; margin-bottom: 12px;">
+                تسجيل الدخول
               </button>
+              <div style="text-align: center;">
+                <span onclick="openScreen('reels')" style="color: #666; font-size: 13px; font-weight: 500; cursor: pointer; padding: 6px 12px; display: inline-block;">
+                  الاستمرار كزائر &gt;
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -3130,12 +3147,14 @@
       const navBtn = document.getElementById('bnav-' + screenId);
       if (navBtn) navBtn.classList.add('active');
 
-      const bNav = document.querySelector('.app-bottom-nav');
-      if (['splash', 'onboarding', 'login', 'register', 'call'].includes(screenId)) {
-        if (bNav) bNav.style.display = 'none';
-      } else {
-        if (bNav) bNav.style.display = 'flex';
-      }
+      // Strictly hide bottom navigation on splash, onboarding, login, register, call on BOTH phones
+      document.querySelectorAll('.app-bottom-nav').forEach(nav => {
+        if (['splash', 'onboarding', 'login', 'register', 'call'].includes(screenId)) {
+          nav.style.display = 'none';
+        } else {
+          nav.style.display = 'flex';
+        }
+      });
 
       const sb = document.getElementById('phone-status-bar');
       const indicator = document.getElementById('phone-title-indicator');
@@ -3196,20 +3215,27 @@
     }
 
     function restartSplash() {
-      const logo = document.getElementById('anim-logo');
-      const mosques = document.getElementById('anim-mosques');
-      if (logo && mosques) {
-        logo.style.animation = 'none';
-        mosques.style.animation = 'none';
-        logo.offsetHeight; /* trigger reflow */
-        mosques.offsetHeight;
-        logo.style.animation = 'logoZoomIn 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
-        mosques.style.animation = 'mosqueSlideUp 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) forwards';
-      }
+      const logos = [document.getElementById('anim-logo'), document.getElementById('anim-logo-en')];
+      const mosques = [document.getElementById('anim-mosques'), document.getElementById('anim-mosques-en')];
+      logos.forEach(logo => {
+        if (logo) {
+          logo.style.animation = 'none';
+          logo.offsetHeight; /* trigger reflow */
+          logo.style.animation = 'logoZoomIn 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+        }
+      });
+      mosques.forEach(m => {
+        if (m) {
+          m.style.animation = 'none';
+          m.offsetHeight;
+          m.style.animation = 'mosqueSlideUp 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) forwards';
+        }
+      });
       clearTimeout(window.splashTimer);
       window.splashTimer = setTimeout(() => {
-        const splash = document.getElementById('screen-splash');
-        if (splash && splash.classList.contains('active')) {
+        const splashAr = document.getElementById('screen-splash');
+        const splashEn = document.getElementById('screen-splash-en');
+        if ((splashAr && splashAr.classList.contains('active')) || (splashEn && splashEn.classList.contains('active'))) {
           openScreen('onboarding');
         }
       }, 2900);
@@ -3552,31 +3578,48 @@
 
     // ALL 11 CATEGORIES & SUBCATEGORIES FROM USER SCREENSHOTS (Images 3 - 10)
     function switchCategory(el, catName) {
-      if (el) {
-        document.querySelectorAll('.cat-rail-btn').forEach(b => b.classList.remove('active'));
-        el.classList.add('active');
-      }
+      // Synchronize active button in both Arabic and English categories rails
+      document.querySelectorAll('.cat-rail-btn').forEach(b => {
+        const onclickAttr = b.getAttribute('onclick') || '';
+        if (onclickAttr.includes("'" + catName + "'")) {
+          b.classList.add('active');
+        } else if (!b.classList.contains('library-btn')) {
+          b.classList.remove('active');
+        }
+      });
 
-      const box = document.getElementById('subcat-box');
-      if (!box) return;
-
-      if (catName === 'القاعدة النورانية') {
-        // Images 3, 4, 5
-        box.innerHTML = `
-          <div class="subcat-level-card" onclick="openCallWithTitle('حلقة: ${catName} (المستوى العام)')">
-            <div class="subcat-level-banner">
-              <div class="subcat-level-number-badge">★</div>
-              <div class="subcat-level-title">${catName}</div>
-            </div>
-            <div class="subcat-level-subtitle">دروس ومجالس حية مباشرة</div>
-          </div>
-        `;
-      }
-
-      // Also populate English Subcategory Box if present
+      const boxAr = document.getElementById('subcat-box');
       const boxEn = document.getElementById('subcat-box-en');
-      if (boxEn) {
-        if (catName === 'القاعدة النورانية') {
+
+      // 1. Noorani Qaida (Both AR and EN render identical 3 level cards: 1, 2, 3)
+      if (catName === 'القاعدة النورانية') {
+        if (boxAr) {
+          boxAr.innerHTML = `
+            <div class="subcat-level-card" onclick="openCallWithTitle('حلقة: القاعدة النورانية - الجزء الأول (المستوى الأول)')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">1</div>
+                <div class="subcat-level-title">الجزء الأول</div>
+              </div>
+              <div class="subcat-level-subtitle">المستوى الأول</div>
+            </div>
+            <div class="subcat-level-card" onclick="openCallWithTitle('حلقة: القاعدة النورانية - الجزء الثاني (المستوى الثاني)')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">2</div>
+                <div class="subcat-level-title">الجزء الثاني</div>
+              </div>
+              <div class="subcat-level-subtitle">المستوى الثاني</div>
+            </div>
+            <div class="subcat-level-card" onclick="openCallWithTitle('حلقة: القاعدة النورانية - الجزء الثالث (المستوى الثالث)')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">3</div>
+                <div class="subcat-level-title">الجزء الثالث</div>
+              </div>
+              <div class="subcat-level-subtitle">المستوى الثالث</div>
+            </div>
+          `;
+        }
+
+        if (boxEn) {
           boxEn.innerHTML = `
             <div class="subcat-level-card" onclick="openCallWithTitle('Noorani Qaida - Part 1 (Level 1)')">
               <div class="subcat-level-banner">
@@ -3600,7 +3643,42 @@
               <div class="subcat-level-subtitle">Level Three</div>
             </div>
           `;
-        } else if (catName === 'القرآن الكريم') {
+        }
+      }
+      // 2. Holy Quran (Both AR and EN render 6 photo cards in 2-column grid)
+      else if (catName === 'القرآن الكريم') {
+        if (boxAr) {
+          boxAr.innerHTML = `
+            <div class="subcat-grid-2col">
+              <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة: القرآن الكريم - الحفظ والإتقان')">
+                <img src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300" class="subcat-photo-img" alt="الحفظ">
+                <div class="subcat-photo-title">الحفظ والإتقان</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة: القرآن الكريم - المراجعة والتثبيت')">
+                <img src="https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=300" class="subcat-photo-img" alt="المراجعة">
+                <div class="subcat-photo-title">المراجعة والتثبيت</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة: القرآن الكريم - التجويد ومخارج الحروف')">
+                <div style="height: 85px; background: #fafaf5; display: flex; align-items: center; justify-content: center; font-size: 28px;">🎙️</div>
+                <div class="subcat-photo-title">التجويد والمخارج</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة: القرآن الكريم - التدارس والتدبر')">
+                <img src="https://images.unsplash.com/photo-1509062522246-3755977927d7?w=300" class="subcat-photo-img" alt="التدارس">
+                <div class="subcat-photo-title">التدارس والتدبر</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة: القرآن الكريم - المقرأة الجماعية')">
+                <img src="https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?w=300" class="subcat-photo-img" alt="المقرأة">
+                <div class="subcat-photo-title">المقرأة الجماعية</div>
+              </div>
+              <div class="subcat-photo-card" onclick="openCallWithTitle('حلقة: القرآن الكريم - علوم القرآن والتفسير')">
+                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=300" class="subcat-photo-img" alt="علوم القرآن">
+                <div class="subcat-photo-title">علوم القرآن والتفسير</div>
+              </div>
+            </div>
+          `;
+        }
+
+        if (boxEn) {
           boxEn.innerHTML = `
             <div class="subcat-grid-2col">
               <div class="subcat-photo-card" onclick="openCallWithTitle('Quran: Memorization')">
@@ -3629,9 +3707,25 @@
               </div>
             </div>
           `;
-        } else {
+        }
+      }
+      // 3. Other Islamic Tracks
+      else {
+        if (boxAr) {
+          boxAr.innerHTML = `
+            <div class="subcat-level-card" onclick="openCallWithTitle('حلقة: ' + catName + ' (جلسة تفاعلية)')">
+              <div class="subcat-level-banner">
+                <div class="subcat-level-number-badge">★</div>
+                <div class="subcat-level-title">` + catName + `</div>
+              </div>
+              <div class="subcat-level-subtitle">جلسة تفاعلية مباشرة مع الشيخ</div>
+            </div>
+          `;
+        }
+
+        if (boxEn) {
           boxEn.innerHTML = `
-            <div class="subcat-level-card" onclick="openCallWithTitle('Circle: ${catName}')">
+            <div class="subcat-level-card" onclick="openCallWithTitle('Circle: ' + catName)">
               <div class="subcat-level-banner">
                 <div class="subcat-level-number-badge">★</div>
                 <div class="subcat-level-title">Islamic Circle</div>
