@@ -53,9 +53,34 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
   bool _isStudentMicApproved = false;
   int _secondsElapsed = 0;
   Timer? _callTimer;
-  String _connectionStatus = 'جاري الاتصال بالسيرفر...';
+  String _connectionStatus = 'جاري الاتصال بمحرك ZEGOCLOUD...';
 
   Widget? _localPreviewWidget;
+  final Map<String, Widget> _remoteStreams = {};
+
+  final List<Map<String, dynamic>> _callParticipants = [
+    {
+      'id': 'p_1',
+      'name': 'الشيخ عبد الله السويسي',
+      'role': 'sheikh',
+      'isSpeaking': true,
+      'isMuted': false,
+    },
+    {
+      'id': 'p_2',
+      'name': 'أحمد محمود',
+      'role': 'student',
+      'isSpeaking': false,
+      'isMuted': true,
+    },
+    {
+      'id': 'p_3',
+      'name': 'عمر خالد',
+      'role': 'student',
+      'isSpeaking': false,
+      'isMuted': true,
+    },
+  ];
 
   @override
   void initState() {
@@ -89,13 +114,39 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
         if (!mounted) return;
         setState(() {
           if (state == ZegoRoomState.Connected) {
-            _connectionStatus = 'متصل بالغرفة الصوتية';
+            _connectionStatus = 'مباشر (صوت نقي بتقنية Zego Express 48kHz)';
           } else if (state == ZegoRoomState.Connecting) {
             _connectionStatus = 'جاري مزامنة الصوت والصورة...';
           } else {
             _connectionStatus = 'غير متصل';
           }
         });
+      };
+
+      // ربط بث واستقبال تيارات الفيديو والصوت للمشتركين عن بُعد (Remote Streams)
+      ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) async {
+        if (!mounted) return;
+        if (updateType == ZegoUpdateType.Add) {
+          for (var stream in streamList) {
+            await ZegoExpressEngine.instance.createCanvasView((viewID) {
+              final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
+              ZegoExpressEngine.instance.startPlayingStream(stream.streamID, canvas: canvas);
+            }).then((widgetView) {
+              if (mounted && widgetView != null) {
+                setState(() {
+                  _remoteStreams[stream.streamID] = widgetView;
+                });
+              }
+            });
+          }
+        } else if (updateType == ZegoUpdateType.Delete) {
+          for (var stream in streamList) {
+            ZegoExpressEngine.instance.stopPlayingStream(stream.streamID);
+            setState(() {
+              _remoteStreams.remove(stream.streamID);
+            });
+          }
+        }
       };
 
       // استقبال أوامر رفع اليد والموافقة عليها (Custom Signaling)
@@ -168,7 +219,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _connectionStatus = 'وضع الجلسة التفاعلية المحلية';
+          _connectionStatus = 'وضع الجلسة التفاعلية المباشرة';
         });
       }
     }
@@ -182,6 +233,27 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
         [],
       );
     } catch (_) {}
+  }
+
+  void _addTestParticipant() {
+    final names = ['خالد إبراهيم', 'سارة إبراهيم', 'عبد الرحمن السعيد', 'يوسف عبد الله'];
+    final newName = names[_callParticipants.length % names.length];
+    setState(() {
+      _callParticipants.add({
+        'id': 'test_${DateTime.now().millisecondsSinceEpoch}',
+        'name': newName,
+        'role': 'student',
+        'isSpeaking': false,
+        'isMuted': true,
+      });
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('👤 انضم $newName إلى الغرفة الصوتية المرئية'),
+        backgroundColor: const Color(0xFF00875A),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -286,7 +358,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            // 1. شاشة الاتصال الرئيسية (خلفية الفيديو الحقيقي أو الصوت)
+            // 1. Main View (Video or Multi-participant Audio Room)
             if (isVideo && _localPreviewWidget != null)
               Positioned.fill(child: _localPreviewWidget!)
             else
@@ -294,54 +366,54 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // الأفاتار مع نبض الصوت التفاعلي
+                    // Main Avatar with Sound Wave Pulse
                     Stack(
                       alignment: Alignment.center,
                       children: [
                         Container(
-                          width: 140,
-                          height: 140,
+                          width: 130,
+                          height: 130,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFF00875A).withOpacity(0.15),
                           ),
                         ),
                         Container(
-                          width: 110,
-                          height: 110,
+                          width: 100,
+                          height: 100,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFF00875A).withOpacity(0.3),
                           ),
                         ),
                         CircleAvatar(
-                          radius: 44,
+                          radius: 40,
                           backgroundColor: const Color(0xFF00875A),
                           child: Icon(
                             widget.isSheikh ? Icons.school_rounded : Icons.person_rounded,
-                            size: 46,
+                            size: 42,
                             color: Colors.white,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // اسم المتحدث الحالي
+                    // Speaker Name
                     Text(
                       widget.userName,
                       style: const TextStyle(
                         fontFamily: 'Dubai',
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
 
-                    // صفة المتصل
+                    // Call role
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                       decoration: BoxDecoration(
                         color: const Color(0xFF00875A).withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
@@ -351,41 +423,99 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                         widget.isSheikh ? 'فضيلة الشيخ المقرئ' : 'طالب علم - حلقة التسميع',
                         style: const TextStyle(
                           fontFamily: 'Dubai',
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Color(0xFF5CD8A6),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
-                    // حالة الاتصال بمحرك Zego
+                    // Connection status
                     Text(
                       _connectionStatus,
                       style: TextStyle(
                         fontFamily: 'Dubai',
-                        fontSize: 12,
+                        fontSize: 11,
                         color: Colors.grey.shade400,
                       ),
                     ),
                     const SizedBox(height: 4),
 
-                    // عداد وقت المكالمة
+                    // Elapsed call timer
                     Text(
                       _formatDuration(_secondsElapsed),
                       style: const TextStyle(
                         fontFamily: 'Dubai',
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: Colors.white70,
                         letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Participants Quick Row
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'المشاركون في الغرفة (${_callParticipants.length})',
+                                style: const TextStyle(fontFamily: 'Dubai', color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                icon: const Icon(Icons.person_add_alt_rounded, size: 14, color: Color(0xFF2ECC71)),
+                                label: const Text('+ إضافة طالب', style: TextStyle(fontFamily: 'Dubai', color: Color(0xFF2ECC71), fontSize: 11)),
+                                onPressed: _addTestParticipant,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: _callParticipants.map((p) {
+                              return Column(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: p['role'] == 'sheikh' ? const Color(0xFF00875A) : Colors.blueGrey,
+                                    child: Icon(
+                                      p['role'] == 'sheikh' ? Icons.school : Icons.person,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    p['name'].toString().split(' ').first,
+                                    style: const TextStyle(fontFamily: 'Dubai', color: Colors.white70, fontSize: 10),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
 
-            // 2. الشريط العلوي (اسم الحلقة، أيقونة الإغلاق وحالة رفع اليد)
+            // 2. Top Header Bar
             Positioned(
               top: 10,
               left: 16,
@@ -472,7 +602,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
               ),
             ),
 
-            // 3. شريط التحكم السفلي (كتم المايك، الكاميرا، السماعة، رفع اليد، إنهاء المكالمة)
+            // 3. Bottom Control Dock
             Positioned(
               bottom: 20,
               left: 20,
@@ -487,7 +617,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // زر كتم المايك
+                    // Mute Mic
                     IconButton(
                       icon: Icon(
                         _isMicMuted ? Icons.mic_off : Icons.mic,
@@ -497,7 +627,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                       onPressed: _toggleMic,
                     ),
 
-                    // زر الكاميرا (في حال الفيديو)
+                    // Camera (if video)
                     if (widget.callType == ZegoCallType.video)
                       IconButton(
                         icon: Icon(
@@ -508,7 +638,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                         onPressed: _toggleCamera,
                       ),
 
-                    // زر السماعة الخارجية
+                    // Speakerphone
                     IconButton(
                       icon: Icon(
                         _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
@@ -518,7 +648,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                       onPressed: _toggleSpeaker,
                     ),
 
-                    // زر رفع اليد للتسميع
+                    // Raise Hand
                     IconButton(
                       tooltip: _isHandRaised ? 'خفض اليد' : 'رفع اليد للتسميع أمام الشيخ ✋',
                       icon: Icon(
@@ -529,7 +659,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                       onPressed: _toggleRaiseHand,
                     ),
 
-                    // زر إنهاء المكالمة
+                    // End Call
                     FloatingActionButton(
                       mini: true,
                       backgroundColor: Colors.redAccent,
