@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
 import '../call/live_recitation_room.dart';
+import '../chapters/circle_replay_screen.dart';
 
 class MyChaptersScreen extends StatefulWidget {
   const MyChaptersScreen({super.key});
@@ -501,23 +502,31 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
       itemCount: _finishedChapters.length,
       itemBuilder: (context, index) {
         final item = _finishedChapters[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFEEEEEE), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CircleReplayScreen(chapter: item),
               ),
-            ],
-          ),
-          child: Column(
-            children: [
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFEEEEEE), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
               // Top row: Left share, Right time
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -644,6 +653,42 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
                 ),
               ),
 
+              // Replay Button (مشاهدة تسجيل الحلقة)
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CircleReplayScreen(chapter: item),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  margin: const EdgeInsets.only(top: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00875A),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'مشاهدة تسجيل الحلقة 🎬',
+                        style: TextStyle(
+                          fontFamily: 'Dubai',
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               // Horizontal Divider
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.0),
@@ -679,7 +724,8 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
               ),
             ],
           ),
-        );
+        ),
+      );
       },
     );
   }

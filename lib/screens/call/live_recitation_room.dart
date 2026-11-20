@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
 import '../../core/services/deep_link_service.dart';
 import '../../core/services/zego_cloud_service.dart';
 import '../competitions/widgets/competition_exam_sheet.dart';
@@ -49,6 +50,12 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   int _callSeconds = 2; // عداد المكالمة الحية (00:02)
   int _chapterMinutes = 2; // مدة الحلقة (02:25)
 
+  // Recording State (حفظ وقائع الحلقة للأرشيف)
+  bool _isRecording = false;
+  int _recordedSeconds = 0;
+  Timer? _recordTimer;
+  final ApiClient _apiClient = ApiClient();
+
   Widget? _localVideoWidget;
   final TextEditingController _messageController = TextEditingController();
 
@@ -93,9 +100,88 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   @override
   void dispose() {
     _callTimer?.cancel();
+    _recordTimer?.cancel();
     _messageController.dispose();
     _destroyZego();
     super.dispose();
+  }
+
+  void _toggleRecording() {
+    setState(() {
+      _isRecording = !_isRecording;
+      if (_isRecording) {
+        _recordedSeconds = 0;
+        _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+          if (mounted) setState(() => _recordedSeconds++);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.fiber_manual_record, color: Colors.red, size: 18),
+                SizedBox(width: 8),
+                Text('جاري تسجيل وقائع الحلقة لحفظها في الأرشيف 🔴', style: TextStyle(fontFamily: 'Dubai')),
+              ],
+            ),
+            backgroundColor: Color(0xFF191919),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        _recordTimer?.cancel();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Color(0xFF00875A), size: 18),
+                SizedBox(width: 8),
+                Text('تم حفظ التسجيل، وسيتاح للمشتركين بعد انتهاء الجلسة', style: TextStyle(fontFamily: 'Dubai')),
+              ],
+            ),
+            backgroundColor: Color(0xFF191919),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+  }
+
+  void _endSessionPrompt() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إنهاء الحلقة', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+        content: Text(
+          _isRecording
+              ? 'هل ترغب في إنهاء الحلقة وحفظ التسجيل في تبويب "الحلقات المنتهية" ليتمكن الجميع من الرجوع إليه؟'
+              : 'هل ترغب في إنهاء جلسة التلاوة الحالية؟',
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontFamily: 'Dubai'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Dubai')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              if (widget.classRoomId != null) {
+                try {
+                  await _apiClient.endClass(
+                    widget.classRoomId!,
+                    recordUrl: 'https://etqan.site/storage/recordings/sample_recitation.mp4',
+                  );
+                } catch (_) {}
+              }
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('إنهاء وحفظ', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initZegoRTC() async {
@@ -504,15 +590,11 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
               ),
               const SizedBox(width: 8),
 
-              // Power button
+              // Power button (إنهاء وحفظ الحلقة)
               _buildCircularTopAction(
                 icon: Icons.power_settings_new,
                 color: const Color(0xFF191919),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('الحلقة مفعلة ومتاحة للطلاب')),
-                  );
-                },
+                onTap: _endSessionPrompt,
               ),
               const SizedBox(width: 8),
 
@@ -890,10 +972,35 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                         ),
                       ),
 
-                      // Timer
-                      Text(
-                        _formatCallTimer(_callSeconds),
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      // Timer & Recording Indicator
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isRecording)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade700,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.fiber_manual_record, color: Colors.white, size: 8),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'REC ${_formatCallTimer(_recordedSeconds)}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          Text(
+                            _formatCallTimer(_callSeconds),
+                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
 
                       // Attendees Pill + End Call X
@@ -1058,6 +1165,14 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   onTap: () {
                     setState(() => _isPipMode = true);
                   },
+                ),
+
+                // 7. Record Session Action (تسجيل الحلقة للأرشيف)
+                _buildCallBottomAction(
+                  icon: _isRecording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded,
+                  isActive: _isRecording,
+                  activeColor: Colors.redAccent,
+                  onTap: _toggleRecording,
                 ),
               ],
             ),

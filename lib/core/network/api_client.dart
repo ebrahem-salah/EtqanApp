@@ -325,6 +325,32 @@ class ApiClient {
     return await dio.get('/classes/$classId/appreciations');
   }
 
+  /// Get specific class details
+  Future<Response> getClassDetails(int classId) async {
+    return await dio.get('/classes/$classId');
+  }
+
+  /// End class / circle with optional recording URL
+  Future<Response> endClass(int classId, {String? recordUrl}) async {
+    return await dio.post('/classes/$classId/end', data: {
+      if (recordUrl != null) 'record_url': recordUrl,
+    });
+  }
+
+  /// Upload or save class recording
+  Future<Response> saveClassRecording(int classId, {String? recordUrl, String? filePath}) async {
+    if (filePath != null) {
+      final formData = FormData.fromMap({
+        'recording': await MultipartFile.fromFile(filePath, filename: 'session_$classId.mp4'),
+      });
+      return await dio.post('/classes/$classId/recording', data: formData);
+    } else {
+      return await dio.post('/classes/$classId/recording', data: {
+        if (recordUrl != null) 'record_url': recordUrl,
+      });
+    }
+  }
+
   // ================= 5. GOLDEN COMPETITIONS =================
 
   /// List active competitions
