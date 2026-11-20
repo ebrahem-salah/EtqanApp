@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
+import '../../core/services/share_service.dart';
 import '../call/live_recitation_room.dart';
 
 class MyChaptersScreen extends StatefulWidget {
@@ -10,230 +12,675 @@ class MyChaptersScreen extends StatefulWidget {
 }
 
 class _MyChaptersScreenState extends State<MyChaptersScreen> {
+  final ApiClient _apiClient = ApiClient();
   int _selectedTab = 0; // 0: الجارية, 1: المنتهية
+  bool _isLoading = false;
 
-  final List<Map<String, dynamic>> _activeChapters = [
+  List<Map<String, dynamic>> _ongoingChapters = [];
+  List<Map<String, dynamic>> _finishedChapters = [];
+
+  final List<Map<String, dynamic>> _fallbackOngoing = [
     {
+      'id': 101,
+      'title': 'تيست',
+      'supervisor': 'مشرف تجريبي 3',
+      'time': '07:32PM - 17/11/2026',
+      'subscribers': '0 / 1',
+      'avatar': null,
+    },
+    {
+      'id': 102,
       'title': 'ت 1',
       'supervisor': 'مشرف تجريبي 3',
       'time': '04:02PM - 16/11/2026',
-      'attendees': '0 / 1',
-      'status': 'جارية الآن',
+      'subscribers': '0 / 1',
+      'avatar': null,
     },
     {
+      'id': 103,
       'title': 'new',
       'supervisor': 'مشرف تجريبي 3',
       'time': '09:38AM - 16/11/2026',
-      'attendees': '0 / 1',
-      'status': 'جارية الآن',
+      'subscribers': '0 / 1',
+      'avatar': null,
     },
+  ];
+
+  final List<Map<String, dynamic>> _fallbackFinished = [
     {
-      'title': 'حلقة جزء عم',
-      'supervisor': 'شيخ مستقل 1',
-      'time': '08:24PM - 27/10/2026',
-      'attendees': '5 / 20',
-      'status': 'جارية الآن',
+      'id': 201,
+      'title': 'newwww',
+      'supervisor': 'مشرف تجريبي 3',
+      'time': '09:38AM - 16/11/2026',
+      'duration': '00:03:00',
+      'subscribers': '0 / 1',
+      'avatar': null,
     },
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadMyChapters();
+  }
+
+  Future<void> _loadMyChapters() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await _apiClient.getMyClasses();
+      if (res.statusCode == 200 && res.data != null) {
+        final List items = res.data['data'] ?? [];
+        final List<Map<String, dynamic>> ongoing = [];
+        final List<Map<String, dynamic>> finished = [];
+
+        for (var c in items) {
+          final isFinished = c['is_finished'] == true || c['status'] == 'completed';
+          final mapItem = {
+            'id': c['id'] ?? 1,
+            'title': c['name'] ?? 'حلقة تلاوة',
+            'supervisor': c['sheikh']?['name'] ?? c['supervisor']?['name'] ?? 'مشرف تجريبي 3',
+            'time': c['starts_at'] ?? '16/11/2026',
+            'duration': c['duration_formatted'] ?? '00:03:00',
+            'subscribers': '${c['students_count'] ?? 0} / ${c['capacity'] ?? 1}',
+            'avatar': c['image_url'],
+          };
+          if (isFinished) {
+            finished.add(mapItem);
+          } else {
+            ongoing.add(mapItem);
+          }
+        }
+
+        if (ongoing.isNotEmpty) _ongoingChapters = ongoing;
+        if (finished.isNotEmpty) _finishedChapters = finished;
+      }
+    } catch (_) {}
+
+    if (_ongoingChapters.isEmpty) {
+      _ongoingChapters = List.from(_fallbackOngoing);
+    }
+    if (_finishedChapters.isEmpty) {
+      _finishedChapters = List.from(_fallbackFinished);
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteChapter(Map<String, dynamic> chapter) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('حذف الحلقة', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+        content: Text('هل أنت متأكد من حذف حلقة "${chapter['title']}"؟', textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'Dubai')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Dubai', color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('حذف', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _finishedChapters.removeWhere((c) => c['id'] == chapter['id']);
+        _ongoingChapters.removeWhere((c) => c['id'] == chapter['id']);
+      });
+
+      try {
+        await _apiClient.deleteClass(chapter['id']);
+      } catch (_) {}
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم حذف الحلقة بنجاح', style: TextStyle(fontFamily: 'Dubai')),
+            backgroundColor: Color(0xFF00875A),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFBFBF4),
-      appBar: AppBar(
-        title: const Text('حلقاتي'),
-        leading: IconButton(
-          icon: const Icon(Icons.notifications_none),
-          onPressed: () {},
-        ),
-      ),
-      body: Column(
-        children: [
-          // Segmented Tabs Bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300),
+      backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Bar matching the screenshot
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.notifications_none, color: Color(0xFF191919), size: 22),
+                      onPressed: () {},
+                    ),
+                  ),
+                  const Text(
+                    'حلقاتي',
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF191919),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _selectedTab = 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: _selectedTab == 0 ? AppColors.primary : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'الحلقات الجارية',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Dubai',
-                          fontWeight: FontWeight.bold,
-                          color: _selectedTab == 0 ? Colors.white : Colors.black87,
+
+            // Segmented Tabs Bar (media_1795163173913_74f64438.jpg & media_1795163235290_e7d27c64.png)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE8E8E8)),
+              ),
+              child: Row(
+                children: [
+                  // Tab 1: الحلقات المنتهية
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedTab = 1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedTab == 1 ? const Color(0xFF00875A) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'الحلقات المنتهية',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: _selectedTab == 1 ? Colors.white : Colors.black87,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _selectedTab = 1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: _selectedTab == 1 ? AppColors.primary : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'الحلقات المنتهية',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Dubai',
-                          fontWeight: FontWeight.bold,
-                          color: _selectedTab == 1 ? Colors.white : Colors.black87,
+                  const SizedBox(width: 4),
+                  // Tab 0: الحلقات الجارية
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedTab = 0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedTab == 0 ? const Color(0xFF00875A) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'الحلقات الجارية',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: _selectedTab == 0 ? Colors.white : Colors.black87,
+                          ),
                         ),
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            // Content List
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  : _selectedTab == 0
+                      ? _buildOngoingList()
+                      : _buildFinishedList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Ongoing Chapters List (media_1795163173913_74f64438.jpg)
+  Widget _buildOngoingList() {
+    if (_ongoingChapters.isEmpty) {
+      return const Center(
+        child: Text(
+          'لا توجد حلقات جارية حالياً',
+          style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 15),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      itemCount: _ongoingChapters.length,
+      itemBuilder: (context, index) {
+        final item = _ongoingChapters[index];
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => LiveRecitationRoom(
+                  roomId: 'room_${item['id']}',
+                  circleTitle: item['title'],
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5EFE9), // الخلفية الخضراء الفاتحة من الصورة 2
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFD6E6DC)),
+            ),
+            child: Column(
+              children: [
+                // Top row: Left action buttons, Right time
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        // Power off button
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.power_settings_new, size: 20, color: Color(0xFF191919)),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تم تسجيل الخروج من الجلسة', style: TextStyle(fontFamily: 'Dubai')),
+                                  backgroundColor: Colors.black87,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Share button
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.share_outlined, size: 18, color: Color(0xFF00875A)),
+                            onPressed: () {
+                              ShareService.shareText(
+                                title: item['title'],
+                                text: 'انضم الآن إلى حلقة "${item['title']}" على تطبيق إتقان: https://etqan.site/classes/${item['id']}',
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      item['time'],
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Middle: Title, Supervisor, Avatar
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            item['title'],
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF191919),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item['supervisor'],
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: const Color(0xFFE0E0E0),
+                      backgroundImage: item['avatar'] != null ? NetworkImage(item['avatar']) : null,
+                      child: item['avatar'] == null
+                          ? const Icon(Icons.person, size: 30, color: Colors.white)
+                          : null,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Bottom row: Subscribers pill + Status badge (جارية الان)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Subscribers pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9ECC9), // اللون الأصفر الفاتح من الصورة
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'المشتركين ${item['subscribers']}',
+                            style: const TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF191919),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.person_outline, size: 16, color: Color(0xFF191919)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Badge: جارية الان ✔
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD3EADB),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'جارية الان',
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF00875A),
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Icon(Icons.check_circle, size: 16, color: Color(0xFF00875A)),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
+        );
+      },
+    );
+  }
 
-          // List of Chapters
-          Expanded(
-            child: _selectedTab == 0
-                ? ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _activeChapters.length,
-                    itemBuilder: (context, index) {
-                      final item = _activeChapters[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEAF4EE),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 16,
-                                      backgroundColor: Colors.white,
-                                      child: IconButton(
-                                        padding: EdgeInsets.zero,
-                                        icon: const Icon(Icons.power_settings_new, size: 16, color: Colors.black87),
-                                        onPressed: () {},
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    CircleAvatar(
-                                      radius: 16,
-                                      backgroundColor: Colors.white,
-                                      child: IconButton(
-                                        padding: EdgeInsets.zero,
-                                        icon: const Icon(Icons.share, size: 16, color: AppColors.primary),
-                                        onPressed: () {},
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  item['time'],
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item['title'],
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                    ),
-                                    Text(
-                                      item['supervisor'],
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                    ),
-                                  ],
-                                ),
-                                const CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor: Colors.grey,
-                                  child: Icon(Icons.person, color: Colors.white),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFBF4D8),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.group_outlined, size: 14, color: Colors.black87),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'المشتركين ${item['attendees']}',
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                  ),
-                                  child: const Text('دخول الحلقة', style: TextStyle(fontSize: 12, color: Colors.white)),
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => LiveRecitationRoom(
-                                          roomId: 'room_${item['title']}',
-                                          circleTitle: item['title'],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  )
-                : const Center(
-                    child: Text(
-                      'لا توجد حلقات منتهية حالياً',
-                      style: TextStyle(fontFamily: 'Dubai', color: Colors.grey),
+  // Finished Chapters List (media_1795163235290_e7d27c64.png)
+  Widget _buildFinishedList() {
+    if (_finishedChapters.isEmpty) {
+      return const Center(
+        child: Text(
+          'لا توجد حلقات منتهية حالياً',
+          style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 15),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      itemCount: _finishedChapters.length,
+      itemBuilder: (context, index) {
+        final item = _finishedChapters[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEEEEEE), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Top row: Left share, Right time
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFE8E8E8)),
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.share_outlined, size: 18, color: Color(0xFF00875A)),
+                      onPressed: () {
+                        ShareService.shareText(
+                          title: item['title'],
+                          text: 'حلقة "${item['title']}" على إتقان: https://etqan.site/classes/${item['id']}',
+                        );
+                      },
                     ),
                   ),
+                  Text(
+                    item['time'],
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Middle: Title, Supervisor, Avatar
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          item['title'],
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF191919),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item['supervisor'],
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: const Color(0xFFE0E0E0),
+                    backgroundImage: item['avatar'] != null ? NetworkImage(item['avatar']) : null,
+                    child: item['avatar'] == null
+                        ? const Icon(Icons.person, size: 30, color: Colors.white)
+                        : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Duration Row: مدة الحلقة : 00:03:00 ⏱
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'مدة الحلقة : ${item['duration']}',
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.access_time_outlined, size: 16, color: Color(0xFF191919)),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Subscribers pill
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9ECC9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'المشتركين ${item['subscribers']}',
+                        style: const TextStyle(
+                          fontFamily: 'Dubai',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF191919),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.person_outline, size: 16, color: Color(0xFF191919)),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Horizontal Divider
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Divider(
+                  color: Color(0xFFF0F0F0),
+                  thickness: 1,
+                  height: 1,
+                ),
+              ),
+
+              // Bottom Delete Chapter Action (حذف الحلقة 🗑)
+              InkWell(
+                onTap: () => _deleteChapter(item),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.delete_outline, size: 20, color: Colors.grey.shade600),
+                      const SizedBox(width: 6),
+                      Text(
+                        'حذف الحلقة',
+                        style: TextStyle(
+                          fontFamily: 'Dubai',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

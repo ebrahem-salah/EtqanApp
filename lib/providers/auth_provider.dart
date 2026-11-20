@@ -204,6 +204,23 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
+  /// Update current user data in memory
+  void updateUserData({String? name, String? phone, String? email}) {
+    if (_currentUser != null) {
+      _currentUser = UserModel(
+        id: _currentUser!.id,
+        name: name ?? _currentUser!.name,
+        email: email ?? _currentUser!.email,
+        phone: phone ?? _currentUser!.phone,
+        role: _currentUser!.role,
+        avatar: _currentUser!.avatar,
+        walletBalance: _currentUser!.walletBalance,
+        quranHifzAmount: _currentUser!.quranHifzAmount,
+      );
+      notifyListeners();
+    }
+  }
+
   /// تسجيل الخروج وحذف التوكن
   Future<void> logout() async {
     try {

@@ -201,8 +201,59 @@ class ApiClient {
   /// Toggle follow / friend
   Future<Response> toggleFriend(int userId) async {
     return await dio.post('/friends/toggle-follow', data: {
+      'user_id': userId,
       'friend_id': userId,
     });
+  }
+
+  /// Get my friends list
+  Future<Response> getMyFriends() async {
+    return await dio.get('/friends/my-friends');
+  }
+
+  /// Delete class
+  Future<Response> deleteClass(int classId) async {
+    return await dio.delete('/classes/$classId');
+  }
+
+  /// Update user profile
+  Future<Response> updateProfile({
+    String? name,
+    String? email,
+    String? phone,
+    String? countryCode,
+    String? avatar,
+  }) async {
+    return await dio.post('/profile', data: {
+      if (name != null) 'name': name,
+      if (email != null) 'email': email,
+      if (phone != null) 'phone': phone,
+      if (countryCode != null) 'country_code': countryCode,
+      if (avatar != null) 'avatar': avatar,
+    });
+  }
+
+  /// Change password
+  Future<Response> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    return await dio.post('/profile/change-password', data: {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+      'new_password_confirmation': confirmPassword,
+    });
+  }
+
+  /// Delete account
+  Future<Response> deleteAccount() async {
+    return await dio.delete('/profile');
+  }
+
+  /// Get user videos
+  Future<Response> getUserVideos(int userId) async {
+    return await dio.get('/users/$userId/videos');
   }
 
   /// Classes created by user

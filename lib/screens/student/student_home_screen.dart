@@ -17,6 +17,9 @@ import '../library/library_screen.dart';
 import '../radios/quran_radios_screen.dart';
 import '../quran_tools/khatmah_azkar_screen.dart';
 import '../sheikh_dashboard/sheikh_dashboard_screen.dart';
+import 'my_videos_screen.dart';
+import '../profile/edit_profile_screen.dart';
+import '../chat/chat_conversation_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -112,181 +115,406 @@ class _MoreScreenPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.currentUser;
-    final isSheikh = user?.role == UserRole.sheikh;
+    final userName = user?.name.isNotEmpty == true ? user!.name : 'مشرف تجريبي 3';
+    final userPhone = user?.phone.isNotEmpty == true ? user!.phone : '+966966111111';
+    final walletBal = user?.walletBalance.toStringAsFixed(1) ?? '0.0';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAF8),
-      appBar: AppBar(
-        title: const Text('المزيد والإعدادات'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // User Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10),
-              ],
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.primaryLight.withOpacity(0.3),
-                  child: const Icon(Icons.person, size: 36, color: AppColors.primary),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user?.name.isNotEmpty == true ? user!.name : 'أحمد عبد المنعم',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية من الصورة 4
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Top Bar: Notification Bell & "المزيد" Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isSheikh ? 'حساب شيخ ومعلم معتمد' : 'حساب دارس وباحث',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      child: IconButton(
+                        icon: const Icon(Icons.notifications_none, color: Color(0xFF191919), size: 22),
+                        onPressed: () {},
                       ),
-                    ],
-                  ),
+                    ),
+                    const Text(
+                      'المزيد',
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF191919),
+                      ),
+                    ),
+                  ],
                 ),
-                OutlinedButton(
-                  onPressed: () {
-                    auth.switchUserRole();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          auth.currentUser?.role == UserRole.sheikh
-                              ? 'تم التبديل إلى واجهة: الشيخ'
-                              : 'تم التبديل إلى واجهة: الدارس',
+              ),
+
+              // Profile Hero with Islamic Arch Background (media_1795163241217_9b26dc60.jpg)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Mosque Arch Silhouette
+                    Container(
+                      width: 220,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE5EFE9).withOpacity(0.8),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(110),
+                          bottom: Radius.circular(20),
                         ),
-                        duration: const Duration(seconds: 1),
                       ),
-                    );
-                  },
-                  child: const Text('تبديل الدور', style: TextStyle(fontSize: 11)),
+                    ),
+                    Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        // Avatar Circle
+                        Container(
+                          width: 84,
+                          height: 84,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 46,
+                              color: Color(0xFF78909C),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // User Name
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF191919),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        // Phone Number
+                        Text(
+                          userPhone,
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+              ),
 
-          // Menu Options
-          _buildMenuTile(
-            Icons.account_balance_wallet,
-            'محفظتي ورصيد الحساب',
-            '${user?.walletBalance.toStringAsFixed(0) ?? 100} ر.س',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WalletScreen()),
-              );
-            },
-          ),
-          _buildMenuTile(
-            Icons.emoji_events,
-            'مسابقة فرسان إتقان 2026',
-            '100,000 ر.س 🏆',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CompetitionsScreen()),
-              );
-            },
-          ),
-          _buildMenuTile(Icons.bookmark, 'العناصر والمقاطع المحفوظة', ''),
-          _buildMenuTile(
-            Icons.library_books,
-            'المكتبة الإسلامية والكتب',
-            '20 كتاباً متون وتفسير',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LibraryScreen()),
-              );
-            },
-          ),
-          _buildMenuTile(
-            Icons.radio,
-            'الإذاعات القرآنية المباشرة',
-            'بث حي 🔴',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const QuranRadiosScreen()),
-              );
-            },
-          ),
-          _buildMenuTile(
-            Icons.menu_book,
-            'الورد اليومي والأذكار والقبلة',
-            'الجزء 12 🔥',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const KhatmahAzkarScreen()),
-              );
-            },
-          ),
-          _buildMenuTile(
-            Icons.admin_panel_settings,
-            'لوحة تحكم الشيخ المقرئ',
-            'تبديل الحساب 👳‍♂️',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SheikhDashboardScreen()),
-              );
-            },
-          ),
-          _buildMenuTile(Icons.headset_mic, 'الدعم الفني والمساعدة', ''),
-          _buildMenuTile(Icons.info_outline, 'عن منصة إتقان', 'الإصدار 1.0.0'),
+              const SizedBox(height: 14),
 
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.mic, color: Colors.white),
-            label: const Text('دخول غرفة تسميع تجريبية', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => LiveRecitationRoom(
-                    roomId: 'test_circle_101',
-                    circleTitle: 'حلقة إتقان سورة الفاتحة والبقرة',
-                    isSheikh: isSheikh,
+              // 4 Circular Quick Action Buttons (media_1795163241217_9b26dc60.jpg)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    // 1. محادثاتي
+                    _buildCircularAction(
+                      icon: Icons.chat_bubble_outline,
+                      label: 'محادثاتي',
+                      hasNotificationDot: true,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ChatConversationScreen(
+                              recipientId: 1,
+                              recipientName: 'مشرف الدعم الفني',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // 2. الاصدقاء
+                    _buildCircularAction(
+                      icon: Icons.people_outline,
+                      label: 'الاصدقاء',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const SheikhsScreen()),
+                        );
+                      },
+                    ),
+                    // 3. التطوع
+                    _buildCircularAction(
+                      icon: Icons.assignment_outlined,
+                      label: 'التطوع',
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: const Text('برنامج التطوع القرآني', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+                            content: const Text(
+                              'برنامج التطوع في منصة إتقان يتيح لحفظة كتاب الله تقديم حصص تسميع وتصحيح مجانية لوجه الله تعالى.',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(fontFamily: 'Dubai'),
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00875A),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('حسناً', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    // 4. الإذاعات
+                    _buildCircularAction(
+                      icon: Icons.radio_outlined,
+                      label: 'الإذاعات',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const QuranRadiosScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Menu List Items (media_1795163241217_9b26dc60.jpg)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  children: [
+                    // المحفظة
+                    _buildMenuItem(
+                      title: 'المحفظة',
+                      icon: Icons.account_balance_wallet_outlined,
+                      leadingText: '$walletBal دولار',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const WalletScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // الحلقات المضافة
+                    _buildMenuItem(
+                      title: 'الحلقات المضافة',
+                      icon: Icons.video_library_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ChaptersScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // فيديوهاتي
+                    _buildMenuItem(
+                      title: 'فيديوهاتي',
+                      icon: Icons.smart_display_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const MyVideosScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // حسابي
+                    _buildMenuItem(
+                      title: 'حسابي',
+                      icon: Icons.manage_accounts_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // تواصل معنا
+                    _buildMenuItem(
+                      title: 'تواصل معنا',
+                      icon: Icons.contact_support_outlined,
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: const Text('تواصل معنا', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+                            content: const Text(
+                              'فريق دعم منصة إتقان متاح لخدمتكم 24/7 عبر البريد: support@etqan.site أو واتساب الدعم الفني.',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(fontFamily: 'Dubai'),
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00875A),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('إغلاق', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircularAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool hasNotificationDot = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE8E8E8)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(icon, color: const Color(0xFF191919), size: 24),
+                ),
+              ),
+              if (hasNotificationDot)
+                Positioned(
+                  top: 2,
+                  right: 2,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF00875A),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              );
-            },
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Dubai',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF00875A),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuTile(IconData icon, String title, String trailing, {VoidCallback? onTap}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(icon, color: AppColors.primary),
-        title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildMenuItem({
+    required String title,
+    required IconData icon,
+    String? leadingText,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEEEEE), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            if (trailing.isNotEmpty)
-              Text(trailing, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
-            const SizedBox(width: 6),
-            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+            if (leadingText != null)
+              Text(
+                leadingText,
+                style: const TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF00875A),
+                ),
+              ),
+            const Spacer(),
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Dubai',
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF191919),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(icon, color: const Color(0xFF191919), size: 22),
           ],
         ),
       ),
