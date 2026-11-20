@@ -3,7 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../call/live_recitation_room.dart';
 import '../booking/circle_booking_screen.dart';
 import '../library/library_screen.dart';
-import 'add_chapter_dialog.dart';
+import 'add_chapter_screen.dart';
 
 class ChaptersScreen extends StatefulWidget {
   const ChaptersScreen({super.key});
@@ -14,8 +14,9 @@ class ChaptersScreen extends StatefulWidget {
 
 class _ChaptersScreenState extends State<ChaptersScreen> {
   int _selectedCategoryIndex = 0;
+  final ApiClient _apiClient = ApiClient();
 
-  final List<String> _categories = [
+  List<String> _categories = [
     'تعليم الحروف والقاعدة النورانية',
     'القرآن الكريم',
     'مقرأة إهداء الثواب',
@@ -28,6 +29,29 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
     'قسم الفقه',
     'قسم الابتهال',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLiveCategories();
+  }
+
+  Future<void> _loadLiveCategories() async {
+    try {
+      final res = await _apiClient.getCategories();
+      if (res.statusCode == 200 && res.data != null) {
+        final List data = res.data['data'] ?? [];
+        if (data.isNotEmpty) {
+          final liveList = data.map<String>((c) => (c['name_ar'] ?? c['name'] ?? '').toString()).where((n) => n.isNotEmpty).toList();
+          if (liveList.isNotEmpty && mounted) {
+            setState(() {
+              _categories = liveList;
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -171,14 +195,13 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                   ),
                 ),
 
-                // Floating Action Button in Rail Bottom (+)
+                // Floating Action Button in Rail Bottom (+): Navigates DIRECTLY to AddChapterScreen (Image 7)
                 Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: GestureDetector(
                     onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => const AddChapterDialog(),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AddChapterScreen()),
                       );
                     },
                     child: Container(

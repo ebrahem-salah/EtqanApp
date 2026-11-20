@@ -118,9 +118,40 @@ class ApiClient {
     return await dio.get('/videos/$videoId/comments');
   }
 
+  /// Post a new comment on a video
+  Future<Response> postVideoComment(int videoId, String comment) async {
+    return await dio.post('/videos/$videoId/comments', data: {
+      'comment': comment,
+    });
+  }
+
+  /// Like / Unlike a video comment
+  Future<Response> toggleCommentLike(int videoId, int commentId) async {
+    return await dio.post('/videos/$videoId/comments/$commentId/like');
+  }
+
   /// Like / Unlike a video
   Future<Response> toggleLikeVideo(int videoId) async {
     return await dio.post('/videos/$videoId/like');
+  }
+
+  /// Upload / create new Reel video
+  Future<Response> createVideo({
+    required String description,
+    String? videoUrl,
+    dynamic videoFile,
+  }) async {
+    if (videoFile != null) {
+      final formData = FormData.fromMap({
+        'description': description,
+        'video': videoFile,
+      });
+      return await dio.post('/videos', data: formData);
+    }
+    return await dio.post('/videos', data: {
+      'description': description,
+      if (videoUrl != null) 'video_url': videoUrl,
+    });
   }
 
   // ================= 3. CATEGORIES & LEARNING LEVELS =================
@@ -137,6 +168,38 @@ class ApiClient {
     return await dio.get('/classes', queryParameters: {
       if (categoryId != null) 'category_id': categoryId,
       'page': page,
+    });
+  }
+
+  /// Create new recitation class / circle
+  Future<Response> createClass({
+    required String name,
+    required int categoryId,
+    int? subCategoryId,
+    required String startTime,
+    int maxStudents = 20,
+    String type = 'free',
+    double price = 0.0,
+    bool isPrivate = false,
+    String? imageUrl,
+  }) async {
+    return await dio.post('/classes', data: {
+      'name': name,
+      'category_id': categoryId,
+      if (subCategoryId != null) 'sub_category_id': subCategoryId,
+      'start_time': startTime,
+      'max_students': maxStudents,
+      'type': type,
+      'price': price,
+      'is_private': isPrivate,
+      if (imageUrl != null) 'image': imageUrl,
+    });
+  }
+
+  /// Toggle follow / friend
+  Future<Response> toggleFriend(int userId) async {
+    return await dio.post('/friends/toggle-follow', data: {
+      'friend_id': userId,
     });
   }
 

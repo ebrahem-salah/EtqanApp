@@ -3,7 +3,10 @@ import 'package:video_player/video_player.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/network/api_client.dart';
+import '../../core/services/share_service.dart';
 import '../competitions/competitions_screen.dart';
+import '../profile/user_profile_screen.dart';
+import 'add_video_screen.dart';
 
 class ReelsHomeScreen extends StatefulWidget {
   const ReelsHomeScreen({super.key});
@@ -22,12 +25,12 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
   final List<Map<String, dynamic>> _reels = [
     {
       'id': 1,
-      'userName': 'مريم مستخدمت',
+      'userName': 'Fahd saad',
       'userRole': 'إمام مسجد',
       'isVolunteer': true,
       'timeAgo': 'منذ 7 شهر',
       'avatar': 'assets/images/profile.png',
-      'caption': 'تحفه ما شاء الله - تلاوة خاشعة',
+      'caption': 'تحفه ما شاء الله - تلاوة مباركة خاشعة',
       'likes': 4,
       'comments': 5,
       'shares': 2,
@@ -135,6 +138,17 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
     }
   }
 
+  void _openUserProfile(Map<String, dynamic> reel) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserProfileScreen(
+          userName: reel['userName'],
+          userAvatar: reel['avatar'],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -190,7 +204,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                       ),
                     ),
 
-                  // 2. Left Floating Action Controls (Heart, Comment, Fullscreen, Share)
+                  // 2. Left Floating Action Controls (Heart, Comment, Fullscreen, Native Share)
                   if (_isOverlayVisible)
                     Positioned(
                       bottom: 75,
@@ -220,7 +234,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Comment
+                          // Comment (Matching Image 1)
                           _buildActionIcon(
                             icon: Icons.chat_bubble_outline_rounded,
                             color: Colors.white,
@@ -242,18 +256,16 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Share
+                          // Share (Native Share Sheet - Matching Image 2)
                           _buildActionIcon(
                             icon: Icons.near_me_outlined,
                             color: Colors.white,
                             label: '',
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('↗️ تم نسخ رابط المقطع للمشاركة'),
-                                  backgroundColor: Color(0xFF00875A),
-                                  duration: Duration(seconds: 2),
-                                ),
+                              final textToShare = '${reel['caption']}\nhttps://etqan.site/videos/${reel['id']}';
+                              ShareService.shareText(
+                                text: textToShare,
+                                title: 'Share text',
                               );
                             },
                           ),
@@ -301,7 +313,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                       ),
                     ),
 
-                  // 4. Bottom Sheikh Info
+                  // 4. Bottom Sheikh Info (Tapping opens Profile Screen - Matching Images 4 & 5)
                   if (_isOverlayVisible)
                     Positioned(
                       bottom: 24,
@@ -310,78 +322,80 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Avatar + Name + Badges Row
-                          Row(
-                            children: [
-                              // Sheikh Avatar
-                              CircleAvatar(
-                                radius: 22,
-                                backgroundColor: Colors.white24,
-                                backgroundImage: reel['avatar'].toString().startsWith('assets/')
-                                    ? AssetImage(reel['avatar']) as ImageProvider
-                                    : NetworkImage(reel['avatar']),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          reel['userName'],
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            fontFamily: 'Dubai',
-                                            shadows: [
-                                              Shadow(color: Colors.black, blurRadius: 4),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        if (reel['isVolunteer'])
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF00875A),
-                                              borderRadius: BorderRadius.circular(6),
+                          GestureDetector(
+                            onTap: () => _openUserProfile(reel),
+                            child: Row(
+                              children: [
+                                // Sheikh Avatar
+                                CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: Colors.white24,
+                                  backgroundImage: reel['avatar'].toString().startsWith('assets/')
+                                      ? AssetImage(reel['avatar']) as ImageProvider
+                                      : NetworkImage(reel['avatar']),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            reel['userName'],
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'Dubai',
+                                              shadows: [
+                                                Shadow(color: Colors.black, blurRadius: 4),
+                                              ],
                                             ),
-                                            child: const Text(
-                                              'متطوع',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          if (reel['isVolunteer'])
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF00875A),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                'متطوع',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            reel['userRole'],
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.85),
+                                              fontSize: 11,
+                                              shadows: const [
+                                                Shadow(color: Colors.black, blurRadius: 3),
+                                              ],
+                                            ),
                                           ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          reel['userRole'],
-                                          style: TextStyle(
-                                            color: Colors.white.withOpacity(0.85),
-                                            fontSize: 11,
-                                            shadows: const [
-                                              Shadow(color: Colors.black, blurRadius: 3),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      reel['timeAgo'],
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.7),
-                                        fontSize: 10,
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        reel['timeAgo'],
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.7),
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 10),
                           // Caption Text
@@ -413,7 +427,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left: 3 Circular Buttons (Bell, Search, Double-Ring Add)
+                    // Left: 3 Circular Buttons (Bell, Search, Add Video directly!)
                     Row(
                       children: [
                         // 1. Notification Bell
@@ -444,9 +458,13 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        // 3. Circular Add Button with Green Rings
+                        // 3. Circular Add Button with Green Rings: Navigates DIRECTLY to AddVideoScreen (Image 3)
                         GestureDetector(
-                          onTap: () => _showAddOptions(context),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const AddVideoScreen()),
+                            );
+                          },
                           child: Container(
                             width: 38,
                             height: 38,
@@ -575,61 +593,19 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
     );
   }
 
-  void _showAddOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            const Text(
-              'إضافة محتوى جديد',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Dubai'),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: Color(0xFFE8F5E9), child: Icon(Icons.video_call, color: Color(0xFF00875A))),
-              title: const Text('نشر مقطع تلاوة (Reel)', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('شارك تلاوتك القرآنية مع مجتمع إتقان'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('📹 ميزة رفع المقاطع متاحة للمقرئين المعتمدين')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: Color(0xFFFFF8E1), child: Icon(Icons.add_circle_outline, color: Color(0xFFD4AF37))),
-              title: const Text('إنشاء حلقة تسميع جديدة', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('افتح مجلساً تعليمياً مباشراً للطلاب'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('🎙️ تم إرسال طلب فتح حلقة جديدة للمشرف')),
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
-    );
-  }
-
+  // Exact Comments Modal Matching Image 1
   void _showCommentsSheet(BuildContext context, Map<String, dynamic> reel) {
     final commentController = TextEditingController();
-    final List<String> dummyComments = [
-      'ما شاء الله تبارك الله، تلاوة مباركة خاشعة 🤲',
-      'زادك الله علماً ونفع بك الأمة يا شيخنا 🌿',
-      'أحسنتم، نفع الله بكم ونفعنا بما سمعنا ✨',
+    final List<Map<String, dynamic>> comments = [
+      {
+        'id': 1,
+        'name': 'Fahd saad',
+        'time': 'منذ شهر',
+        'text': 'السلام عليكم',
+        'avatar': 'assets/images/profile.png',
+        'likes': 1,
+        'isLiked': false,
+      },
     ];
 
     showModalBottomSheet(
@@ -638,75 +614,223 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Container(
-          height: MediaQuery.of(context).size.height * 0.65,
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 16,
-            left: 16,
-            right: 16,
-          ),
+          height: MediaQuery.of(context).size.height * 0.70,
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'التعليقات (${dummyComments.length})',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Dubai'),
+              // 1. Top Close Button ✕ (Centered grey circular badge - Image 1)
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    shape: BoxShape.circle,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const Divider(),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: dummyComments.length,
-                  itemBuilder: (context, i) => ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFE8F5E9),
-                      child: Icon(Icons.person, color: Color(0xFF00875A)),
-                    ),
-                    title: Text(dummyComments[i], style: const TextStyle(fontSize: 13, height: 1.4)),
-                    subtitle: const Text('منذ ساعتين', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                  ),
+                  child: const Icon(Icons.close, size: 20, color: Colors.black87),
                 ),
               ),
+              const SizedBox(height: 8),
+
+              // Title: التعليقات (Matching Image 1)
+              const Text(
+                'التعليقات',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Dubai',
+                  color: Color(0xFF1E2822),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // 2. Comments List
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  itemCount: comments.length,
+                  itemBuilder: (context, i) {
+                    final c = comments[i];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left: Heart outline with count (Image 1)
+                          Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    c['isLiked'] = !c['isLiked'];
+                                    if (c['isLiked']) {
+                                      c['likes'] += 1;
+                                    } else {
+                                      c['likes'] -= 1;
+                                    }
+                                  });
+                                },
+                                child: Icon(
+                                  c['isLiked'] ? Icons.favorite : Icons.favorite_border_rounded,
+                                  color: c['isLiked'] ? Colors.redAccent : Colors.grey,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${c['likes']}',
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+
+                          // Right: User info & Comment Text (Image 1)
+                          Expanded(
+                            flex: 8,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          c['name'],
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        ),
+                                        Text(
+                                          c['time'],
+                                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 10),
+                                    CircleAvatar(
+                                      radius: 20,
+                                      backgroundImage: AssetImage(c['avatar']),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 50.0),
+                                  child: Text(
+                                    c['text'],
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF1E2822),
+                                      fontFamily: 'Dubai',
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // 3. Bottom Comment Input Bar (Matching Image 1)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+                  top: 8,
+                  left: 16,
+                  right: 16,
+                ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: commentController,
-                        decoration: InputDecoration(
-                          hintText: 'أضف تعليقاً مباركاً...',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.send_rounded, color: Color(0xFF00875A)),
-                      onPressed: () {
-                        if (commentController.text.trim().isNotEmpty) {
+                    // Green circular send button on far left
+                    GestureDetector(
+                      onTap: () {
+                        final text = commentController.text.trim();
+                        if (text.isNotEmpty) {
                           setModalState(() {
-                            dummyComments.add(commentController.text.trim());
+                            comments.add({
+                              'id': comments.length + 1,
+                              'name': 'أنت',
+                              'time': 'الآن',
+                              'text': text,
+                              'avatar': 'assets/images/profile.png',
+                              'likes': 0,
+                              'isLiked': false,
+                            });
                             reel['comments'] += 1;
                           });
                           setState(() {});
+                          _apiClient.postVideoComment(reel['id'], text);
                           commentController.clear();
                         }
                       },
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF00875A),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.send_rounded, color: Colors.white, size: 24),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Rounded comment input container
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                        ),
+                        child: TextField(
+                          controller: commentController,
+                          textAlign: TextAlign.right,
+                          decoration: const InputDecoration(
+                            hintText: 'اكتب تعليق',
+                            hintStyle: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                              fontFamily: 'Dubai',
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onSubmitted: (_) {
+                            final text = commentController.text.trim();
+                            if (text.isNotEmpty) {
+                              setModalState(() {
+                                comments.add({
+                                  'id': comments.length + 1,
+                                  'name': 'أنت',
+                                  'time': 'الآن',
+                                  'text': text,
+                                  'avatar': 'assets/images/profile.png',
+                                  'likes': 0,
+                                  'isLiked': false,
+                                });
+                                reel['comments'] += 1;
+                              });
+                              setState(() {});
+                              _apiClient.postVideoComment(reel['id'], text);
+                              commentController.clear();
+                            }
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -766,7 +890,6 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
         });
       }
     } catch (_) {
-      // Fallback to local asset video if network fails
       try {
         _controller?.dispose();
         _controller = VideoPlayerController.asset('assets/videos/onboarding_video_1.mp4');
