@@ -110,8 +110,8 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CompetitionExamSheet(
-        competitionId: comp['id'],
-        competitionTitle: comp['title'],
+        competitionId: comp['id'] ?? 1,
+        studentId: 1,
         studentName: 'الطالب المتسابق',
       ),
     );

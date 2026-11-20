@@ -56,23 +56,22 @@ class _AddVideoScreenState extends State<AddVideoScreen>
   // طلب الصلاحيات حسب نسخة الأندرويد
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Future<bool> _requestStoragePermission() async {
-    // Android 13+ → READ_MEDIA_VIDEO
-    // Android 12 وما دونه → READ_EXTERNAL_STORAGE
     if (Platform.isAndroid) {
-      final int sdkInt = int.tryParse(
-              (await Process.run('getprop', ['ro.build.version.sdk'])).stdout
-                  .toString()
-                  .trim()) ??
-          0;
-      if (sdkInt >= 33) {
-        final status = await Permission.videos.request();
-        return status.isGranted;
-      } else {
-        final status = await Permission.storage.request();
-        return status.isGranted;
-      }
+      try {
+        final videoStatus = await Permission.videos.status;
+        if (videoStatus.isGranted) return true;
+
+        final storageStatus = await Permission.storage.status;
+        if (storageStatus.isGranted) return true;
+
+        final statuses = await [Permission.videos, Permission.storage].request();
+        if (statuses[Permission.videos]?.isGranted == true ||
+            statuses[Permission.storage]?.isGranted == true) {
+          return true;
+        }
+      } catch (_) {}
     }
-    return true; // iOS لا تحتاج صلاحية مسبقة
+    return true; // Android 13+ Photo Picker لا يتطلب صلاحية مسبقة
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -7,6 +7,7 @@ import '../../core/services/share_service.dart';
 import '../../core/services/reels_preload_manager.dart';
 import '../competitions/competitions_screen.dart';
 import '../profile/user_profile_screen.dart';
+import '../notifications/notifications_screen.dart';
 import 'add_video_screen.dart';
 
 class ReelsHomeScreen extends StatefulWidget {
