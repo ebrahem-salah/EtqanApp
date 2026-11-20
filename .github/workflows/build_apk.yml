@@ -1,9 +1,12 @@
-name: Build Etqan Android APK (تجميع تطبيق إتقان أندرويد)
+name: Build Etqan Android & iOS (تجميع تطبيق إتقان لمتجري جوجل بلاي وآبل)
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -13,6 +16,8 @@ jobs:
       # 1. جلب كود المشروع
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # 2. إعداد بيئة جافا JDK 17
       - name: Setup Java JDK
@@ -29,11 +34,44 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. تثبيت المكتبات
+      # 4. تثبيت وتوليد بنية iOS الرسمية لمتجر آبل إذا لم تكن موجودة
+      - name: Setup & Configure iOS Project
+        run: |
+          if [ ! -d "ios" ]; then
+            flutter create . --platforms=ios --org com.etqan
+            # إدراج أذونات الخصوصية الإلزامية لمتجر Apple App Store في Info.plist
+            python3 -c "
+            with open('ios/Runner/Info.plist', 'r') as f:
+                content = f.read()
+            additions = '''\t<key>NSCameraUsageDescription</key>
+\t<string>يحتاج تطبيق إتقان إلى إذن الكاميرا للمشاركة في حلقات التلاوة وتصحيح القرآن بالفيديو مع فضيلة الشيخ.</string>
+\t<key>NSMicrophoneUsageDescription</key>
+\t<string>يحتاج تطبيق إتقان إلى إذن الميكروفون لتسميع القرآن الكريم والمشاركة الصوتية في الحلقات المباشرة.</string>
+\t<key>NSPhotoLibraryUsageDescription</key>
+\t<string>يحتاج تطبيق إتقان إلى إذن مكتبة الصور لتغيير الصورة الشخصية ورفع المستندات.</string>
+\t<key>CFBundleDisplayName</key>
+\t<string>إتقان</string>
+\t<key>UIBackgroundModes</key>
+\t<array>
+\t\t<string>audio</string>
+\t</array>
+</dict>'''
+            content = content.replace('</dict>', additions, 1)
+            with open('ios/Runner/Info.plist', 'w') as f:
+                f.write(content)
+            "
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add ios/
+            git commit -m "chore(ios): scaffold complete iOS project structure with App Store privacy descriptions" || true
+            git push || true
+          fi
+
+      # 5. تثبيت المكتبات
       - name: Install Dependencies
         run: flutter pub get
 
-      # 5. تهيئة بيئة أندرويد وتوليد مفتاح التوقيع الرسمي Release Keystore
+      # 6. تهيئة بيئة أندرويد وتوليد مفتاح التوقيع الرسمي Release Keystore
       - name: Configure Android & Generate Keystore
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
@@ -54,13 +92,24 @@ jobs:
           storeFile=etqan-release.jks
           EOF
 
-      # 6. بناء ملف APK النهائي الجاهز للتثبيت
+      # 7. بناء ملف APK للتثبيت المباشر على الأجهزة
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 7. رفع ملف الـ APK لتتمكن من تنزيله مباشرة
+      # 8. بناء حزمة Android App Bundle (.aab) الرسمية لمتجر Google Play
+      - name: Build Google Play App Bundle (AAB)
+        run: flutter build appbundle --release --no-tree-shake-icons
+
+      # 9. رفع ملف APK كـ Artifact للتثبيت المباشر
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: etqan-app-release
           path: build/app/outputs/flutter-apk/*.apk
+
+      # 10. رفع حزمة Google Play (.aab) كـ Artifact للرفع المباشر على Google Play Console
+      - name: Upload Google Play AAB Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: etqan-google-play-aab
+          path: build/app/outputs/bundle/release/*.aab
