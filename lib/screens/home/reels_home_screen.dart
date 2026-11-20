@@ -251,15 +251,13 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Expand / Fullscreen
+                          // Expand / Fullscreen من الصورة 3
                           _buildActionIcon(
                             icon: Icons.crop_free_rounded,
                             color: Colors.white,
                             label: '',
                             onTap: () {
-                              setState(() {
-                                _isOverlayVisible = !_isOverlayVisible;
-                              });
+                              _showFullscreenPlayer(context, reel);
                             },
                           ),
                           const SizedBox(height: 16),
@@ -438,31 +436,21 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                     // Left: 3 Circular Buttons (Bell, Search, Add Video directly!)
                     Row(
                       children: [
-                        // 1. Notification Bell
+                        // 1. Notification Bell من الصورة 2
                         _buildHeaderCircleBtn(
                           icon: Icons.notifications_none_rounded,
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('🔔 لا توجد إشعارات جديدة'),
-                                backgroundColor: Color(0xFF00875A),
-                                duration: Duration(seconds: 1),
-                              ),
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
                             );
                           },
                         ),
                         const SizedBox(width: 8),
-                        // 2. Search
+                        // 2. Search من الصورة 2 و 17
                         _buildHeaderCircleBtn(
                           icon: Icons.search_rounded,
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('🔍 البحث في مقاطع التلاوة والريلز'),
-                                backgroundColor: Color(0xFF00875A),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
+                            _showSearchScreen(context);
                           },
                         ),
                         const SizedBox(width: 8),
@@ -848,6 +836,196 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
         ),
       ),
     );
+  // مشغل ملء الشاشة الأفقي المطابق للصورة 3 (Screenshot 3)
+  void _showFullscreenPlayer(BuildContext context, Map<String, dynamic> reel) {
+    showDialog(
+      context: context,
+      useSafeArea: false,
+      builder: (ctx) {
+        bool isPlaying = true;
+        return StatefulBuilder(
+          builder: (ctx, setPlayerState) => Scaffold(
+            backgroundColor: Colors.black,
+            body: Stack(
+              children: [
+                // Mock Video Player Background
+                Center(
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Container(
+                      color: Colors.black87,
+                      child: const Center(
+                        child: Icon(Icons.videocam_rounded, size: 70, color: Colors.white24),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Close Button X (Top Left) من الصورة 3
+                Positioned(
+                  top: 40,
+                  left: 20,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.black45,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close, color: Colors.white, size: 24),
+                    ),
+                  ),
+                ),
+
+                // Center Pause/Play Button (دائرة بيضاء وزر إيقاف مؤقت) من الصورة 3
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      setPlayerState(() {
+                        isPlaying = !isPlaying;
+                      });
+                    },
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black45,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 34,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Bottom Timeline Scrubber (00:07 / 00:57) من الصورة 3
+                Positioned(
+                  bottom: 30,
+                  left: 20,
+                  right: 20,
+                  child: Row(
+                    children: [
+                      const Text(
+                        '00:07',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: const LinearProgressIndicator(
+                            value: 0.14,
+                            minHeight: 4,
+                            backgroundColor: Colors.white30,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00875A)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        '00:57',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // شاشة البحث المطابقة بكسل ببكسل للصورة 17 (Screenshot 17)
+  void _showSearchScreen(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: const BoxDecoration(
+          color: Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية من الصورة 17
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            // Header: Title 'بحث' and Back Button من الصورة 17
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF191919)),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                  const Text(
+                    'بحث',
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF191919),
+                    ),
+                  ),
+                  const SizedBox(width: 38),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Search Input Container من الصورة 17
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: const TextField(
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: '...ابحث بالاسم',
+                    hintStyle: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 14),
+                    border: InputBorder.none,
+                    prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  ),
+                ),
+              ),
+            ),
+
+            const Expanded(
+              child: Center(
+                child: Text(
+                  'اكتب اسم القارئ أو السورة للبحث الفوري',
+                  style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1019,6 +1197,196 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
               ),
             ),
         ],
+      ),
+    );
+  // مشغل ملء الشاشة الأفقي المطابق للصورة 3 (Screenshot 3)
+  void _showFullscreenPlayer(BuildContext context, Map<String, dynamic> reel) {
+    showDialog(
+      context: context,
+      useSafeArea: false,
+      builder: (ctx) {
+        bool isPlaying = true;
+        return StatefulBuilder(
+          builder: (ctx, setPlayerState) => Scaffold(
+            backgroundColor: Colors.black,
+            body: Stack(
+              children: [
+                // Mock Video Player Background
+                Center(
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Container(
+                      color: Colors.black87,
+                      child: const Center(
+                        child: Icon(Icons.videocam_rounded, size: 70, color: Colors.white24),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Close Button X (Top Left) من الصورة 3
+                Positioned(
+                  top: 40,
+                  left: 20,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.black45,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close, color: Colors.white, size: 24),
+                    ),
+                  ),
+                ),
+
+                // Center Pause/Play Button (دائرة بيضاء وزر إيقاف مؤقت) من الصورة 3
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      setPlayerState(() {
+                        isPlaying = !isPlaying;
+                      });
+                    },
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black45,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 34,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Bottom Timeline Scrubber (00:07 / 00:57) من الصورة 3
+                Positioned(
+                  bottom: 30,
+                  left: 20,
+                  right: 20,
+                  child: Row(
+                    children: [
+                      const Text(
+                        '00:07',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: const LinearProgressIndicator(
+                            value: 0.14,
+                            minHeight: 4,
+                            backgroundColor: Colors.white30,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00875A)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        '00:57',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // شاشة البحث المطابقة بكسل ببكسل للصورة 17 (Screenshot 17)
+  void _showSearchScreen(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: const BoxDecoration(
+          color: Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية من الصورة 17
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            // Header: Title 'بحث' and Back Button من الصورة 17
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF191919)),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                  const Text(
+                    'بحث',
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF191919),
+                    ),
+                  ),
+                  const SizedBox(width: 38),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Search Input Container من الصورة 17
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: const TextField(
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: '...ابحث بالاسم',
+                    hintStyle: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 14),
+                    border: InputBorder.none,
+                    prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  ),
+                ),
+              ),
+            ),
+
+            const Expanded(
+              child: Center(
+                child: Text(
+                  'اكتب اسم القارئ أو السورة للبحث الفوري',
+                  style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

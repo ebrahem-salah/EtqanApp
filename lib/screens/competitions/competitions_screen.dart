@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_assets.dart';
 import '../../core/network/api_client.dart';
 import 'widgets/competition_exam_sheet.dart';
 
@@ -11,248 +10,109 @@ class CompetitionsScreen extends StatefulWidget {
   State<CompetitionsScreen> createState() => _CompetitionsScreenState();
 }
 
-class _CompetitionsScreenState extends State<CompetitionsScreen> {
+class _CompetitionsScreenState extends State<CompetitionsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final ApiClient _apiClient = ApiClient();
   bool _isLoading = false;
+
+  // قائمة المسابقات من قاعدة بيانات وتصميم الصورة 16
+  final List<Map<String, dynamic>> _competitions = [
+    {
+      'id': 101,
+      'title': 'مسابقة المجد',
+      'date': '02:35PM - 25/10/2026',
+      'duration': '00:10:00',
+      'subscribers_count': 1,
+      'max_subscribers': 5,
+      'status': 'finished', // finished, ongoing, waiting
+      'sheikh_name': 'sheikh saad ali',
+      'sheikh_avatar': '',
+      'institution_name': 'مؤسسة التعاون',
+    },
+    {
+      'id': 102,
+      'title': 'مسابقة العمالقة',
+      'date': '02:15PM - 25/10/2026',
+      'duration': '00:10:00',
+      'subscribers_count': 1,
+      'max_subscribers': 5,
+      'status': 'finished',
+      'sheikh_name': 'saad ali',
+      'sheikh_avatar': '',
+      'institution_name': 'مؤسسة التعاون',
+    },
+    {
+      'id': 103,
+      'title': 'Moahmed test',
+      'date': '12:45AM - 11/04/2026',
+      'duration': '00:15:00',
+      'subscribers_count': 0,
+      'max_subscribers': 15,
+      'status': 'finished',
+      'sheikh_name': 'شيخ محمد',
+      'sheikh_avatar': '',
+      'institution_name': 'مؤسسة محمد التعليمية',
+    },
+    {
+      'id': 104,
+      'title': 'مسابقة حفظ جزء عم للناشئة',
+      'date': '06:00PM - 21/11/2026',
+      'duration': '00:20:00',
+      'subscribers_count': 3,
+      'max_subscribers': 10,
+      'status': 'ongoing',
+      'sheikh_name': 'الشيخ عبد الله السويسي',
+      'sheikh_avatar': '',
+      'institution_name': 'مؤسسة إتقان العالمية',
+    },
+    {
+      'id': 105,
+      'title': 'مسابقة فرسان التجويد الكبرى',
+      'date': '08:00PM - 22/11/2026',
+      'duration': '00:30:00',
+      'subscribers_count': 2,
+      'max_subscribers': 8,
+      'status': 'waiting',
+      'sheikh_name': 'الشيخ أحمد نور الدين',
+      'sheikh_avatar': '',
+      'institution_name': 'مؤسسة إتقان العالمية',
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadLiveLeaderboard();
+    // 3 Tabs matching Screenshot 16: المنتهية (0) | الجارية (1) | في الانتظار (2)
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 0);
   }
 
-  Future<void> _loadLiveLeaderboard() async {
-    try {
-      final res = await _apiClient.getCompetitionParticipants(103);
-      if (res.statusCode == 200 && res.data != null) {
-        final List participants = res.data['data'] ?? [];
-        if (participants.isNotEmpty) {
-          final liveList = participants.asMap().entries.map<Map<String, dynamic>>((entry) {
-            final idx = entry.key;
-            final p = entry.value;
-            String rank = (idx + 1).toString();
-            if (idx == 0) rank = '🥇';
-            if (idx == 1) rank = '🥈';
-            if (idx == 2) rank = '🥉';
-
-            return {
-              'rank': rank,
-              'name': p['name'] ?? 'متسابق إتقان',
-              'city': 'المملكة',
-              'score': '${p['overall_rating'] ?? p['general_score'] ?? 100}%',
-              'surah': 'سورة مريم (1-15)',
-            };
-          }).toList();
-
-          if (mounted) {
-            setState(() {
-              _leaderboard.clear();
-              _leaderboard.addAll(liveList);
-            });
-          }
-        }
-      }
-    } catch (_) {}
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
-  // فروع المسابقة
-  final List<Map<String, String>> _tracks = [
-    {
-      'title': 'الفرع الأول: القرآن الكريم كاملاً',
-      'desc': 'مع الإتقان وأحكام الجزرية ومخارج الحروف',
-      'prize': '🥇 جائزة المركز الأول: 50,000 ر.س',
-    },
-    {
-      'title': 'الفرع الثاني: حفظ 15 جزءاً متتالياً',
-      'desc': 'تلاوة متقنة مع أحكام الترتيل والتنغيم',
-      'prize': '🥇 جائزة المركز الأول: 30,000 ر.س',
-    },
-    {
-      'title': 'الفرع الثالث: سورة البقرة وآل عمران',
-      'desc': 'حفظ وتدبر وأحكام التجويد الأساسية',
-      'prize': '🥇 جائزة المركز الأول: 20,000 ر.س',
-    },
-    {
-      'title': 'الفرع الرابع: أجمل صوت بالترتيل والمقامات',
-      'desc': 'حسن الأداء وجمال النبرة ومخارج الحروف',
-      'prize': '🥇 جائزة المركز الأول: 10,000 ر.س',
-    },
-  ];
+  void _shareCompetition(Map<String, dynamic> comp) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('تم نسخ رابط ${comp['title']} بنجاح للمشاركة! 📋',
+            style: const TextStyle(fontFamily: 'Dubai')),
+        backgroundColor: const Color(0xFF00875A),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
-  // لوحة المتصدرين
-  final List<Map<String, dynamic>> _leaderboard = [
-    {
-      'rank': '🥇',
-      'name': 'أحمد محمود الدوسري',
-      'city': 'الرياض',
-      'score': '99.8%',
-      'surah': 'سورة مريم (1-15)',
-    },
-    {
-      'rank': '🥈',
-      'name': 'عمر بن عبد العزيز المصري',
-      'city': 'القاهرة',
-      'score': '99.2%',
-      'surah': 'سورة الإسراء',
-    },
-    {
-      'rank': '🥉',
-      'name': 'ياسين خالد الكندري',
-      'city': 'الكويت',
-      'score': '98.7%',
-      'surah': 'سورة البقرة',
-    },
-    {
-      'rank': '4',
-      'name': 'فاطمة الزهراء الشامي',
-      'city': 'دمشق',
-      'score': '98.4%',
-      'surah': 'سورة الرحمن',
-    },
-  ];
-
-  void _showSubmitRecitationDialog(String trackTitle) {
-    String selectedSurah = 'سورة مريم (الآيات 1 إلى 15)';
-    bool isRecording = false;
-
+  void _openCompetitionExam(Map<String, dynamic> comp) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '🏆 تقديم تلاوة المسابقة للتحكيم',
-                    style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'الفرع المختار: $trackTitle',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF00875A), fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('اختر موضع التلاوة للمسابقة:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              DropdownButtonFormField<String>(
-                value: selectedSurah,
-                items: const [
-                  DropdownMenuItem(value: 'سورة مريم (الآيات 1 إلى 15)', child: Text('سورة مريم (الآيات 1 إلى 15)')),
-                  DropdownMenuItem(value: 'سورة البقرة (الخواتيم)', child: Text('سورة البقرة (خواتيم البقرة)')),
-                  DropdownMenuItem(value: 'سورة الكهف (1 إلى 10)', child: Text('سورة الكهف (أوائل الكهف)')),
-                  DropdownMenuItem(value: 'سورة الرحمن (1 إلى 25)', child: Text('سورة الرحمن (1 إلى 25)')),
-                ],
-                onChanged: (v) => setSheetState(() => selectedSurah = v!),
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // مسجل الصوت
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAF9),
-                  border: Border.all(color: const Color(0xFF00875A), style: BorderStyle.solid),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      isRecording ? '🔴 جارٍ تسجيل تلاوتك الآن (00:24)...' : 'اضغط على المايك لبدء التسجيل',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isRecording ? Colors.red : Colors.grey.shade700,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isRecording ? Colors.black87 : Colors.red,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
-                      onPressed: () {
-                        setSheetState(() => isRecording = !isRecording);
-                      },
-                      icon: const Icon(Icons.mic, color: Colors.white),
-                      label: Text(
-                        isRecording ? 'إيقاف وحفظ التلاوة ⏹️' : 'بدء تسجيل التلاوة 🎙️',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00875A),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () async {
-                  try {
-                    await _apiClient.joinCompetition(103);
-                  } catch (_) {}
-                  if (ctx.mounted) {
-                    Navigator.of(ctx).pop();
-                  }
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('🎉 تم توثيق مشاركتك في $trackTitle واعتماد التلاوة في سيرفر إتقان بنجاح!'),
-                        backgroundColor: const Color(0xFF00875A),
-                      ),
-                    );
-                  }
-                },
-                child: const Text(
-                  '📤 اعتماد ورفع التلاوة إلى سيرفر المسابقات',
-                  style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ),
+      builder: (_) => CompetitionExamSheet(
+        competitionId: comp['id'],
+        competitionTitle: comp['title'],
+        studentName: 'الطالب المتسابق',
       ),
     );
   }
@@ -260,215 +120,339 @@ class _CompetitionsScreenState extends State<CompetitionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFBE8),
+      backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية من الصورة 16
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1E2822)),
-          onPressed: () => Navigator.of(context).pop(),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF191919)),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
         ),
         title: const Text(
-          'مسابقات إتقان الكبرى 🥇',
+          'المسابقات',
           style: TextStyle(
             fontFamily: 'Dubai',
-            color: Color(0xFF1E2822),
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            color: Color(0xFF191919),
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+      body: Column(
+        children: [
+          const SizedBox(height: 10),
+
+          // 3 Tabs matching Screenshot 16: [المنتهية] [الجارية] [في الانتظار]
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                color: const Color(0xFF00875A), // اللون الأخضر التفاعلي من الصورة 16
+                borderRadius: BorderRadius.circular(12),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.black87,
+              labelStyle: const TextStyle(
+                fontFamily: 'Dubai',
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontFamily: 'Dubai',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              tabs: const [
+                Tab(text: 'المنتهية'),
+                Tab(text: 'الجارية'),
+                Tab(text: 'في الانتظار'),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // محتوى التابات
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildCompetitionsList('finished'),
+                _buildCompetitionsList('ongoing'),
+                _buildCompetitionsList('waiting'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompetitionsList(String filterStatus) {
+    final list = _competitions.where((c) => c['status'] == filterStatus).toList();
+
+    if (list.isEmpty) {
+      return Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // بطاقة المسابقة الكبرى الذهبية (فرسان إتقان)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFD4AF37), Color(0xFF997514)],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.amber.withOpacity(0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'نسخة رمضان 1447 هـ / 2026 م',
-                      style: TextStyle(color: Color(0xFFFFDF73), fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'مسابقة فرسان إتقان السنوية',
-                    style: TextStyle(
-                      fontFamily: 'Dubai',
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'لحفظ القرآن الكريم كاملاً وتجويده وإتقان مخارج الحروف',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('مجموع الجوائز النقدية:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                        Text('100,000 ر.س 💰', style: TextStyle(color: Color(0xFF00875A), fontWeight: FontWeight.bold, fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // زر نظام التحكيم واختبار المتسابقين (خاص بالشيوخ ولجنة التحكيم)
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF00875A).withOpacity(0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFF00875A), size: 24),
-                ),
-                title: const Text(
-                  'استمارة تحكيم واختبار المتسابقين 📝',
-                  style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                subtitle: const Text(
-                  'توليد أسئلة عشوائية ورصد أخطاء الحفظ والتلعثم وحساب الدرجة آلياً',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                trailing: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00875A),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () {
-                    CompetitionExamSheet.show(
-                      context,
-                      competitionId: 103,
-                      studentId: 1,
-                      studentName: 'أحمد محمود الدوسري',
-                      onEvaluationSubmitted: _loadLiveLeaderboard,
-                    );
-                  },
-                  child: const Text('بدء التحكيم', style: TextStyle(fontSize: 11, color: Colors.white)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // فروع المسابقة
-            const Text(
-              'فروع المسابقة المتاحة:',
-              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            const SizedBox(height: 8),
-            ..._tracks.map((t) => Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(t['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF00875A))),
-                              const SizedBox(height: 2),
-                              Text(t['desc']!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                              const SizedBox(height: 4),
-                              Text(t['prize']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37))),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
-                          onPressed: () => _showSubmitRecitationDialog(t['title']!),
-                          child: const Text('سجل تلاوتك', style: TextStyle(fontSize: 11, color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  ),
-                )),
-            const SizedBox(height: 16),
-
-            // لوحة المتصدرين
-            const Text(
-              'لوحة المتصدرين والأوائل 🥇 (اضغط لتحكيم المتسابق):',
-              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              child: Column(
-                children: _leaderboard
-                    .map((l) => ListTile(
-                          leading: Text(l['rank'], style: const TextStyle(fontSize: 22)),
-                          title: Text(l['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text('${l['city']} • ${l['surah']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                          trailing: Text(l['score'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00875A), fontSize: 13)),
-                          onTap: () {
-                            CompetitionExamSheet.show(
-                              context,
-                              competitionId: 103,
-                              studentId: 1,
-                              studentName: l['name'],
-                              onEvaluationSubmitted: _loadLiveLeaderboard,
-                            );
-                          },
-                        ))
-                    .toList(),
+            Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            Text(
+              'لا توجد مسابقات في هذا القسم حالياً',
+              style: TextStyle(
+                fontFamily: 'Dubai',
+                fontSize: 15,
+                color: Colors.grey.shade600,
               ),
             ),
           ],
         ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      itemCount: list.length,
+      itemBuilder: (context, index) {
+        final comp = list[index];
+        return _buildCompetitionCard(comp);
+      },
+    );
+  }
+
+  // بطاقة المسابقة المتطابقة بكسل ببكسل مع الصورة 16 (Screenshot 16)
+  Widget _buildCompetitionCard(Map<String, dynamic> comp) {
+    final isFinished = comp['status'] == 'finished';
+    final isOngoing = comp['status'] == 'ongoing';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Top Row: Share Button (left) & Date/Time (right)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Share Button (دائرة بمحيط رمادي وأيقونة خضراء)
+              GestureDetector(
+                onTap: () => _shareCompetition(comp),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey.shade300),
+                    color: Colors.white,
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.share_outlined, color: Color(0xFF00875A), size: 18),
+                  ),
+                ),
+              ),
+
+              // Date & Time
+              Text(
+                comp['date'],
+                style: TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          // 2. Competition Title
+          Text(
+            comp['title'],
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontFamily: 'Dubai',
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF191919),
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // 3. Duration Row: الساعة + مدة المسابقة
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'مدة المسابقة: ${comp['duration']}',
+                style: const TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF191919),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.access_time_rounded, size: 18, color: Color(0xFF191919)),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // 4. Badges Row: [انتهت] (left) & [المشتركين 1 / 5] (right)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Status Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isFinished
+                      ? const Color(0xFFEEEEEE)
+                      : (isOngoing ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  isFinished ? 'انتهت' : (isOngoing ? 'جارية الان' : 'في الانتظار'),
+                  style: TextStyle(
+                    fontFamily: 'Dubai',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isFinished
+                        ? Colors.grey.shade600
+                        : (isOngoing ? const Color(0xFF00875A) : Colors.orange.shade800),
+                  ),
+                ),
+              ),
+
+              // Subscribers Pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F8F5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFC8E6C9)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'المشتركين ${comp['subscribers_count']} / ${comp['max_subscribers']}',
+                      style: const TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF00875A),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.person_outline, size: 16, color: Color(0xFF00875A)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // 5. Bottom Row: [مؤسسة التعاون] (left) & Sheikh Name + Avatar (right)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Institution Pill (left)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF81C784)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.business_rounded, size: 15, color: Color(0xFF00875A)),
+                    const SizedBox(width: 6),
+                    Text(
+                      comp['institution_name'],
+                      style: const TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF00875A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Sheikh Info (right)
+              GestureDetector(
+                onTap: () => _openCompetitionExam(comp),
+                child: Row(
+                  children: [
+                    Text(
+                      comp['sheikh_name'],
+                      style: const TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF191919),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.shade200,
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.person, color: Colors.grey, size: 22),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

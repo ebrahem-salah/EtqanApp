@@ -60,6 +60,52 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
     );
   }
 
+  void _showSheikhInfoSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(ctx),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.black54, size: 20),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'معلومات عن الشيخ',
+              style: TextStyle(fontFamily: 'Dubai', fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              widget.userName,
+              style: const TextStyle(fontFamily: 'Dubai', fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00875A)),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'تاريخ الميلاد: 2026-10-08',
+              style: TextStyle(fontFamily: 'Dubai', fontSize: 14, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,7 +113,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
       appBar: AppBar(
         backgroundColor: const Color(0xFFFCFBE8), // Exact cream header
         elevation: 0,
-        leading: const SizedBox.shrink(),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF191919), size: 20),
+            onPressed: () => _showSheikhInfoSheet(context),
+          ),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(left: 14.0),
@@ -140,6 +203,33 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1E2822),
                         fontFamily: 'Dubai',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Institution Badge من الصورة 20
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFF81C784)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.business_rounded, size: 14, color: Color(0xFF00875A)),
+                          SizedBox(width: 6),
+                          Text(
+                            'مؤسسة التعاون',
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF00875A),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/deep_link_service.dart';
@@ -27,79 +28,74 @@ class LiveRecitationRoom extends StatefulWidget {
   State<LiveRecitationRoom> createState() => _LiveRecitationRoomState();
 }
 
-class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTickerProviderStateMixin {
+class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   // RTC & Controls State
   bool _isEngineReady = false;
   bool _isMicMuted = false;
-  bool _isCameraOn = false;
+  bool _isCameraOn = true;
   bool _isSpeakerOn = true;
   bool _isHandRaised = false;
   bool _isStudentMicApproved = false;
-  late bool _isRecording;
-  int _activeViewIndex = 0; // 0: Video & Audio Participants Grid, 1: Quran Mushaf View
+
+  // UI Modes matching screenshots 4, 5, 6, 8, 9, 13, 14
+  bool _isCallActive = false; // هل المكالمة قيد التشغيل (صوت أو فيديو)
+  bool _isCallStarted = false; // هل تم الضغط على زر Start البنفسجي
+  bool _isScreenSharing = false; // وضع مشاركة الشاشة من الصورة 8
+  bool _isPipMode = false; // وضع النافذة العائمة Picture-in-Picture من الصورة 9
+  bool _isVoiceOnly = false; // مكالمة صوتية فقط من الصورة 14
+
+  // Timer & Duration
+  Timer? _callTimer;
+  int _callSeconds = 2; // عداد المكالمة الحية (00:02)
+  int _chapterMinutes = 2; // مدة الحلقة (02:25)
 
   Widget? _localVideoWidget;
-  String _currentSpeakerName = 'فضيلة الشيخ عبد الله السويسي';
-  String _connectionStatus = 'متصل بالغرفة عبر ZEGOCLOUD (48kHz High-Def)';
+  final TextEditingController _messageController = TextEditingController();
 
-  // Multi-Participants List (المشاركون في الحلقة)
-  final List<Map<String, dynamic>> _participants = [
+  // Chat Messages matching Screenshot 4, 11, 12
+  final List<Map<String, dynamic>> _messages = [
     {
-      'id': 'sheikh_1',
-      'name': 'الشيخ عبد الله السويسي',
+      'sender': 'الشيخ عبد الله السويسي',
       'role': 'sheikh',
-      'isMuted': false,
-      'isHandRaised': false,
-      'isSpeaking': true,
-      'avatarColor': Color(0xFF00875A),
+      'message': 'السلام عليكم ورحمة الله وبركاته، مرحباً بكم في حلقة اليوم لتلاوة وتسميع سورة مريم.',
+      'time': '08:55 PM',
+      'isMe': false,
     },
     {
-      'id': 'student_1',
-      'name': 'أحمد محمود',
+      'sender': 'أحمد محمود',
       'role': 'student',
-      'isMuted': true,
-      'isHandRaised': false,
-      'isSpeaking': false,
-      'avatarColor': Color(0xFF1E5B42),
-    },
-    {
-      'id': 'student_2',
-      'name': 'عمر خالد',
-      'role': 'student',
-      'isMuted': true,
-      'isHandRaised': true,
-      'isSpeaking': false,
-      'avatarColor': Color(0xFF2C5E7A),
-    },
-    {
-      'id': 'student_3',
-      'name': 'عبد الرحمن السعيد',
-      'role': 'student',
-      'isMuted': true,
-      'isHandRaised': false,
-      'isSpeaking': false,
-      'avatarColor': Color(0xFF8B5A2B),
+      'message': 'وعليكم السلام ورحمة الله وبركاته يا شيخنا الحبيب.',
+      'time': '08:56 PM',
+      'isMe': false,
     },
   ];
 
-  int _currentAyahIndex = 1;
-  final List<String> _ayahs = [
-    'كٓهيعٓصٓ ﴿١﴾',
-    'ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ﴿٢﴾',
-    'إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا ﴿٣﴾',
-    'قَالَ رَبِّ إِنِّى وَهَنَ ٱلْعَظْمُ مِنِّى وَٱشْتَعَلَ ٱلرَّأْسُ شَيْبًۭا ﴿٤﴾',
-    'وَلَمْ أَكُنۢ بِدُعَآئِكَ رَبِّ شَقِيًّۭا ﴿٥﴾',
-    'وَإِنِّى خِفْتُ ٱلْمَوَٰلِىَ مِن وَرَآءِى وَكَانَتِ ٱمْرَأَتِى عَاقِرًۭا فَهَبْ لِى مِن لَّدُنكَ وَلِيًّۭا ﴿٦﴾',
-  ];
+  // Drag position for Floating Window (PiP mode)
+  Offset _pipPosition = const Offset(100, 150);
 
   @override
   void initState() {
     super.initState();
-    _isRecording = widget.isRecorded;
-    if (widget.isSheikh) {
-      _isStudentMicApproved = true;
-    }
     _initZegoRTC();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _callTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) {
+        setState(() {
+          _callSeconds++;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _callTimer?.cancel();
+    _messageController.dispose();
+    _destroyZego();
+    super.dispose();
   }
 
   Future<void> _initZegoRTC() async {
@@ -111,62 +107,12 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
       );
       await ZegoExpressEngine.createEngineWithProfile(profile);
 
-      ZegoExpressEngine.onRoomStateUpdate = (roomID, state, errorCode, extendedData) {
-        if (!mounted) return;
-        setState(() {
-          if (state == ZegoRoomState.Connected) {
-            _connectionStatus = 'صوت نقي متصل بالكامل (48kHz RTC)';
-          }
-        });
-      };
-
-      ZegoExpressEngine.onIMRecvCustomCommand = (roomID, fromUser, command) {
-        if (!mounted) return;
-        if (command == 'RAISE_HAND') {
-          // Add or mark student hand raised
-          setState(() {
-            for (var p in _participants) {
-              if (p['name'] == fromUser.userName || p['id'] == fromUser.userID) {
-                p['isHandRaised'] = true;
-              }
-            }
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✋ رفع الطالب ${fromUser.userName} يده طلباً للتسميع!'),
-              backgroundColor: const Color(0xFFD4AF37),
-              action: widget.isSheikh
-                  ? SnackBarAction(
-                      label: 'إذن بالتسميع ✅',
-                      textColor: Colors.white,
-                      onPressed: () => _approveStudent(fromUser.userName),
-                    )
-                  : null,
-            ),
-          );
-        } else if (command == 'APPROVE_MIC') {
-          setState(() {
-            _isStudentMicApproved = true;
-            _isMicMuted = false;
-          });
-          ZegoExpressEngine.instance.muteMicrophone(false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ أذن لك فضيلة الشيخ بالتسميع! المايك مفتوح لك الآن.'),
-              backgroundColor: Color(0xFF00875A),
-            ),
-          );
-        }
-      };
-
-      // Login to room
       final user = ZegoUser(
-        widget.isSheikh ? 'sheikh_host' : 'student_${DateTime.now().millisecondsSinceEpoch}',
-        widget.isSheikh ? 'فضيلة الشيخ عبد الله السويسي' : 'طالب إتقان',
+        'user_${DateTime.now().millisecondsSinceEpoch % 10000}',
+        widget.isSheikh ? 'مشرف تجريبي 3' : 'طالب إتقان',
       );
       await ZegoExpressEngine.instance.loginRoom(widget.roomId, user);
 
-      // Publish audio stream
       final streamId = 'stream_${widget.roomId}_${user.userID}';
       await ZegoExpressEngine.instance.startPublishingStream(streamId);
       await ZegoExpressEngine.instance.muteMicrophone(_isMicMuted);
@@ -175,193 +121,130 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
       if (mounted) {
         setState(() => _isEngineReady = true);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _isEngineReady = true);
+    }
   }
 
-  @override
-  void dispose() {
+  Future<void> _destroyZego() async {
     try {
       ZegoExpressEngine.instance.stopPublishingStream();
       ZegoExpressEngine.instance.logoutRoom(widget.roomId);
       ZegoExpressEngine.destroyEngine();
     } catch (_) {}
-    super.dispose();
   }
 
-  void _toggleMic() {
-    if (!widget.isSheikh && !_isStudentMicApproved) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🔒 يرجى رفع اليد أولاً ليأذن لك فضيلة الشيخ بالتسميع.'),
-          backgroundColor: Color(0xFFD4AF37),
-        ),
-      );
-      return;
-    }
+  String _formatCallTimer(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
 
-    setState(() => _isMicMuted = !_isMicMuted);
+  // إرسال رسالة في الشات
+  void _sendMessage() {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _messages.add({
+        'sender': 'مشرف تجريبي 3',
+        'role': 'me',
+        'message': text,
+        'time': '${TimeOfDay.now().hour}:${TimeOfDay.now().minute.toString().padLeft(2, '0')}',
+        'isMe': true,
+      });
+      _messageController.clear();
+    });
+  }
+
+  // اختيار ملف أو صورة في الشات (ورقة مرفقات من الصورة 10)
+  Future<void> _pickChatAttachment() async {
     try {
-      ZegoExpressEngine.instance.muteMicrophone(_isMicMuted);
-    } catch (_) {}
-  }
-
-  Future<void> _toggleCamera() async {
-    setState(() => _isCameraOn = !_isCameraOn);
-    try {
-      await ZegoExpressEngine.instance.enableCamera(_isCameraOn);
-      if (_isCameraOn) {
-        await ZegoExpressEngine.instance.createCanvasView((viewID) {
-          final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
-          ZegoExpressEngine.instance.startPreview(canvas: canvas);
-        }).then((widgetView) {
-          if (mounted && widgetView != null) {
-            setState(() => _localVideoWidget = widgetView);
-          }
-        });
-      } else {
-        setState(() => _localVideoWidget = null);
-      }
-    } catch (_) {}
-  }
-
-  void _toggleSpeaker() {
-    setState(() => _isSpeakerOn = !_isSpeakerOn);
-    try {
-      ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
-      ZegoExpressEngine.instance.muteSpeaker(!_isSpeakerOn);
-    } catch (_) {}
-  }
-
-  void _toggleRaiseHand() {
-    setState(() => _isHandRaised = !_isHandRaised);
-
-    if (_isHandRaised) {
-      try {
-        ZegoExpressEngine.instance.sendCustomCommand(widget.roomId, 'RAISE_HAND', []);
-      } catch (_) {}
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✋ تم رفع يدك! بانتظار إذن فضيلة الشيخ للتسميع...'),
-          backgroundColor: Color(0xFFD4AF37),
-        ),
-      );
-
-      // محاكاة موافقة الشيخ التلقائية بعد ثانيتين للاختبار السلس
-      Future.delayed(const Duration(seconds: 2), () {
-        if (!mounted) return;
+      final res = await FilePicker.platform.pickFiles(type: FileType.media);
+      if (res != null && res.files.isNotEmpty) {
         setState(() {
-          _isStudentMicApproved = true;
-          _isMicMuted = false;
-          _currentSpeakerName = 'أنت (تتحدث وتسمع الآن 🎙️)';
+          _messages.add({
+            'sender': 'مشرف تجريبي 3',
+            'role': 'me',
+            'message': '📎 تم إرسال ملف: ${res.files.first.name}',
+            'time': '${TimeOfDay.now().hour}:${TimeOfDay.now().minute.toString().padLeft(2, '0')}',
+            'isMe': true,
+          });
         });
-        try {
-          ZegoExpressEngine.instance.muteMicrophone(false);
-        } catch (_) {}
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ وافق الشيخ عبد الله على طلبك! المايك مفتوح لك الآن للتسميع.'),
-            backgroundColor: Color(0xFF00875A),
-          ),
-        );
-      });
-    } else {
-      setState(() {
-        _isStudentMicApproved = false;
-      });
-    }
-  }
-
-  void _approveStudent(String studentName) {
-    setState(() {
-      for (var p in _participants) {
-        if (p['name'] == studentName) {
-          p['isHandRaised'] = false;
-          p['isMuted'] = false;
-          p['isSpeaking'] = true;
-        } else {
-          p['isSpeaking'] = false;
-        }
       }
-      _currentSpeakerName = 'الطالب $studentName (يسمّع الآن 🎙️)';
-    });
-
-    try {
-      ZegoExpressEngine.instance.sendCustomCommand(widget.roomId, 'APPROVE_MIC', []);
     } catch (_) {}
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('✅ تم فتح المايك للطالب $studentName وبدأ التسميع المباشر'),
-        backgroundColor: const Color(0xFF00875A),
-      ),
-    );
   }
 
-  void _muteAllStudents() {
-    setState(() {
-      for (var p in _participants) {
-        if (p['role'] == 'student') {
-          p['isMuted'] = true;
-          p['isSpeaking'] = false;
-          p['isHandRaised'] = false;
-        }
-      }
-      _currentSpeakerName = 'فضيلة الشيخ عبد الله السويسي (يتحدث الآن 🎙️)';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🔇 تم كتم صوت جميع الطلاب بواسطة فضيلة الشيخ'),
-        backgroundColor: Colors.redAccent,
-      ),
+  // مشاركة رابط الحلقة (مطابق للصورة 13)
+  void _shareChapter() {
+    final link = DeepLinkService.getCircleShareLink(
+      widget.classRoomId ?? 110,
+      circleTitle: widget.circleTitle,
     );
-  }
 
-  void _addSimulatedStudent() {
-    final names = ['خالد إبراهيم', 'سارة إبراهيم', 'مصطفى الأحمد', 'سلمان العتيبي', 'يوسف عبد الله'];
-    final existingCount = _participants.length - 1; // excluding sheikh
-    final newName = names[existingCount % names.length];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Color(0xFF262A2E), // الخلفية الداكنة من الصورة 13
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.blueAccent, fontSize: 16)),
+                ),
+                const Text('Share text', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 40),
+              ],
+            ),
+            const SizedBox(height: 18),
 
-    setState(() {
-      _participants.add({
-        'id': 'sim_student_${DateTime.now().millisecondsSinceEpoch}',
-        'name': newName,
-        'role': 'student',
-        'isMuted': true,
-        'isHandRaised': existingCount % 2 == 0, // alternately raise hand
-        'isSpeaking': false,
-        'avatarColor': Colors.primaries[(_participants.length * 3) % Colors.primaries.length],
-      });
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('👤 انضم الطالب ($newName) إلى حلقة التلاوة بنجاح!'),
-        backgroundColor: const Color(0xFF00875A),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _shareCircleLink() {
-    final id = widget.classRoomId ?? int.tryParse(widget.roomId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 110;
-    final link = DeepLinkService.getCircleShareLink(id, circleTitle: widget.circleTitle);
-    Clipboard.setData(ClipboardData(text: link));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('📋 تم نسخ رابط الحلقة لمشاركته: $link'),
-        backgroundColor: const Color(0xFF0F5B46),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _toggleRecording() {
-    setState(() => _isRecording = !_isRecording);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isRecording ? '🔴 بدأ تسجيل الدرس وحفظه في الأرشيف' : '🔒 تم إيقاف التسجيل - الجلسة خاصة الآن'),
-        backgroundColor: _isRecording ? Colors.redAccent : const Color(0xFF00875A),
+            // Share Text Box with Copy Icon
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B1D20),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Watch Chapter: ${widget.circleTitle}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                        const Text('With Sheikh: مشرف تجريبي 3',
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        Text(link, style: const TextStyle(color: Colors.blue, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, color: Colors.blueAccent),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: 'Watch Chapter: ${widget.circleTitle}\n$link'));
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم نسخ الرابط بنجاح!')),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
@@ -369,268 +252,440 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF101915),
-      appBar: AppBar(
-        backgroundColor: Colors.black87,
-        iconTheme: const IconThemeData(color: Colors.white),
-        centerTitle: true,
-        title: Column(
+      backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية
+      body: SafeArea(
+        child: Stack(
           children: [
-            Text(
-              widget.circleTitle,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+            // 1. الواجهة الأساسية: شاشة انتظار وشات الحلقة (من الصور 4، 11، 12)
+            Column(
+              children: [
+                // Top Header (السهم، اسم الحلقة، المشرف، أزرار المشاركة والاتصال)
+                _buildChapterHeader(),
+
+                // Chapter Duration Card
+                _buildDurationCard(),
+
+                const SizedBox(height: 8),
+
+                // Chat Messages Feed
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.white,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = _messages[index];
+                        final isMe = msg['isMe'] == true;
+                        return Align(
+                          alignment: isMe ? Alignment.centerLeft : Alignment.centerRight,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isMe ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isMe ? const Color(0xFFC8E6C9) : Colors.grey.shade200,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  msg['sender'],
+                                  style: TextStyle(
+                                    fontFamily: 'Dubai',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isMe ? const Color(0xFF00875A) : Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  msg['message'],
+                                  style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.black87),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  msg['time'],
+                                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                // Bottom Chat Input Bar (من الصورة 4 و 11)
+                _buildChatInputBar(),
+              ],
             ),
-            Text(
-              _connectionStatus,
-              style: const TextStyle(color: Color(0xFF2ECC71), fontSize: 10),
-            ),
+
+            // 2. شاشة المكالمة الحية / المعاينة (من الصور 5، 6، 8، 14)
+            if (_isCallActive && !_isPipMode)
+              Positioned.fill(
+                child: _isCallStarted ? _buildActiveCallView() : _buildCallPreviewView(),
+              ),
+
+            // 3. النافذة العائمة Picture-in-Picture (من الصورة 9)
+            if (_isCallActive && _isPipMode)
+              Positioned(
+                left: _pipPosition.dx,
+                top: _pipPosition.dy,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _pipPosition += details.delta;
+                    });
+                  },
+                  onTap: () {
+                    setState(() => _isPipMode = false); // تكبير المكالمة
+                  },
+                  child: Container(
+                    width: 130,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        // Cam View / Avatar
+                        Center(
+                          child: Icon(
+                            _isVoiceOnly ? Icons.mic_rounded : Icons.person_rounded,
+                            color: Colors.white70,
+                            size: 40,
+                          ),
+                        ),
+                        // Close Pip
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isPipMode = false),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, color: Colors.white, size: 14),
+                            ),
+                          ),
+                        ),
+                        // Timer
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          child: Text(
+                            _formatCallTimer(_callSeconds),
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        // Label
+                        const Positioned(
+                          bottom: 6,
+                          left: 6,
+                          right: 6,
+                          child: Text(
+                            'مشرف تجريبي 3',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
-        actions: [
-          // Share Circle Deep Link button
-          IconButton(
-            tooltip: 'مشاركة رابط الحلقة الذكي',
-            icon: const Icon(Icons.share_outlined, color: Colors.white),
-            onPressed: _shareCircleLink,
-          ),
-          // Recording button
-          IconButton(
-            tooltip: _isRecording ? 'إيقاف التسجيل' : 'بدء تسجيل الدرس',
-            icon: Icon(
-              _isRecording ? Icons.fiber_manual_record : Icons.fiber_manual_record_outlined,
-              color: _isRecording ? Colors.redAccent : Colors.white70,
+      ),
+    );
+  }
+
+  // ── Header من الصورة 4 ──
+  Widget _buildChapterHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Back button
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00875A), size: 18),
             ),
-            onPressed: _toggleRecording,
           ),
-          // Exam sheet button
-          IconButton(
-            tooltip: 'استمارة رصد درجات وخصومات المتسابق',
-            icon: const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFFFFDF73)),
-            onPressed: () {
-              CompetitionExamSheet.show(
-                context,
-                competitionId: 103,
-                studentId: 1,
-                studentName: 'أحمد محمود (المتسابق)',
-              );
-            },
+
+          // User info
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    widget.circleTitle,
+                    style: const TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF191919),
+                    ),
+                  ),
+                  const Text(
+                    'مشرف تجريبي 3',
+                    style: TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F8F5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF00875A)),
+                    ),
+                    child: const Text(
+                      '👤 Subscribers 1 / 0',
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 11,
+                        color: Color(0xFF00875A),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE0E0E0),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(Icons.person, color: Colors.grey, size: 30),
+                ),
+              ),
+            ],
+          ),
+
+          // Action Buttons: Share, Power, Call, Video Call (الصورة 4)
+          Row(
+            children: [
+              // Share button
+              _buildCircularTopAction(
+                icon: Icons.share_outlined,
+                color: const Color(0xFF00875A),
+                onTap: _shareChapter,
+              ),
+              const SizedBox(width: 8),
+
+              // Power button
+              _buildCircularTopAction(
+                icon: Icons.power_settings_new,
+                color: const Color(0xFF191919),
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('الحلقة مفعلة ومتاحة للطلاب')),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+
+              // Voice Call button
+              _buildCircularTopAction(
+                icon: Icons.call_outlined,
+                color: const Color(0xFF191919),
+                onTap: () {
+                  setState(() {
+                    _isCallActive = true;
+                    _isVoiceOnly = true;
+                    _isCallStarted = true;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+
+              // Video Call button
+              _buildCircularTopAction(
+                icon: Icons.videocam_outlined,
+                color: const Color(0xFF191919),
+                onTap: () {
+                  setState(() {
+                    _isCallActive = true;
+                    _isVoiceOnly = false;
+                    _isCallStarted = false; // يفتح شاشة المعاينة وزر Start
+                  });
+                },
+              ),
+            ],
           ),
         ],
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildCircularTopAction({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Center(
+          child: Icon(icon, color: color, size: 20),
+        ),
+      ),
+    );
+  }
+
+  // ── بطاقة مدة الحلقة من الصورة 4 ──
+  Widget _buildDurationCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Top Speaker Bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: const Color(0xFF0C140F),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2ECC71),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _currentSpeakerName,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                Text(
-                  '👥 ${_participants.length} مشاركين',
-                  style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF00875A)),
+            ),
+            child: Text(
+              _formatCallTimer(_chapterMinutes * 60 + 25),
+              style: const TextStyle(
+                fontFamily: 'Dubai',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF00875A),
+              ),
             ),
           ),
+          const Row(
+            children: [
+              Text(
+                'Chapter Duration',
+                style: TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF191919),
+                ),
+              ),
+              SizedBox(width: 8),
+              Icon(Icons.access_time_rounded, color: Color(0xFF191919), size: 22),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-          // View Selector Tabs: [شبكة المشاركين بالصوت والفيديو] vs [المصحف الشريف]
-          Container(
-            color: const Color(0xFF14241B),
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _activeViewIndex = 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: _activeViewIndex == 0 ? const Color(0xFF2ECC71) : Colors.transparent,
-                            width: 3,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.grid_view_rounded, size: 16, color: _activeViewIndex == 0 ? Colors.white : Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(
-                            'شبكة المشاركين والصوت والفيديو',
-                            style: TextStyle(
-                              fontFamily: 'Dubai',
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: _activeViewIndex == 0 ? Colors.white : Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _activeViewIndex = 1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: _activeViewIndex == 1 ? const Color(0xFF2ECC71) : Colors.transparent,
-                            width: 3,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.menu_book_rounded, size: 16, color: _activeViewIndex == 1 ? Colors.white : Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(
-                            'المصحف الشريف والتسميع',
-                            style: TextStyle(
-                              fontFamily: 'Dubai',
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: _activeViewIndex == 1 ? Colors.white : Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+  // ── شريط الإدخال في الشات من الصورة 4 ──
+  Widget _buildChatInputBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: Colors.white,
+      child: Row(
+        children: [
+          // Send Button
+          GestureDetector(
+            onTap: _sendMessage,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Color(0xFF00875A),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              ),
             ),
           ),
+          const SizedBox(width: 10),
 
-          // Main View Content
+          // Text Field with attachment & emoji inside
           Expanded(
-            child: _activeViewIndex == 0
-                ? _buildParticipantsGrid()
-                : _buildMushafView(),
-          ),
-
-          // Multi-User Interactive Simulation Toolbar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            color: const Color(0xFF16201B),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Add student simulator button
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFF00875A).withOpacity(0.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 16, color: Color(0xFF5CD8A6)),
-                  label: const Text(
-                    '+ إضافة طالب تجريبي للحلقة',
-                    style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Color(0xFF5CD8A6), fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: _addSimulatedStudent,
-                ),
-
-                // Sheikh Mute All button
-                if (widget.isSheikh)
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.redAccent.withOpacity(0.2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    icon: const Icon(Icons.mic_off_rounded, size: 16, color: Colors.redAccent),
-                    label: const Text(
-                      'كتم صوت الجميع 🔇',
-                      style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: _muteAllStudents,
-                  )
-                else
-                  // Raise hand button for student
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isHandRaised ? Colors.amber : const Color(0xFF00875A),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    ),
-                    icon: const Icon(Icons.pan_tool_rounded, size: 16, color: Colors.white),
-                    label: Text(
-                      _isHandRaised ? 'خفض اليد ✋' : 'طلب التسميع أمام الشيخ ✋',
-                      style: const TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: _toggleRaiseHand,
-                  ),
-              ],
-            ),
-          ),
-
-          // Bottom Call Control Dock (Mic, Camera, Speakerphone, End)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            color: Colors.black,
-            child: SafeArea(
-              top: false,
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F7F7),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // Microphone
-                  IconButton(
-                    iconSize: 30,
-                    icon: Icon(
-                      _isMicMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                      color: _isMicMuted ? Colors.redAccent : (_isStudentMicApproved ? const Color(0xFF2ECC71) : Colors.white),
-                    ),
-                    onPressed: _toggleMic,
+                  const SizedBox(width: 12),
+                  // Emoji icon
+                  GestureDetector(
+                    onTap: () {
+                      _messageController.text += '🌸 ';
+                    },
+                    child: const Icon(Icons.emoji_emotions_outlined, color: Colors.grey, size: 22),
                   ),
+                  const SizedBox(width: 8),
 
-                  // Camera
-                  IconButton(
-                    iconSize: 30,
-                    icon: Icon(
-                      _isCameraOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
-                      color: _isCameraOn ? const Color(0xFF2ECC71) : Colors.white70,
-                    ),
-                    onPressed: _toggleCamera,
+                  // Attachment Paperclip (فتح لاختيار الصور والملفات من الصورة 10)
+                  GestureDetector(
+                    onTap: _pickChatAttachment,
+                    child: const Icon(Icons.attach_file_rounded, color: Colors.grey, size: 22),
                   ),
+                  const SizedBox(width: 8),
 
-                  // Speakerphone
-                  IconButton(
-                    iconSize: 30,
-                    icon: Icon(
-                      _isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-                      color: Colors.white,
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: 'Write your message...',
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      onSubmitted: (_) => _sendMessage(),
                     ),
-                    onPressed: _toggleSpeaker,
                   ),
-
-                  // End Call Button
-                  FloatingActionButton(
-                    mini: true,
-                    backgroundColor: Colors.redAccent,
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Icon(Icons.call_end_rounded, color: Colors.white),
-                  ),
+                  const SizedBox(width: 12),
                 ],
               ),
             ),
@@ -640,197 +695,94 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
     );
   }
 
-  // 1. Multi-User Video & Audio Grid View
-  Widget _buildParticipantsGrid() {
+  // ── معاينة الكاميرا وزر Start البنفسجي من الصورة 5 ──
+  Widget _buildCallPreviewView() {
     return Container(
-      padding: const EdgeInsets.all(12),
-      child: Column(
+      color: Colors.black87,
+      child: Stack(
         children: [
-          // Sheikh Host Card
-          Container(
-            height: 140,
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E2D24),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF00875A), width: 2),
-            ),
-            child: Stack(
+          // Mock Camera View
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_isCameraOn && widget.isSheikh && _localVideoWidget != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: _localVideoWidget!,
-                  )
-                else
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFF00875A).withOpacity(0.3),
-                              ),
-                            ),
-                            const CircleAvatar(
-                              radius: 28,
-                              backgroundColor: Color(0xFF00875A),
-                              child: Icon(Icons.school_rounded, color: Colors.white, size: 30),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'فضيلة الشيخ عبد الله السويسي (المقرئ والمحكّم)',
-                          style: TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Top Sheikh Badge
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00875A),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text('المقرئ المعتمد 🎙️', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
+                const Icon(Icons.videocam_rounded, size: 80, color: Colors.white54),
+                const SizedBox(height: 12),
+                Text(
+                  widget.circleTitle,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
 
-          // Students Grid (2x2 or dynamic grid)
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.15,
-              ),
-              itemCount: _participants.where((p) => p['role'] == 'student').length,
-              itemBuilder: (context, index) {
-                final student = _participants.where((p) => p['role'] == 'student').toList()[index];
-                final isMe = student['name'] == 'أحمد محمود' && !widget.isSheikh;
-                final isSpeaking = student['isSpeaking'] == true;
-                final isHandRaised = student['isHandRaised'] == true;
+          // Top Header
+          Positioned(
+            top: 20,
+            left: 16,
+            right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () => setState(() => _isCallActive = false),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
+                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                  ),
+                ),
+                Text(
+                  widget.circleTitle,
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
+                  child: const Icon(Icons.cameraswitch_outlined, color: Colors.white, size: 20),
+                ),
+              ],
+            ),
+          ),
 
-                return Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1B2620),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSpeaking
-                          ? const Color(0xFF2ECC71)
-                          : (isHandRaised ? Colors.amber : Colors.white12),
-                      width: isSpeaking || isHandRaised ? 2 : 1,
+          // Purple Start Button (من الصورة 5)
+          Positioned(
+            bottom: 40,
+            left: 40,
+            right: 40,
+            child: Column(
+              children: [
+                SizedBox(
+                  width: 200,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C4DFF), // البنفسجي المطابق للصورة 5
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      elevation: 4,
+                    ),
+                    onPressed: () {
+                      setState(() => _isCallStarted = true);
+                    },
+                    child: const Text(
+                      'Start',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
-                  child: Stack(
-                    children: [
-                      // Video preview for local camera if this is current student
-                      if (isMe && _isCameraOn && _localVideoWidget != null)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: _localVideoWidget!,
-                        )
-                      else
-                        Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  if (isSpeaking)
-                                    Container(
-                                      width: 58,
-                                      height: 58,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: const Color(0xFF2ECC71).withOpacity(0.3),
-                                      ),
-                                    ),
-                                  CircleAvatar(
-                                    radius: 24,
-                                    backgroundColor: student['avatarColor'] as Color? ?? const Color(0xFF00875A),
-                                    child: const Icon(Icons.person_rounded, color: Colors.white, size: 26),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                student['name'],
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontFamily: 'Dubai', color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      // Status Icons
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: Icon(
-                          student['isMuted'] == true ? Icons.mic_off : Icons.mic,
-                          color: student['isMuted'] == true ? Colors.redAccent : const Color(0xFF2ECC71),
-                          size: 16,
-                        ),
-                      ),
-
-                      // Hand raised badge
-                      if (isHandRaised)
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.amber,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text('✋ رافع اليد', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
-                          ),
-                        ),
-
-                      // Approve button for Sheikh
-                      if (widget.isSheikh && isHandRaised)
-                        Positioned(
-                          bottom: 6,
-                          left: 6,
-                          right: 6,
-                          child: SizedBox(
-                            height: 26,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00875A),
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              onPressed: () => _approveStudent(student['name']),
-                              child: const Text('إذن بالتسميع ✅', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ),
-                    ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                );
-              },
+                  child: const Text(
+                    'مشرف تجريبي 3',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -838,84 +790,305 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
     );
   }
 
-  // 2. Quran Mushaf View (المصحف الشريف)
-  Widget _buildMushafView() {
+  // ── واجهة المكالمة الحية النشطة من الصور 6 و 8 و 14 ──
+  Widget _buildActiveCallView() {
     return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF5),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      color: const Color(0xFF1E2024),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
-                '📖 سورة مريم (مكية) - الآيات 1 إلى 6',
-                style: TextStyle(color: Color(0xFF6D4C41), fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              Text(
-                'طبعة الشمرلي الأصلية',
-                style: TextStyle(color: Colors.grey, fontSize: 10),
-              ),
-            ],
-          ),
-          const Divider(),
+          // Video Area
           Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 4,
-                  runSpacing: 8,
-                  children: List.generate(_ayahs.length, (index) {
-                    final isHighlighted = index + 1 == _currentAyahIndex;
-                    return InkWell(
-                      onTap: () => setState(() => _currentAyahIndex = index + 1),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isHighlighted ? const Color(0xFFFFE899) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          _ayahs[index],
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 2.2,
-                            fontFamily: 'Dubai',
-                            fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
-                            color: isHighlighted ? const Color(0xFF3B2C00) : Colors.black87,
+            child: Stack(
+              children: [
+                // Main Content (Video or Screen Share or Voice Avatar)
+                if (_isScreenSharing)
+                  // مشاركة الشاشة من الصورة 8
+                  Container(
+                    color: const Color(0xFF2B2E33),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'You are sharing screen',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.redAccent, width: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () {
+                              setState(() => _isScreenSharing = false);
+                            },
+                            child: const Text(
+                              'Stop sharing',
+                              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (_isVoiceOnly)
+                  // مكالمة صوتية فقط من الصورة 14
+                  Center(
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD0D5DD),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'م',
+                          style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.black87),
                         ),
                       ),
-                    );
-                  }),
+                    ),
+                  )
+                else
+                  // Video Stream View
+                  Container(
+                    color: const Color(0xFF1B1D21),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.person_rounded, size: 90, color: Colors.white30),
+                          const SizedBox(height: 10),
+                          Text(
+                            widget.circleTitle,
+                            style: const TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // Top Controls Overlay (من الصورة 6)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Share icon in square
+                      GestureDetector(
+                        onTap: _shareChapter,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
+                        ),
+                      ),
+
+                      // Timer
+                      Text(
+                        _formatCallTimer(_callSeconds),
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+
+                      // Attendees Pill + End Call X
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Row(
+                              children: [
+                                Text('1', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                SizedBox(width: 4),
+                                Icon(Icons.person, color: Colors.white, size: 14),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // End Call X Button
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isCallActive = false;
+                                _isCallStarted = false;
+                                _isScreenSharing = false;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+
+                // User Badge (bottom left of video)
+                Positioned(
+                  bottom: 12,
+                  left: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Text('مشرف تجريبي 3', style: TextStyle(color: Colors.white, fontSize: 11)),
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Live Tajweed Score Badge
+          // Bottom Action Controls Bar (من الصور 6 و 8 و 14)
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFBF8ED),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.amber.shade200),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            color: const Color(0xFF131518),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: const [
-                Text('التجويد: 5/5 ⭐', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00875A))),
-                Text('المخارج: 5/5 ⭐', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00875A))),
-                Text('التقييم: 100%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2ECC71))),
+              children: [
+                // 1. Chat toggle
+                _buildCallBottomAction(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  isActive: false,
+                  onTap: () {
+                    // تصغير إلى نافذة عائمة لعرض الشات
+                    setState(() => _isPipMode = true);
+                  },
+                ),
+
+                // 2. Mic toggle
+                _buildCallBottomAction(
+                  icon: _isMicMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                  isActive: !_isMicMuted,
+                  activeColor: const Color(0xFF00875A),
+                  onTap: () {
+                    setState(() => _isMicMuted = !_isMicMuted);
+                    ZegoExpressEngine.instance.muteMicrophone(_isMicMuted);
+                  },
+                ),
+
+                // 3. Camera toggle
+                _buildCallBottomAction(
+                  icon: _isCameraOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
+                  isActive: _isCameraOn && !_isVoiceOnly,
+                  activeColor: const Color(0xFF00875A),
+                  onTap: () {
+                    setState(() {
+                      _isVoiceOnly = false;
+                      _isCameraOn = !_isCameraOn;
+                    });
+                    ZegoExpressEngine.instance.enableCamera(_isCameraOn);
+                  },
+                ),
+
+                // 4. Quran / Mushaf Book icon
+                _buildCallBottomAction(
+                  icon: Icons.menu_book_rounded,
+                  isActive: false,
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => Container(
+                        height: MediaQuery.of(context).size.height * 0.75,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFFFDF5),
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.all(8),
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(4)),
+                            ),
+                            const Text('سورة مريم - المصحف المرتل', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16)),
+                            const Divider(),
+                            const Expanded(
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ\n\n'
+                                  'كٓهيعٓصٓ ﴿١﴾ ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ﴿٢﴾ إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا ﴿٣﴾ قَالَ رَبِّ إِنِّى وَهَنَ ٱلْعَظْمُ مِنِّى وَٱشْتَعَلَ ٱلرَّأْسُ شَيْبًۭا وَلَمْ أَكُنۢ بِدُعَآئِكَ رَبِّ شَقِيًّۭا ﴿٤﴾ وَإِنِّى خِفْتُ ٱلْمَوَٰلِىَ مِن وَرَآءِى وَكَانَتِ ٱمْرَأَتِى عَاقِرًۭا فَهَبْ لِى مِن لَّدُنكَ وَلِيًّۭا ﴿٥﴾ يَرِثُنِى وَيَرِثُ مِنْ ءَالِ يَعْقُوبَ ۖ وَٱجْعَلْهُ رَبِّ رَضِيًّۭا ﴿٦﴾',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontFamily: 'Dubai', fontSize: 18, height: 2.2),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                // 5. Screen Share icon (من الصورة 8)
+                _buildCallBottomAction(
+                  icon: Icons.desktop_windows_outlined,
+                  isActive: _isScreenSharing,
+                  activeColor: Colors.blueAccent,
+                  onTap: () {
+                    setState(() => _isScreenSharing = !_isScreenSharing);
+                  },
+                ),
+
+                // 6. Picture-in-Picture floating toggle (من الصورة 9)
+                _buildCallBottomAction(
+                  icon: Icons.picture_in_picture_alt_outlined,
+                  isActive: false,
+                  onTap: () {
+                    setState(() => _isPipMode = true);
+                  },
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCallBottomAction({
+    required IconData icon,
+    required bool isActive,
+    Color activeColor = const Color(0xFF00875A),
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.white.withOpacity(0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Icon(
+            icon,
+            color: isActive ? activeColor : Colors.white,
+            size: 22,
+          ),
+        ),
       ),
     );
   }

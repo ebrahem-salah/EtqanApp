@@ -61,23 +61,90 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   final List<Map<String, dynamic>> _books = [
     {
-      'id': 1,
-      'title': 'صحيح البخاري',
+      'id': 100,
+      'title': 'تيست فايل',
+      'size': '1017.73 KB',
+      'author': 'إتقان',
+      'category': 'الكل',
+      'pages': 25,
+      'color': const Color(0xFF00875A),
+      'icon': '📚',
+      'sampleChapter': 'المقدمة',
+      'sampleText': 'ملف اختباري معتمد في إتقان.',
+    },
+    {
+      'id': 101,
+      'title': 'تيست ملف',
+      'size': '1017.73 KB',
+      'author': 'إتقان',
+      'category': 'الكل',
+      'pages': 25,
+      'color': const Color(0xFF00875A),
+      'icon': '📚',
+      'sampleChapter': 'المقدمة',
+      'sampleText': 'ملف اختباري معتمد في إتقان.',
+    },
+    {
+      'id': 102,
+      'title': 'صحيح مسلم طبعة بيت الأفكار 3 (1)',
+      'size': '1017.73 KB',
+      'author': 'الإمام مسلم النيسابوري',
+      'category': 'الحديث الشريف',
+      'pages': 1650,
+      'color': const Color(0xFF00875A),
+      'icon': '📚',
+      'sampleChapter': 'كتاب الإيمان',
+      'sampleText': 'بَابُ بَيَانِ الإِيمَانِ وَالإِسْلاَمِ وَالإِحْسَانِ.',
+    },
+    {
+      'id': 103,
+      'title': 'صحيح البخاري طبعة بيت الأفكار 3',
+      'size': '1017.73 KB',
       'author': 'الإمام محمد بن إسماعيل البخاري',
       'category': 'الحديث الشريف',
       'pages': 1800,
-      'hadiths': 7563,
       'color': const Color(0xFF00875A),
       'icon': '📚',
       'sampleChapter': 'كتاب بدء الوحي',
-      'sampleText': 'عَنْ عُمَرَ بْنِ الْخَطَّابِ رَضِيَ اللَّهُ عَنْهُ قَالَ: سَمِعْتُ رَسُولَ اللَّهِ ﷺ يَقُولُ:\n\n«إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى، فَمَنْ كَانَتْ هِجْرَتُهُ إِلَى دُنْيَا يُصِيبُهَا، أَوْ إِلَى امْرَأَةٍ يَنْكِحُهَا، فَهِجْرَتُهُ إِلَى مَا هَاجَرَ إِلَيْهِ».',
+      'sampleText': '«إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ».',
     },
     {
-      'id': 2,
-      'title': 'صحيح مسلم',
-      'author': 'الإمام مسلم بن الحجاج النيسابوري',
+      'id': 104,
+      'title': 'جامع الترمذي',
+      'size': '1017.73 KB',
+      'author': 'الإمام أبو عيسى الترمذي',
       'category': 'الحديث الشريف',
-      'pages': 1650,
+      'pages': 1200,
+      'color': const Color(0xFF00875A),
+      'icon': '📚',
+      'sampleChapter': 'أبواب الطهارة',
+      'sampleText': '«لاَ تُقْبَلُ صَلاَةٌ بِغَيْرِ طُهُورٍ».',
+    },
+    {
+      'id': 105,
+      'title': 'سنن النسائي',
+      'size': '1017.73 KB',
+      'author': 'الإمام أحمد بن شعيب النسائي',
+      'category': 'الحديث الشريف',
+      'pages': 1100,
+      'color': const Color(0xFF00875A),
+      'icon': '📚',
+      'sampleChapter': 'كتاب الطهارة',
+      'sampleText': '«طهور إناء أحدكم إذا ولغ فيه الكلب».',
+    },
+    {
+      'id': 106,
+      'title': 'سنن أبي داود',
+      'size': '1017.73 KB',
+      'author': 'الإمام أبو داود السجستاني',
+      'category': 'الحديث الشريف',
+      'pages': 1150,
+      'color': const Color(0xFF00875A),
+      'icon': '📚',
+      'sampleChapter': 'كتاب الصلاة',
+      'sampleText': '«مفتاح الصلاة الطهور».',
+    },
+  ];
       'hadiths': 3033,
       'color': const Color(0xFF1E5B42),
       'icon': '📖',
@@ -158,46 +225,64 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFBE8),
+      backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية من الصورة 7
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
-          'المكتبة الإسلامية وكتب التجويد',
-          style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 18),
-        ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bookmark_outline),
-            tooltip: 'العلامات المحفوظة',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('📚 لديك 4 علامات مرجعية محفوظة')),
-              );
-            },
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
+          child: IconButton(
+            icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF191919)),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        title: const Text(
+          'Library',
+          style: TextStyle(
+            fontFamily: 'Dubai',
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Color(0xFF191919),
+          ),
+        ),
       ),
       body: Column(
         children: [
-          // Search & Filter Box
-          Container(
-            color: AppColors.primary,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          // Search Box من الصورة 7
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6),
-                ],
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade300),
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),
                 textAlign: TextAlign.right,
+                decoration: const InputDecoration(
+                  hintText: 'ابحث',
+                  hintStyle: TextStyle(fontFamily: 'Dubai', fontSize: 14, color: Colors.grey),
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                ),
+              ),
+            ),
+          ),
                 decoration: const InputDecoration(
                   hintText: 'ابحث باسم الكتاب أو الشيخ أو المؤلف...',
                   hintStyle: TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.grey),
@@ -273,16 +358,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _buildBookCard(Map<String, dynamic> book) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E4D2)),
+        border: Border.all(color: Colors.grey.shade200, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(0.02),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -297,61 +382,36 @@ class _LibraryScreenState extends State<LibraryScreen> {
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                // Book Spine Visual
+                // Red PDF Icon من الصورة 7
                 Container(
-                  width: 58,
-                  height: 80,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: book['color'] as Color,
+                    color: const Color(0xFFE53935), // أحمر PDF المطابق للصورة 7
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (book['color'] as Color).withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: const Offset(2, 4),
-                      ),
-                    ],
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(book['icon'] as String, style: const TextStyle(fontSize: 26)),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: 34,
-                        height: 2,
-                        color: AppColors.gold,
+                  child: const Center(
+                    child: Text(
+                      'PDF',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
                       ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
 
-                // Info
+                // Info: Title & Size (من الصورة 7)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: (book['color'] as Color).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          book['category'] as String,
-                          style: TextStyle(
-                            fontFamily: 'Dubai',
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: book['color'] as Color,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
                       Text(
                         book['title'] as String,
                         style: const TextStyle(
@@ -360,26 +420,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF191919),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        book['author'] as String,
-                        style: const TextStyle(
+                        book['size'] ?? '1017.73 KB',
+                        style: TextStyle(
                           fontFamily: 'Dubai',
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: Colors.grey.shade600,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.menu_book, size: 13, color: Colors.grey.shade600),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${book['pages']} صفحة',
-                            style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600),
-                          ),
-                          const SizedBox(width: 14),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
                           Icon(Icons.format_list_numbered, size: 13, color: Colors.grey.shade600),
                           const SizedBox(width: 4),
                           Text(

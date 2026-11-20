@@ -313,7 +313,7 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                     _buildMenuItem(
                       title: 'المحفظة',
                       icon: Icons.account_balance_wallet_outlined,
-                      leadingText: '$walletBal دولار',
+                      leadingText: '$walletBal ر.س',
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const WalletScreen()),
@@ -358,51 +358,77 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
 
-                    // سجل الطالب والواجبات
+                    // تواصل معنا
                     _buildMenuItem(
-                      title: 'سجل الطالب والواجبات',
-                      icon: Icons.auto_stories_outlined,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const StudentRecordScreen()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // المشرفون التعليميون
-                    _buildMenuItem(
-                      title: 'المشرفون التعليميون',
-                      icon: Icons.supervisor_account_outlined,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const SupervisorsScreen()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // شهادات الشكر والتقدير
-                    _buildMenuItem(
-                      title: 'شهادات الشكر والتقدير',
-                      icon: Icons.workspace_premium_outlined,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AppreciationsScreen()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // تواصل معنا والدعم الفني
-                    _buildMenuItem(
-                      title: 'تواصل معنا والدعم الفني',
-                      icon: Icons.contact_support_outlined,
+                      title: 'تواصل معنا',
+                      icon: Icons.help_outline_rounded,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const SupportScreen()),
                         );
                       },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // الدعم الفني
+                    _buildMenuItem(
+                      title: 'الدعم الفني',
+                      icon: Icons.headset_mic_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ChatConversationScreen(
+                              userName: 'الدعم الفني - تطبيق إتقان',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // الاسئلة الشائعة
+                    _buildMenuItem(
+                      title: 'الاسئلة الشائعة',
+                      icon: Icons.chat_bubble_outline_rounded,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const SupportScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // الشروط والاحكام
+                    _buildMenuItem(
+                      title: 'الشروط والاحكام',
+                      icon: Icons.verified_user_outlined,
+                      onTap: () {
+                        _showTermsDialog(context);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // لغة التطبيق (AR / EN)
+                    _buildLanguageItem(),
+                    const SizedBox(height: 12),
+
+                    // الاشعارات
+                    _buildNotificationsToggle(),
+                    const SizedBox(height: 12),
+
+                    // تسجيل الخروج
+                    _buildLogoutItem(context, auth),
+                    const SizedBox(height: 24),
+
+                    // رقم الإصدار
+                    Text(
+                      'الاصدار v1.0.01',
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 13,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 30),
                   ],
@@ -524,6 +550,229 @@ class _MoreScreenPlaceholder extends StatelessWidget {
             Icon(icon, color: const Color(0xFF191919), size: 22),
           ],
         ),
+      ),
+    );
+  }
+
+  // لغة التطبيق (AR / EN) من الصورة 1
+  Widget _buildLanguageItem() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Radio AR (Checked)
+          Row(
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF00875A), width: 2),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF00875A),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'AR',
+                style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // Radio EN
+          Row(
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade400, width: 2),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'EN',
+                style: TextStyle(fontFamily: 'Dubai', color: Colors.grey.shade600, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+            ],
+          ),
+          const Spacer(),
+          const Text(
+            'لغة التطبيق',
+            style: TextStyle(
+              fontFamily: 'Dubai',
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF191919),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Icon(Icons.language_rounded, color: Color(0xFF191919), size: 22),
+        ],
+      ),
+    );
+  }
+
+  // الاشعارات Switch من الصورة 1
+  Widget _buildNotificationsToggle() {
+    return StatefulBuilder(
+      builder: (context, setStateLocal) {
+        bool isNotificationsOn = true;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEEEEEE), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: isNotificationsOn,
+                  activeColor: const Color(0xFF00875A),
+                  activeTrackColor: const Color(0xFFC8E6C9),
+                  onChanged: (val) {
+                    setStateLocal(() {
+                      isNotificationsOn = val;
+                    });
+                  },
+                ),
+              ),
+              const Spacer(),
+              const Text(
+                'الاشعارات',
+                style: TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF191919),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.notifications_active_outlined, color: Color(0xFF191919), size: 22),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // تسجيل الخروج باللون الأحمر من الصورة 1
+  Widget _buildLogoutItem(BuildContext context, AuthProvider auth) {
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: const Text('تسجيل الخروج', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold), textAlign: TextAlign.right),
+            content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج من تطبيق إتقان؟', style: TextStyle(fontFamily: 'Dubai'), textAlign: TextAlign.right),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء', style: TextStyle(fontFamily: 'Dubai', color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await auth.logout();
+                },
+                child: const Text('تأكيد الخروج', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEEEEE), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          children: [
+            Spacer(),
+            Text(
+              'تسجيل الخروج',
+              style: TextStyle(
+                fontFamily: 'Dubai',
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.redAccent, // النص أحمر مطابق للصورة 1
+              ),
+            ),
+            SizedBox(width: 12),
+            Icon(Icons.logout_rounded, color: Colors.redAccent, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTermsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('الشروط والأحكام وسياسة الخصوصية', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold), textAlign: TextAlign.right),
+        content: const SingleChildScrollView(
+          child: Text(
+            'تطبيق إتقان هو منصة إلكترونية لتعليم القرآن الكريم والسنة النبوية.\n\n'
+            '1. يلتزم المستخدم بالآداب الإسلامية والأخلاق الفاضلة داخل الحلقات.\n'
+            '2. المحتوى الصوتي والمرئي خاضع لرقابة المشرفين المعتمدين لضمان الجودة والإتقان.\n'
+            '3. جميع المقارئ والمناهج معتمدة رسمياً وموثقة وفق الروايات المتواترة.\n\n'
+            'يمكنك قراءة النسخة الكاملة على: https://www.etqan.site/privacy.html',
+            style: TextStyle(fontFamily: 'Dubai', fontSize: 13, height: 1.6),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق', style: TextStyle(fontFamily: 'Dubai', color: Color(0xFF00875A))),
+          ),
+        ],
       ),
     );
   }
