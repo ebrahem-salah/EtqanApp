@@ -24,17 +24,24 @@ class _MyVideosScreenState extends State<MyVideosScreen> {
   Future<void> _loadVideos() async {
     setState(() => _isLoading = true);
     try {
-      final res = await _apiClient.getUserVideos(1);
-      if (res.statusCode == 200 && res.data != null) {
+      dynamic res;
+      try {
+        res = await _apiClient.getMyVideos();
+      } catch (_) {
+        res = await _apiClient.getUserVideos(1);
+      }
+      if (res != null && res.statusCode == 200 && res.data != null) {
         final List items = res.data['data'] ?? [];
         if (items.isNotEmpty) {
           _videos = items.map<Map<String, dynamic>>((v) => {
             'id': v['id'],
-            'title': v['title'] ?? 'فيديو قرآني',
-            'video_url': v['video_url'],
+            'title': v['description'] ?? v['title'] ?? 'مقطع تلاوة قرآنية',
+            'video_url': v['video_url'] ?? '',
             'views_count': v['views_count'] ?? 0,
             'likes_count': v['likes_count'] ?? 0,
           }).toList();
+        } else {
+          _videos = [];
         }
       }
     } catch (_) {}

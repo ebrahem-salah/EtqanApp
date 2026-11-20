@@ -280,6 +280,11 @@ class ApiClient {
     return await dio.delete('/profile');
   }
 
+  /// Get current authenticated user's uploaded videos
+  Future<Response> getMyVideos() async {
+    return await dio.get('/my-videos');
+  }
+
   /// Get user videos
   Future<Response> getUserVideos(int userId) async {
     return await dio.get('/users/$userId/videos');
