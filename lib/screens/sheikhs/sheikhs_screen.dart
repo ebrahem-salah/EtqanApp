@@ -266,8 +266,10 @@ class _SheikhsScreenState extends State<SheikhsScreen> {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => UserProfileScreen(
-                                    userId: sheikh['id'],
-                                    userName: sheikh['name'],
+                                    userName: sheikh['name'] ?? 'فضيلة الشيخ',
+                                    episodesCount: sheikh['episodes'] ?? 0,
+                                    videosCount: sheikh['videos'] ?? 0,
+                                    friendsCount: sheikh['friends'] ?? 0,
                                   ),
                                 ),
                               );

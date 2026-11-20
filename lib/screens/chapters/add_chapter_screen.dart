@@ -235,8 +235,8 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
                     value: _selectedCategory,
                     hint: const Text('اختر القسم الرئيسي', style: TextStyle(color: Colors.grey, fontSize: 13, fontFamily: 'Dubai')),
                     icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF00875A)),
-                    items: _categoryHierarchy.keys.map((cat) {
-                      return DropdownMenuItem(
+                    items: _categoryHierarchy.keys.map<DropdownMenuItem<String>>((cat) {
+                      return DropdownMenuItem<String>(
                         value: cat,
                         child: Text(cat, style: const TextStyle(fontFamily: 'Dubai', fontSize: 13)),
                       );
@@ -270,8 +270,8 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
                       value: _selectedSubCategory,
                       hint: const Text('اختر القسم الفرعي', style: TextStyle(color: Colors.grey, fontSize: 13, fontFamily: 'Dubai')),
                       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF00875A)),
-                      items: subCategories.map((sub) {
-                        return DropdownMenuItem(
+                      items: subCategories.map<DropdownMenuItem<String>>((sub) {
+                        return DropdownMenuItem<String>(
                           value: sub,
                           child: Text(sub, style: const TextStyle(fontFamily: 'Dubai', fontSize: 13)),
                         );

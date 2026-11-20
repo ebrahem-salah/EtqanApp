@@ -38,9 +38,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final user = auth.currentUser;
-    _nameController = TextEditingController(text: user?.name.isNotEmpty == true ? user!.name : 'مشرف تجريبي 3');
-    _phoneController = TextEditingController(text: user?.phone.isNotEmpty == true ? user!.phone : '966111111');
-    _emailController = TextEditingController(text: user?.email.isNotEmpty == true ? user!.email : 'supervisor3@test.com');
+    _nameController = TextEditingController(text: (user != null && user.name.isNotEmpty) ? user.name : 'مشرف تجريبي 3');
+    _phoneController = TextEditingController(text: (user?.phone != null && user!.phone!.isNotEmpty) ? user.phone! : '966111111');
+    _emailController = TextEditingController(text: (user != null && user.email.isNotEmpty) ? user.email : 'supervisor3@test.com');
   }
 
   Future<void> _saveBasicInfo() async {

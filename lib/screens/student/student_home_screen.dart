@@ -115,8 +115,8 @@ class _MoreScreenPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.currentUser;
-    final userName = user?.name.isNotEmpty == true ? user!.name : 'مشرف تجريبي 3';
-    final userPhone = user?.phone.isNotEmpty == true ? user!.phone : '+966966111111';
+    final userName = (user != null && user.name.isNotEmpty) ? user.name : 'مشرف تجريبي 3';
+    final userPhone = (user?.phone != null && user!.phone!.isNotEmpty) ? user.phone! : '+966966111111';
     final walletBal = user?.walletBalance.toStringAsFixed(1) ?? '0.0';
 
     return Scaffold(
@@ -252,8 +252,7 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const ChatConversationScreen(
-                              recipientId: 1,
-                              recipientName: 'مشرف الدعم الفني',
+                              userName: 'مشرف الدعم الفني',
                             ),
                           ),
                         );
