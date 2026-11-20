@@ -26,6 +26,9 @@ dependencies:
   zego_express_engine: ^3.25.0
   flutter_local_notifications: ^17.2.2
   connectivity_plus: ^6.1.0
+  file_picker: ^8.1.2
+  video_compress: ^3.1.2
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

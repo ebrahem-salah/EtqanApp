@@ -13,7 +13,7 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen> {
   final ApiClient _apiClient = ApiClient();
   double _currentBalance = 0.0;
-  String _currency = 'دولار';
+  String _currency = 'ر.س';
   bool _isLoading = false;
 
   DateTime? _fromDate;
@@ -39,7 +39,7 @@ class _WalletScreenState extends State<WalletScreen> {
             _currentBalance = bal;
           }
           if (data['currency'] != null) {
-            _currency = data['currency'] == 'SAR' ? 'ر.س' : 'دولار';
+            _currency = data['currency'] == 'USD' ? 'دولار' : 'ر.س';
           }
         }
         final List txs = data['transactions'] ?? [];

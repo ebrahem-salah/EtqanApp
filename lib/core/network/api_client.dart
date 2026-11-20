@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -152,6 +153,34 @@ class ApiClient {
       'description': description,
       if (videoUrl != null) 'video_url': videoUrl,
     });
+  }
+
+  /// Upload a local video file with real progress tracking (compressed to 720p)
+  Future<Response> uploadVideoFile({
+    required File file,
+    required String description,
+    void Function(int sent, int total)? onProgress,
+  }) async {
+    final formData = FormData.fromMap({
+      'description': description,
+      'video': await MultipartFile.fromFile(
+        file.path,
+        filename: file.path.split('/').last,
+      ),
+    });
+
+    return await dio.post(
+      '/videos',
+      data: formData,
+      onSendProgress: (sent, total) {
+        if (onProgress != null && total > 0) onProgress(sent, total);
+      },
+      options: Options(
+        // رفع الفيديوهات قد يأخذ وقتاً أطول — timeout 5 دقائق
+        sendTimeout: const Duration(minutes: 5),
+        receiveTimeout: const Duration(minutes: 2),
+      ),
+    );
   }
 
   // ================= 3. CATEGORIES & LEARNING LEVELS =================
