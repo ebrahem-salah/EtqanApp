@@ -52,6 +52,11 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
   int _questionCount = 10; // 5 or 10
   int _versesCount = 10; // 10, 15, or 30
 
+  // لائحة الدرجات والخصومات المخصصة للمسابقة (قابلة للتعديل)
+  double _errorDeductionRate = 1.00; // قيمة خصم خطأ الحفظ الجلي
+  double _hesitationDeductionRate = 0.25; // قيمة خصم التردد والتلعثم
+  double _questionBaseScore = 10.00; // الدرجة الكاملة لكل سؤال
+
   List<Map<String, dynamic>> _questions = [];
   int _activeQuestionIndex = 0;
 
@@ -78,8 +83,16 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
         studentId: widget.studentId,
       );
 
-      if (res.statusCode == 200 && res.data != null && res.data['data'] != null) {
-        final List list = res.data['data'];
+      if (res.statusCode == 200 && res.data != null) {
+        // Load custom competition deduction rules if present
+        if (res.data['rules'] != null) {
+          final rules = res.data['rules'];
+          _errorDeductionRate = double.tryParse(rules['error_rate']?.toString() ?? '1.0') ?? 1.0;
+          _hesitationDeductionRate = double.tryParse(rules['hesitation_rate']?.toString() ?? '0.25') ?? 0.25;
+          _questionBaseScore = double.tryParse(rules['question_score']?.toString() ?? '10.0') ?? 10.0;
+        }
+
+        final List list = res.data['data'] ?? [];
         if (list.isNotEmpty) {
           _questions = list.map<Map<String, dynamic>>((q) {
             double err = double.tryParse(q['error_deduction']?.toString() ?? '0') ?? 0;
@@ -90,8 +103,8 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
               'from_ayah': q['from_ayah'] ?? 1,
               'to_ayah': q['to_ayah'] ?? 10,
               'notes': q['notes'] ?? '',
-              'errors': (err / 1.0).round(),
-              'hesitations': (hes / 0.25).round(),
+              'errors': _errorDeductionRate > 0 ? (err / _errorDeductionRate).round() : 0,
+              'hesitations': _hesitationDeductionRate > 0 ? (hes / _hesitationDeductionRate).round() : 0,
               'notes_controller': TextEditingController(text: q['notes'] ?? ''),
             };
           }).toList();
@@ -152,10 +165,128 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
     }
   }
 
+  void _showCustomDeductionRatesDialog() {
+    double tempError = _errorDeductionRate;
+    double tempHes = _hesitationDeductionRate;
+    double tempBase = _questionBaseScore;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.tune_rounded, color: Color(0xFF00875A)),
+              SizedBox(width: 8),
+              Text(
+                'تخصيص لائحة درجات المسابقة',
+                style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'حدد معايير الخصم المعتمدة لهذه المسابقة:',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 14),
+
+              // 1. خصم الخطأ
+              const Text('خصم خطأ الحفظ الجلي (لكل خطأ):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<double>(
+                value: tempError,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 0.50, child: Text('-0.50 درجة (مخفف)')),
+                  DropdownMenuItem(value: 1.00, child: Text('-1.00 درجة (قياسي)')),
+                  DropdownMenuItem(value: 1.50, child: Text('-1.50 درجة')),
+                  DropdownMenuItem(value: 2.00, child: Text('-2.00 درجات (مشدد)')),
+                ],
+                onChanged: (v) => setDlgState(() => tempError = v ?? 1.0),
+              ),
+              const SizedBox(height: 12),
+
+              // 2. خصم التلعثم
+              const Text('خصم التلعثم والتردد وفتح الشيخ:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<double>(
+                value: tempHes,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 0.10, child: Text('-0.10 درجة')),
+                  DropdownMenuItem(value: 0.25, child: Text('-0.25 درجة (قياسي)')),
+                  DropdownMenuItem(value: 0.50, child: Text('-0.50 درجة')),
+                  DropdownMenuItem(value: 1.00, child: Text('-1.00 درجة')),
+                ],
+                onChanged: (v) => setDlgState(() => tempHes = v ?? 0.25),
+              ),
+              const SizedBox(height: 12),
+
+              // 3. درجة السؤال الكاملة
+              const Text('الدرجة القصوى لكل سؤال:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<double>(
+                value: tempBase,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 5.0, child: Text('5 درجات')),
+                  DropdownMenuItem(value: 10.0, child: Text('10 درجات (قياسي)')),
+                  DropdownMenuItem(value: 20.0, child: Text('20 درجة')),
+                ],
+                onChanged: (v) => setDlgState(() => tempBase = v ?? 10.0),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00875A),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                setState(() {
+                  _errorDeductionRate = tempError;
+                  _hesitationDeductionRate = tempHes;
+                  _questionBaseScore = tempBase;
+                });
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ تم تحديث لائحة درجات وخصومات المسابقة بنجاح!'),
+                    backgroundColor: Color(0xFF00875A),
+                  ),
+                );
+              },
+              child: const Text('تطبيق اللائحة', style: TextStyle(color: Colors.white, fontFamily: 'Dubai')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   double _getQuestionScore(Map<String, dynamic> q) {
     int errors = q['errors'] ?? 0;
     int hesitations = q['hesitations'] ?? 0;
-    double score = 10.0 - (errors * 1.0) - (hesitations * 0.25);
+    double score = _questionBaseScore - (errors * _errorDeductionRate) - (hesitations * _hesitationDeductionRate);
     return score < 0 ? 0 : score;
   }
 
@@ -169,7 +300,7 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
   }
 
   double _getMaxScore() {
-    return _questions.isEmpty ? 100.0 : (_questions.length * 10.0);
+    return _questions.isEmpty ? (_questionBaseScore * 10) : (_questions.length * _questionBaseScore);
   }
 
   Future<void> _submitEvaluation() async {
@@ -184,8 +315,9 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
 
         return {
           'question_id': q['id'],
-          'error_deduction': errors * 1.0,
-          'hesitation_deduction': hesitations * 0.25,
+          'total_score': _questionBaseScore,
+          'error_deduction': errors * _errorDeductionRate,
+          'hesitation_deduction': hesitations * _hesitationDeductionRate,
           'notes': ctrl?.text ?? '',
         };
       }).toList();
@@ -505,6 +637,41 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
             ],
           ),
           const SizedBox(height: 10),
+
+          // شريط لائحة الخصومات المتغيرة للمسابقة
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('لائحة درجات وخصومات المسابقة:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    Text(
+                      'خطأ: -${_errorDeductionRate.toStringAsFixed(2)} | تلعثم: -${_hesitationDeductionRate.toStringAsFixed(2)} | درجة السؤال: ${_questionBaseScore.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 10, color: Color(0xFF00875A), fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF00875A),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                  onPressed: _showCustomDeductionRatesDialog,
+                  icon: const Icon(Icons.tune_rounded, size: 14),
+                  label: const Text('تخصيص الخصومات', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -685,14 +852,14 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'درجة السؤال: ${score.toStringAsFixed(2)} / 10',
+                  'درجة السؤال: ${score.toStringAsFixed(2)} / ${_questionBaseScore.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontFamily: 'Dubai',
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: score >= 8
+                    color: score >= (_questionBaseScore * 0.8)
                         ? const Color(0xFF00875A)
-                        : (score >= 5 ? Colors.orange.shade800 : Colors.red),
+                        : (score >= (_questionBaseScore * 0.5) ? Colors.orange.shade800 : Colors.red),
                   ),
                 ),
               ),
@@ -700,20 +867,20 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
           ),
           const SizedBox(height: 14),
 
-          // 1. أخطاء الحفظ الجلية (-1.00)
+          // 1. أخطاء الحفظ الجلية
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     '❌ خطأ حفظ أو نسيان جلي',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red),
                   ),
                   Text(
-                    'خصم (-1.00) درجة لكل خطأ',
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                    'خصم (-${_errorDeductionRate.toStringAsFixed(2)}) درجة لكل خطأ',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ),
@@ -746,20 +913,20 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
           ),
           const Divider(height: 24),
 
-          // 2. التردد والتلعثم والفتح (-0.25)
+          // 2. التردد والتلعثم والفتح
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     '⚠️ تلعثم / تردد / فتح الشيخ',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
                   ),
                   Text(
-                    'خصم (-0.25) درجة لكل تنبيه',
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                    'خصم (-${_hesitationDeductionRate.toStringAsFixed(2)}) درجة لكل تنبيه',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ),
