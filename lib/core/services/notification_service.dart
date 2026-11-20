@@ -129,17 +129,6 @@ class NotificationService {
         final granted = await androidImpl.requestNotificationsPermission();
         return granted ?? false;
       }
-
-      final iosImpl = _localNotifications
-          .resolvePlatformSpecificImplementation<DarwinFlutterLocalNotificationsPlugin>();
-      if (iosImpl != null) {
-        final granted = await iosImpl.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-        return granted ?? false;
-      }
     } catch (_) {}
     return true;
   }
