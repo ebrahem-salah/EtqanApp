@@ -313,6 +313,42 @@ class ApiClient {
     return await dio.post('/competitions/$competitionId/calculate-rankings');
   }
 
+  /// Generate randomized Quran competition questions for student
+  Future<Response> generateCompetitionQuestions({
+    required int competitionId,
+    required int studentId,
+    int scopeJuz = 30,
+    int questionCount = 10,
+    int versesCount = 10,
+  }) async {
+    return await dio.post('/competitions/$competitionId/generate-questions', data: {
+      'student_id': studentId,
+      'scope_juz': scopeJuz,
+      'question_count': questionCount,
+      'verses_count': versesCount,
+    });
+  }
+
+  /// Get generated questions for a student in a competition
+  Future<Response> getStudentCompetitionQuestions({
+    required int competitionId,
+    required int studentId,
+  }) async {
+    return await dio.get('/competitions/$competitionId/student/$studentId/questions');
+  }
+
+  /// Submit rubric evaluation with error & hesitation deductions
+  Future<Response> submitCompetitionEvaluation({
+    required int competitionId,
+    required int studentId,
+    required List<Map<String, dynamic>> evaluations,
+  }) async {
+    return await dio.post('/competitions/$competitionId/submit-evaluation', data: {
+      'student_id': studentId,
+      'evaluations': evaluations,
+    });
+  }
+
   // ================= 6. BROADCASTS & RADIOS =================
 
   /// Quran & Hadith 24/7 radio broadcasts

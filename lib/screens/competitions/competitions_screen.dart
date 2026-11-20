@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/network/api_client.dart';
+import 'widgets/competition_exam_sheet.dart';
 
 class CompetitionsScreen extends StatefulWidget {
   const CompetitionsScreen({super.key});
@@ -348,7 +349,59 @@ class _CompetitionsScreenState extends State<CompetitionsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
+
+            // زر نظام التحكيم واختبار المتسابقين (خاص بالشيوخ ولجنة التحكيم)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF00875A).withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFF00875A), size: 24),
+                ),
+                title: const Text(
+                  'استمارة تحكيم واختبار المتسابقين 📝',
+                  style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                subtitle: const Text(
+                  'توليد أسئلة عشوائية ورصد أخطاء الحفظ والتلعثم وحساب الدرجة آلياً',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+                trailing: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00875A),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    CompetitionExamSheet.show(
+                      context,
+                      competitionId: 103,
+                      studentId: 1,
+                      studentName: 'أحمد محمود الدوسري',
+                      onEvaluationSubmitted: _loadLiveLeaderboard,
+                    );
+                  },
+                  child: const Text('بدء التحكيم', style: TextStyle(fontSize: 11, color: Colors.white)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // فروع المسابقة
             const Text(
@@ -388,7 +441,7 @@ class _CompetitionsScreenState extends State<CompetitionsScreen> {
 
             // لوحة المتصدرين
             const Text(
-              'لوحة المتصدرين والأوائل 🥇:',
+              'لوحة المتصدرين والأوائل 🥇 (اضغط لتحكيم المتسابق):',
               style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 15),
             ),
             const SizedBox(height: 8),
@@ -401,6 +454,15 @@ class _CompetitionsScreenState extends State<CompetitionsScreen> {
                           title: Text(l['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           subtitle: Text('${l['city']} • ${l['surah']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                           trailing: Text(l['score'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00875A), fontSize: 13)),
+                          onTap: () {
+                            CompetitionExamSheet.show(
+                              context,
+                              competitionId: 103,
+                              studentId: 1,
+                              studentName: l['name'],
+                              onEvaluationSubmitted: _loadLiveLeaderboard,
+                            );
+                          },
                         ))
                     .toList(),
               ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/zego_cloud_service.dart';
+import '../competitions/widgets/competition_exam_sheet.dart';
 
 class LiveRecitationRoom extends StatefulWidget {
   final String roomId;
@@ -166,7 +167,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
               );
             },
           ),
-          // 3. Picture in Picture / Floating background bar
+          // 4. Picture in Picture / Floating background bar
           IconButton(
             tooltip: 'استمرار في الخلفية',
             icon: const Icon(Icons.picture_in_picture, color: Color(0xFFFFDF73)),
@@ -175,6 +176,19 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                 const SnackBar(content: Text('📱 يستمر البث الصوتي بالخلفية.')),
               );
               Navigator.of(context).pop();
+            },
+          ),
+          // 5. Competition Exam Sheet (ورقة اختبار وتحكيم المتسابق)
+          IconButton(
+            tooltip: 'استمارة تحكيم ورصد درجات المتسابق',
+            icon: const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFFFFDF73)),
+            onPressed: () {
+              CompetitionExamSheet.show(
+                context,
+                competitionId: 103,
+                studentId: 1,
+                studentName: 'أحمد محمود (المتسابق)',
+              );
             },
           ),
         ],
