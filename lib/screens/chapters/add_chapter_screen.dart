@@ -17,6 +17,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
 
   bool _isPaid = false;
   bool _isPrivate = false;
+  bool _allowRecording = false;
   bool _isSubmitting = false;
 
   DateTime? _selectedDateTime;
@@ -108,6 +109,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
         type: _isPaid ? 'paid' : 'free',
         price: _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0,
         isPrivate: _isPrivate,
+        allowRecording: _allowRecording,
       );
 
       if (mounted) {
@@ -243,6 +245,14 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
                       setState(() {
                         _selectedCategory = val;
                         _selectedSubCategory = null;
+                        // Smart default: Memorization/Noorani = Do NOT record (false). Lectures/Fiqh/Sciences = Record (true).
+                        if (val == 'تعليم الحروف والقاعدة النورانية' || val == 'الرقية الشرعية' || val == 'الطفل المسلم') {
+                          _allowRecording = false;
+                        } else if (val == 'قسم الفقه' || val == 'السنة النبوية' || val == 'علوم أخرى') {
+                          _allowRecording = true;
+                        } else {
+                          _allowRecording = false;
+                        }
                       });
                     },
                   ),
@@ -418,9 +428,58 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 14),
+
+              // 9. تسجيل وحفظ الجلسة (Switch toggle)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Switch(
+                          value: _allowRecording,
+                          activeColor: const Color(0xFF00875A),
+                          onChanged: (val) => setState(() => _allowRecording = val),
+                        ),
+                        const Row(
+                          children: [
+                            Text(
+                              'تسجيل وحفظ الجلسة',
+                              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.black87),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.videocam_outlined, size: 20, color: Color(0xFF00875A)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _allowRecording
+                          ? '🟢 سيتم تسجيل الدرس ورفعه تلقائياً للمكتبة كمرجع للطلاب'
+                          : '🔒 جلسة خاصة غير مسجلة (حفظ تام لخصوصية تلاوة الطلاب ولن يتم استهلاك مساحة السيرفر)',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _allowRecording ? const Color(0xFF00875A) : Colors.grey.shade600,
+                        fontFamily: 'Dubai',
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
 
-              // 9. Black Submit Button: اضافة
+              // 10. Black Submit Button: اضافة
               SizedBox(
                 width: double.infinity,
                 height: 52,

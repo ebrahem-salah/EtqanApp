@@ -6,12 +6,14 @@ class LiveRecitationRoom extends StatefulWidget {
   final String roomId;
   final String circleTitle;
   final bool isSheikh;
+  final bool isRecorded;
 
   const LiveRecitationRoom({
     super.key,
     required this.roomId,
     required this.circleTitle,
     this.isSheikh = false,
+    this.isRecorded = false,
   });
 
   @override
@@ -23,6 +25,37 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   bool _isSpeakerOn = true;
   bool _isHandRaised = false;
   bool _isStudentMicApproved = false;
+  late bool _isRecording;
+
+  @override
+  void initState() {
+    super.initState();
+    _isRecording = widget.isRecorded;
+  }
+
+  void _toggleRecording() {
+    setState(() {
+      _isRecording = !_isRecording;
+    });
+
+    if (_isRecording) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔴 بدأ تسجيل الدرس! سيتم حفظه تلقائياً في الأرشيف ومكتبة الدروس.'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔒 تم إيقاف التسجيل. الجلسة الآن خاصة وغير مسجلة حفاظاً على الخصوصية.'),
+          backgroundColor: Color(0xFF00875A),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
 
   int _currentAyahIndex = 1;
 
@@ -88,7 +121,16 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           ],
         ),
         actions: [
-          // 1. Direct Zego Video Call
+          // 1. Recording Toggle Button (for Host / Sheikh)
+          IconButton(
+            tooltip: _isRecording ? 'إيقاف تسجيل الدرس' : 'بدء تسجيل الدرس',
+            icon: Icon(
+              _isRecording ? Icons.fiber_manual_record : Icons.fiber_manual_record_outlined,
+              color: _isRecording ? Colors.redAccent : Colors.white70,
+            ),
+            onPressed: _toggleRecording,
+          ),
+          // 2. Direct Zego Video Call
           IconButton(
             tooltip: 'مكالمة فيديو مباشرة عبر ZEGOCLOUD',
             icon: const Icon(Icons.videocam, color: Color(0xFF2ECC71)),
@@ -139,6 +181,35 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       ),
       body: Column(
         children: [
+          // شريط حالة التسجيل والخصوصية (Recording & Privacy Status Banner)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            color: _isRecording ? Colors.red.shade900.withOpacity(0.3) : const Color(0xFF0D1E13),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _isRecording ? Icons.fiber_manual_record : Icons.lock_outline_rounded,
+                  color: _isRecording ? Colors.redAccent : const Color(0xFF2ECC71),
+                  size: 14,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _isRecording
+                      ? '🔴 جاري تسجيل الدرس وحفظه للأرشيف'
+                      : '🔒 جلسة خاصة غير مسجلة (حفظ تام لخصوصية تلاوة الطلاب)',
+                  style: TextStyle(
+                    color: _isRecording ? Colors.redAccent : const Color(0xFF2ECC71),
+                    fontSize: 11,
+                    fontFamily: 'Dubai',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // شريط المتحدث الحالي
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

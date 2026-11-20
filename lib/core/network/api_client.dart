@@ -181,6 +181,7 @@ class ApiClient {
     String type = 'free',
     double price = 0.0,
     bool isPrivate = false,
+    bool allowRecording = false,
     String? imageUrl,
   }) async {
     return await dio.post('/classes', data: {
@@ -192,6 +193,7 @@ class ApiClient {
       'type': type,
       'price': price,
       'is_private': isPrivate,
+      'allow_recording': allowRecording,
       if (imageUrl != null) 'image': imageUrl,
     });
   }
