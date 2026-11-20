@@ -89,6 +89,13 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
         roomId: 'circle_free_${DateTime.now().millisecondsSinceEpoch}',
       );
 
+      // إرسال إشعار فوري وجدولة تذكير للحلقة المجانية
+      await NotificationService().scheduleSessionReminder(
+        circleTitle: widget.circleTitle,
+        timeSlot: '$selectedDay - $selectedTime',
+        circleId: 110,
+      );
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -154,7 +161,7 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
       // إرسال إشعار فوري وجدولة تذكير للجلسة
       await NotificationService().scheduleSessionReminder(
         circleTitle: widget.circleTitle,
-        timeSlot: _timeSlots[_selectedTimeIndex],
+        timeSlot: selectedTime,
         circleId: 110,
       );
 

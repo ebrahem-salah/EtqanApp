@@ -12,6 +12,7 @@ class LiveRecitationRoom extends StatefulWidget {
   final String circleTitle;
   final bool isSheikh;
   final bool isRecorded;
+  final int? classRoomId;
 
   const LiveRecitationRoom({
     super.key,
@@ -19,6 +20,7 @@ class LiveRecitationRoom extends StatefulWidget {
     required this.circleTitle,
     this.isSheikh = false,
     this.isRecorded = false,
+    this.classRoomId,
   });
 
   @override
@@ -342,7 +344,8 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
   }
 
   void _shareCircleLink() {
-    final link = DeepLinkService.getCircleShareLink(widget.classRoomId, circleTitle: widget.circleTitle);
+    final id = widget.classRoomId ?? int.tryParse(widget.roomId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 110;
+    final link = DeepLinkService.getCircleShareLink(id, circleTitle: widget.circleTitle);
     Clipboard.setData(ClipboardData(text: link));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

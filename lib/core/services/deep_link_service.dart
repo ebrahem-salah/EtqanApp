@@ -68,6 +68,7 @@ $link
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => LiveRecitationRoom(
+          roomId: 'circle_$circleId',
           classRoomId: circleId,
           circleTitle: circleTitle,
         ),
