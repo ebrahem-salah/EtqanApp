@@ -370,7 +370,17 @@ class ApiClient {
     return await dio.get('/sheikhs');
   }
 
-  // ================= 9. NOTIFICATIONS & FAQS =================
+  /// List Supervisors
+  Future<Response> getSupervisors() async {
+    return await dio.get('/supervisors');
+  }
+
+  /// Get Sheikhs of a Supervisor
+  Future<Response> getSupervisorSheikhs(int supervisorId) async {
+    return await dio.get('/supervisors/$supervisorId/sheikhs');
+  }
+
+  // ================= 9. NOTIFICATIONS, FAQS & SUPPORT =================
 
   /// System notifications
   Future<Response> getNotifications() async {
@@ -380,6 +390,26 @@ class ApiClient {
   /// Frequently Asked Questions
   Future<Response> getFaqs() async {
     return await dio.get('/faqs');
+  }
+
+  /// Get volunteer types / categories
+  Future<Response> getVolunteerTypes() async {
+    return await dio.get('/volunteer-types');
+  }
+
+  /// Submit volunteer request
+  Future<Response> submitVolunteerRequest(Map<String, dynamic> data) async {
+    return await dio.post('/volunteer-requests', data: data);
+  }
+
+  /// Get student appreciations
+  Future<Response> getStudentAppreciations(int userId) async {
+    return await dio.get('/students/$userId/appreciations');
+  }
+
+  /// Send appreciation
+  Future<Response> sendAppreciation(int classId, Map<String, dynamic> data) async {
+    return await dio.post('/classes/$classId/appreciations', data: data);
   }
 
   // ================= 10. WALLET & PAYMENTS (Official API) =================

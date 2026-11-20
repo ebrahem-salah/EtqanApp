@@ -20,6 +20,11 @@ import '../sheikh_dashboard/sheikh_dashboard_screen.dart';
 import 'my_videos_screen.dart';
 import '../profile/edit_profile_screen.dart';
 import '../chat/chat_conversation_screen.dart';
+import '../supervisors/supervisors_screen.dart';
+import '../volunteer/volunteer_screen.dart';
+import '../appreciations/appreciations_screen.dart';
+import '../support/support_screen.dart';
+import 'student_record_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -273,27 +278,8 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                       icon: Icons.assignment_outlined,
                       label: 'التطوع',
                       onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            title: const Text('برنامج التطوع القرآني', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
-                            content: const Text(
-                              'برنامج التطوع في منصة إتقان يتيح لحفظة كتاب الله تقديم حصص تسميع وتصحيح مجانية لوجه الله تعالى.',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(fontFamily: 'Dubai'),
-                            ),
-                            actions: [
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF00875A),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                onPressed: () => Navigator.of(ctx).pop(),
-                                child: const Text('حسناً', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
-                              ),
-                            ],
-                          ),
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const VolunteerScreen()),
                         );
                       },
                     ),
@@ -367,32 +353,49 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
 
-                    // تواصل معنا
+                    // سجل الطالب والواجبات
                     _buildMenuItem(
-                      title: 'تواصل معنا',
+                      title: 'سجل الطالب والواجبات',
+                      icon: Icons.auto_stories_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const StudentRecordScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // المشرفون التعليميون
+                    _buildMenuItem(
+                      title: 'المشرفون التعليميون',
+                      icon: Icons.supervisor_account_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const SupervisorsScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // شهادات الشكر والتقدير
+                    _buildMenuItem(
+                      title: 'شهادات الشكر والتقدير',
+                      icon: Icons.workspace_premium_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AppreciationsScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // تواصل معنا والدعم الفني
+                    _buildMenuItem(
+                      title: 'تواصل معنا والدعم الفني',
                       icon: Icons.contact_support_outlined,
                       onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            title: const Text('تواصل معنا', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
-                            content: const Text(
-                              'فريق دعم منصة إتقان متاح لخدمتكم 24/7 عبر البريد: support@etqan.site أو واتساب الدعم الفني.',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(fontFamily: 'Dubai'),
-                            ),
-                            actions: [
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF00875A),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                onPressed: () => Navigator.of(ctx).pop(),
-                                child: const Text('إغلاق', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
-                              ),
-                            ],
-                          ),
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const SupportScreen()),
                         );
                       },
                     ),

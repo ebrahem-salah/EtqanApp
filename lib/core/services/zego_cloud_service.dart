@@ -47,6 +47,8 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
   bool _isMicMuted = false;
   bool _isCameraOff = false;
   bool _isSpeakerOn = true;
+  bool _isHandRaised = false;
+  bool _isStudentMicApproved = false;
   int _secondsElapsed = 0;
   Timer? _callTimer;
 
@@ -272,6 +274,48 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
                         setState(() {
                           _isSpeakerOn = !_isSpeakerOn;
                         });
+                      },
+                    ),
+
+                    // زر رفع اليد لطلب التحدث والتسميع أمام الشيخ
+                    IconButton(
+                      tooltip: _isHandRaised ? 'خفض اليد' : 'رفع اليد للتسميع أمام الشيخ ✋',
+                      icon: Icon(
+                        Icons.pan_tool_rounded,
+                        color: _isHandRaised ? const Color(0xFFFFDF73) : Colors.white70,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isHandRaised = !_isHandRaised;
+                        });
+                        if (_isHandRaised) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('✋ تم رفع يدك! بانتظار إذن فضيلة الشيخ لفتح المايك...'),
+                              backgroundColor: Color(0xFFD4AF37),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          Future.delayed(const Duration(seconds: 2), () {
+                            if (!mounted) return;
+                            setState(() {
+                              _isStudentMicApproved = true;
+                              _isMicMuted = false;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ وافق الشيخ على طلبك! المايك مفتوح لك الآن للتسميع.'),
+                                backgroundColor: Color(0xFF00875A),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          });
+                        } else {
+                          setState(() {
+                            _isStudentMicApproved = false;
+                          });
+                        }
                       },
                     ),
 
