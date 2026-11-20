@@ -33,12 +33,26 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # 5. تهيئة بيئة أندرويد
-      - name: Configure Android
+      # 5. تهيئة بيئة أندرويد وتوليد مفتاح التوقيع الرسمي Release Keystore
+      - name: Configure Android & Generate Keystore
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
           chmod +x android/gradlew
+          
+          # إنشاء مفتاح توقيع رسمي مشفر للإنتاج
+          keytool -genkey -v -keystore android/app/etqan-release.jks \
+            -alias etqan -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass etqan2026 -keypass etqan2026 \
+            -dname "CN=Etqan App, OU=Engineering, O=Etqan, L=Riyadh, C=SA"
+          
+          # إنشاء ملف key.properties لربط Gradle بالمفتاح
+          cat <<EOF > android/key.properties
+          storePassword=etqan2026
+          keyPassword=etqan2026
+          keyAlias=etqan
+          storeFile=etqan-release.jks
+          EOF
 
       # 6. بناء ملف APK النهائي الجاهز للتثبيت
       - name: Build Release APK

@@ -8,6 +8,7 @@ import '../../core/widgets/country_picker_bottom_sheet.dart';
 import '../../providers/auth_provider.dart';
 import '../student/student_home_screen.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,8 +18,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController(text: '0501111111');
-  final _passwordController = TextEditingController(text: 'password');
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _rememberMe = true;
   bool _obscurePassword = true;
   String _selectedCountryCode = '+966';
@@ -265,13 +266,14 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('أدخل رقم جوالك لاستعادة كلمة المرور عبر رمز OTP')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                     );
                   },
                   child: const Text(
                     'نسيت كلمة المرور؟',
                     style: TextStyle(
+                      fontFamily: 'Dubai',
                       color: Color(0xFF00875A),
                       fontWeight: FontWeight.bold,
                       fontSize: 13,

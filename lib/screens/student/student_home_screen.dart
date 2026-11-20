@@ -25,6 +25,7 @@ import '../volunteer/volunteer_screen.dart';
 import '../appreciations/appreciations_screen.dart';
 import '../support/support_screen.dart';
 import 'student_record_screen.dart';
+import '../notifications/notifications_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -152,7 +153,11 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.notifications_none, color: Color(0xFF191919), size: 22),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                          );
+                        },
                       ),
                     ),
                     const Text(

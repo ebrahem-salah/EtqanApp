@@ -30,12 +30,42 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
   bool _isPaidSession = false;
   double _walletCashBalance = 150.00; // رصيد المحفظة النقدي المتاح
 
-  final List<Map<String, String>> _availableDays = [
-    {'day': 'اليوم', 'date': '17 نوفمبر'},
-    {'day': 'الأربعاء', 'date': '18 نوفمبر'},
-    {'day': 'الخميس', 'date': '19 نوفمبر'},
-    {'day': 'الجمعة', 'date': '20 نوفمبر'},
-  ];
+  late final List<Map<String, String>> _availableDays;
+
+  @override
+  void initState() {
+    super.initState();
+    _availableDays = _generateUpcomingDays();
+  }
+
+  List<Map<String, String>> _generateUpcomingDays() {
+    final now = DateTime.now();
+    final List<String> arabicWeekdays = [
+      'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'
+    ];
+    final List<String> arabicMonths = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+
+    return List.generate(7, (i) {
+      final date = now.add(Duration(days: i));
+      String dayName;
+      if (i == 0) {
+        dayName = 'اليوم';
+      } else if (i == 1) {
+        dayName = 'غداً';
+      } else {
+        dayName = arabicWeekdays[date.weekday - 1];
+      }
+      final dateString = '${date.day} ${arabicMonths[date.month - 1]}';
+      return {
+        'day': dayName,
+        'date': dateString,
+        'fullDate': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+      };
+    });
+  }
 
   final List<String> _availableTimes = [
     '04:00 م - 04:30 م',

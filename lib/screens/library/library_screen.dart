@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import 'book_reader_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -290,7 +291,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _openReaderModal(book),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => BookReaderScreen(book: book)),
+            );
+          },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -537,6 +542,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00875A),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.chrome_reader_mode_rounded, color: Colors.white, size: 18),
+                          label: const Text('فتح قارئ الكتاب', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => BookReaderScreen(book: book)),
+                            );
+                          },
+                        ),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
