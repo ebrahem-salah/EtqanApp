@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       # 2. إعداد بيئة جافا JDK 17
       - name: Setup Java JDK
@@ -34,37 +35,17 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. تثبيت وتوليد بنية iOS الرسمية لمتجر آبل إذا لم تكن موجودة
+      # 4. تثبيت وتوليد بنية iOS الرسمية لمتجر آبل
       - name: Setup & Configure iOS Project
         run: |
           if [ ! -d "ios" ]; then
             flutter create . --platforms=ios --org com.etqan
-            # إدراج أذونات الخصوصية الإلزامية لمتجر Apple App Store في Info.plist
-            python3 -c "
-            with open('ios/Runner/Info.plist', 'r') as f:
-                content = f.read()
-            additions = '''\t<key>NSCameraUsageDescription</key>
-\t<string>يحتاج تطبيق إتقان إلى إذن الكاميرا للمشاركة في حلقات التلاوة وتصحيح القرآن بالفيديو مع فضيلة الشيخ.</string>
-\t<key>NSMicrophoneUsageDescription</key>
-\t<string>يحتاج تطبيق إتقان إلى إذن الميكروفون لتسميع القرآن الكريم والمشاركة الصوتية في الحلقات المباشرة.</string>
-\t<key>NSPhotoLibraryUsageDescription</key>
-\t<string>يحتاج تطبيق إتقان إلى إذن مكتبة الصور لتغيير الصورة الشخصية ورفع المستندات.</string>
-\t<key>CFBundleDisplayName</key>
-\t<string>إتقان</string>
-\t<key>UIBackgroundModes</key>
-\t<array>
-\t\t<string>audio</string>
-\t</array>
-</dict>'''
-            content = content.replace('</dict>', additions, 1)
-            with open('ios/Runner/Info.plist', 'w') as f:
-                f.write(content)
-            "
+            python3 tools/configure_ios.py
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add ios/
             git commit -m "chore(ios): scaffold complete iOS project structure with App Store privacy descriptions" || true
-            git push || true
+            git push origin HEAD:main || true
           fi
 
       # 5. تثبيت المكتبات
