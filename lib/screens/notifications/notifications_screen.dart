@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/services/notification_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -143,6 +144,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            tooltip: 'إرسال إشعار تجريبي فوري للنظام',
+            icon: const Icon(Icons.notifications_active_outlined, color: Color(0xFF00875A), size: 22),
+            onPressed: () async {
+              await NotificationService().showInstantNotification(
+                id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                title: 'تنبيه حلقة إتقان المباشرة 🎙️',
+                body: 'بدأت الآن حلقة "تصحيح سورة مريم" مع فضيلة الشيخ عبد الله السويسي. اضغط للدخول.',
+                payload: 'circle_110',
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🔔 تم إرسال إشعار فوري تجريبي لنظام هاتفك بنجاح!'),
+                    backgroundColor: Color(0xFF00875A),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+          ),
           TextButton.icon(
             onPressed: _markAllAsRead,
             icon: const Icon(Icons.done_all_rounded, color: Color(0xFF00875A), size: 18),

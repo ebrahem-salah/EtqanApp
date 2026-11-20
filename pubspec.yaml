@@ -24,11 +24,33 @@ dependencies:
   crypto: ^3.0.3
   cupertino_icons: ^1.0.8
   zego_express_engine: ^3.25.0
+  flutter_local_notifications: ^17.2.2
+  connectivity_plus: ^6.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/logo.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0F5B46"
+  adaptive_icon_foreground: "assets/logo/logo.png"
+
+flutter_native_splash:
+  color: "#0F5B46"
+  image: "assets/logo/logo.png"
+  color_dark: "#0F5B46"
+  image_dark: "assets/logo/logo.png"
+  android_12:
+    color: "#0F5B46"
+    image: "assets/logo/logo.png"
+  ios: true
 
 flutter:
   uses-material-design: true
@@ -41,6 +63,7 @@ flutter:
     - assets/videos/
     - assets/translations/
     - assets/payment/
+    - assets/data/
 
   fonts:
     - family: Dubai

@@ -52,7 +52,13 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # 6. تهيئة بيئة أندرويد وتوليد مفتاح التوقيع الرسمي Release Keystore
+      # 6. توليد أيقونات التطبيق الرسمية لكافة الشاشات وشاشة البداية
+      - name: Generate App Icons & Native Splash Screen
+        run: |
+          dart run flutter_launcher_icons || true
+          dart run flutter_native_splash:create || true
+
+      # 7. تهيئة بيئة أندرويد وتوليد مفتاح التوقيع الرسمي Release Keystore
       - name: Configure Android & Generate Keystore
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
@@ -73,22 +79,22 @@ jobs:
           storeFile=etqan-release.jks
           EOF
 
-      # 7. بناء ملف APK للتثبيت المباشر على الأجهزة
+      # 8. بناء ملف APK للتثبيت المباشر على الأجهزة
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 8. بناء حزمة Android App Bundle (.aab) الرسمية لمتجر Google Play
+      # 9. بناء حزمة Android App Bundle (.aab) الرسمية لمتجر Google Play
       - name: Build Google Play App Bundle (AAB)
         run: flutter build appbundle --release --no-tree-shake-icons
 
-      # 9. رفع ملف APK كـ Artifact للتثبيت المباشر
+      # 10. رفع ملف APK كـ Artifact للتثبيت المباشر
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: etqan-app-release
           path: build/app/outputs/flutter-apk/*.apk
 
-      # 10. رفع حزمة Google Play (.aab) كـ Artifact للرفع المباشر على Google Play Console
+      # 11. رفع حزمة Google Play (.aab) كـ Artifact للرفع المباشر على Google Play Console
       - name: Upload Google Play AAB Bundle
         uses: actions/upload-artifact@v4
         with:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/offline_storage_service.dart';
 
 enum ReaderTheme {
   light,  // White
@@ -233,16 +234,25 @@ class _BookReaderScreenState extends State<BookReaderScreen> {
               _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               color: _isBookmarked ? const Color(0xFF00875A) : _textColor,
             ),
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 _isBookmarked = !_isBookmarked;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_isBookmarked ? '✅ تم حفظ الصفحة في العلامات المرجعية' : 'تمت إزالة العلامة المرجعية'),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              if (_isBookmarked) {
+                await OfflineStorageService.instance.saveBookmark(
+                  surahNumber: _currentPage,
+                  ayahNumber: 1,
+                  surahName: widget.book['title'] ?? 'كتاب إتقان',
+                );
+              }
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(_isBookmarked ? '✅ تم حفظ الصفحة في العلامات المرجعية (متاحة دون اتصال)' : 'تمت إزالة العلامة المرجعية'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             },
           ),
           IconButton(

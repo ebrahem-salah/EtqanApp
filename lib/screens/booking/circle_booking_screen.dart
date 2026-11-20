@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/services/notification_service.dart';
 import '../call/live_recitation_room.dart';
 
 class CircleBookingScreen extends StatefulWidget {
@@ -148,6 +149,13 @@ class _CircleBookingScreenState extends State<CircleBookingScreen> {
         circleTitle: 'جلسة خاصة VIP',
         timeSlot: '$selectedDay - $selectedTime',
         roomId: 'circle_vip_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      // إرسال إشعار فوري وجدولة تذكير للجلسة
+      await NotificationService().scheduleSessionReminder(
+        circleTitle: widget.circleTitle,
+        timeSlot: _timeSlots[_selectedTimeIndex],
+        circleId: 110,
       );
 
       if (!mounted) return;

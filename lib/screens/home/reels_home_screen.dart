@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
+import '../../core/services/reels_preload_manager.dart';
 import '../competitions/competitions_screen.dart';
 import '../profile/user_profile_screen.dart';
 import 'add_video_screen.dart';
@@ -70,12 +71,15 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
   @override
   void initState() {
     super.initState();
+    ReelsPreloadManager.instance.setVideos(_reels.map((r) => r['video_path'] as String).toList());
+    ReelsPreloadManager.instance.preloadAdjacentReels(0);
     _loadLiveVideos();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    ReelsPreloadManager.instance.disposeAll();
     super.dispose();
   }
 
@@ -110,6 +114,8 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
               _reels.addAll(liveReels);
               _isLoading = false;
             });
+            ReelsPreloadManager.instance.setVideos(_reels.map((r) => r['video_path'] as String).toList());
+            ReelsPreloadManager.instance.preloadAdjacentReels(_currentIndex);
             return;
           }
         }
@@ -164,6 +170,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
               setState(() {
                 _currentIndex = index;
               });
+              ReelsPreloadManager.instance.preloadAdjacentReels(index);
             },
             itemBuilder: (context, index) {
               final reel = _reels[index];
@@ -172,8 +179,9 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Real Autoplaying Video Item
+                  // Real Autoplaying Video Item with 0ms Preloading Cache
                   ReelVideoPlayerItem(
+                    index: index,
                     videoPath: reel['video_path'],
                     isCurrent: isCurrent,
                     onTap: () {
@@ -845,12 +853,14 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
 
 /// Dedicated Video Player Item for Auto-play and Loop
 class ReelVideoPlayerItem extends StatefulWidget {
+  final int index;
   final String videoPath;
   final bool isCurrent;
   final VoidCallback onTap;
 
   const ReelVideoPlayerItem({
     super.key,
+    required this.index,
     required this.videoPath,
     required this.isCurrent,
     required this.onTap,
@@ -873,16 +883,10 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
 
   Future<void> _initVideo() async {
     try {
-      if (widget.videoPath.startsWith('http://') || widget.videoPath.startsWith('https://')) {
-        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoPath));
-      } else {
-        _controller = VideoPlayerController.asset(widget.videoPath);
-      }
-
-      await _controller!.initialize();
-      _controller!.setLooping(true);
+      _controller = await ReelsPreloadManager.instance.getControllerForIndex(widget.index);
       if (widget.isCurrent && mounted) {
-        _controller!.play();
+        await _controller!.setVolume(1.0);
+        await _controller!.play();
       }
       if (mounted) {
         setState(() {
@@ -891,8 +895,11 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
       }
     } catch (_) {
       try {
-        _controller?.dispose();
-        _controller = VideoPlayerController.asset('assets/videos/onboarding_video_1.mp4');
+        if (widget.videoPath.startsWith('http://') || widget.videoPath.startsWith('https://')) {
+          _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoPath));
+        } else {
+          _controller = VideoPlayerController.asset(widget.videoPath);
+        }
         await _controller!.initialize();
         _controller!.setLooping(true);
         if (widget.isCurrent && mounted) {
@@ -918,6 +925,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
     super.didUpdateWidget(oldWidget);
     if (_controller != null && _isInitialized) {
       if (widget.isCurrent && !oldWidget.isCurrent) {
+        _controller!.setVolume(1.0);
         _controller!.play();
       } else if (!widget.isCurrent && oldWidget.isCurrent) {
         _controller!.pause();
@@ -927,7 +935,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    // Note: VideoPlayerController lifecycle is kept hot by ReelsPreloadManager
     super.dispose();
   }
 

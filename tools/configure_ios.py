@@ -18,6 +18,19 @@ if os.path.exists(plist_path):
 \t<array>
 \t\t<string>audio</string>
 \t</array>
+\t<key>CFBundleURLTypes</key>
+\t<array>
+\t\t<dict>
+\t\t\t<key>CFBundleTypeRole</key>
+\t\t\t<string>Editor</string>
+\t\t\t<key>CFBundleURLName</key>
+\t\t\t<string>com.etqan.app</string>
+\t\t\t<key>CFBundleURLSchemes</key>
+\t\t\t<array>
+\t\t\t\t<string>etqan</string>
+\t\t\t</array>
+\t\t</dict>
+\t</array>
 </dict>"""
         content = content.replace('</dict>', privacy_tags, 1)
         with open(plist_path, 'w', encoding='utf-8') as f:

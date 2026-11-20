@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/deep_link_service.dart';
 import '../../core/services/zego_cloud_service.dart';
 import '../competitions/widgets/competition_exam_sheet.dart';
 
@@ -339,6 +341,18 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
     );
   }
 
+  void _shareCircleLink() {
+    final link = DeepLinkService.getCircleShareLink(widget.classRoomId, circleTitle: widget.circleTitle);
+    Clipboard.setData(ClipboardData(text: link));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('📋 تم نسخ رابط الحلقة لمشاركته: $link'),
+        backgroundColor: const Color(0xFF0F5B46),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _toggleRecording() {
     setState(() => _isRecording = !_isRecording);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -370,6 +384,12 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with SingleTick
           ],
         ),
         actions: [
+          // Share Circle Deep Link button
+          IconButton(
+            tooltip: 'مشاركة رابط الحلقة الذكي',
+            icon: const Icon(Icons.share_outlined, color: Colors.white),
+            onPressed: _shareCircleLink,
+          ),
           // Recording button
           IconButton(
             tooltip: _isRecording ? 'إيقاف التسجيل' : 'بدء تسجيل الدرس',
