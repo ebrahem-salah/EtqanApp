@@ -142,7 +142,7 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
 
       // 5. ضبط إعدادات الصوت الافتراضية
       await ZegoExpressEngine.instance.muteMicrophone(_isMicMuted);
-      await ZegoExpressEngine.instance.setSpeakerphoneOn(_isSpeakerOn);
+      await ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
 
       if (widget.callType == ZegoCallType.video) {
         await ZegoExpressEngine.instance.enableCamera(true);
@@ -225,7 +225,8 @@ class _ZegoRecitationCallPageState extends State<ZegoRecitationCallPage> {
       _isSpeakerOn = !_isSpeakerOn;
     });
     try {
-      ZegoExpressEngine.instance.setSpeakerphoneOn(_isSpeakerOn);
+      ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
+      ZegoExpressEngine.instance.muteSpeaker(!_isSpeakerOn);
     } catch (_) {}
   }
 
