@@ -1,11 +1,11 @@
 package com.etqan.app
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.content.Intent
 
-class MainActivity: FlutterActivity() {
+class MainActivity: FlutterFragmentActivity() {
     private val SHARE_CHANNEL = "com.etqan.app/share"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

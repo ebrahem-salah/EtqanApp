@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/constants/country_codes.dart';
 import '../../core/widgets/country_picker_bottom_sheet.dart';
+import '../../core/services/biometric_service.dart';
 import '../../providers/auth_provider.dart';
 import '../student/student_home_screen.dart';
 import 'register_screen.dart';
@@ -24,6 +25,167 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   String _selectedCountryCode = '+966';
   String _selectedCountryFlag = '🇸🇦';
+
+  bool _canUseBiometrics = false;
+  bool _isBiometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBiometrics();
+  }
+
+  Future<void> _initBiometrics() async {
+    final available = await BiometricService.instance.isBiometricAvailable();
+    final enabled = await BiometricService.instance.isBiometricEnabled();
+    final savedPhone = await BiometricService.instance.getSavedPhone();
+
+    if (mounted) {
+      setState(() {
+        _canUseBiometrics = available;
+        _isBiometricEnabled = enabled;
+        if (savedPhone != null && savedPhone.isNotEmpty && _phoneController.text.isEmpty) {
+          _phoneController.text = savedPhone;
+        }
+      });
+    }
+
+    // If biometric login is enabled by user, prompt authentication automatically
+    if (available && enabled && savedPhone != null && savedPhone.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) _handleBiometricLogin();
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    final authenticated = await BiometricService.instance.authenticate(
+      customReason: 'يرجى تأكيد بصمة الإصبع أو FaceID لتسجيل الدخول إلى تطبيق إتقان',
+    );
+
+    if (authenticated && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ تم التحقق من البصمة بنجاح! مرحباً بك في إتقان',
+              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+          backgroundColor: Color(0xFF00875A),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      );
+    }
+  }
+
+  void _showBiometricOptInBottomSheet(String phone) {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFF00875A).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.fingerprint_rounded, size: 44, color: Color(0xFF00875A)),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'تسجيل الدخول السريع بالبصمة',
+              style: TextStyle(
+                fontFamily: 'Dubai',
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF191919),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'هل ترغب في تفعيل بصمة الإصبع أو التعرف على الوجه (FaceID) لتسجيل الدخول بلمسة واحدة في المرات القادمة؟',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Dubai',
+                fontSize: 14,
+                color: Colors.black54,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00875A),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  final ok = await BiometricService.instance.authenticate(
+                    customReason: 'تأكيد تفعيل البصمة لتطبيق إتقان',
+                  );
+                  if (ok) {
+                    await BiometricService.instance.setBiometricEnabled(true);
+                    await BiometricService.instance.saveUserSession(phone);
+                  }
+                  if (mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                label: const Text(
+                  'تفعيل البصمة الآن',
+                  style: TextStyle(
+                    fontFamily: 'Dubai',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                if (_rememberMe) {
+                  await BiometricService.instance.saveUserSession(phone);
+                }
+                if (mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+                  );
+                }
+              },
+              child: const Text(
+                'ليس الآن، المتابعة كالمعتاد',
+                style: TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 13,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -50,9 +212,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final success = await auth.login(phone, password, countryCode: _selectedCountryCode);
 
     if ((success || phone.isNotEmpty) && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-      );
+      if (_canUseBiometrics && !_isBiometricEnabled) {
+        _showBiometricOptInBottomSheet(phone);
+      } else {
+        if (_rememberMe) {
+          await BiometricService.instance.saveUserSession(phone);
+        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+        );
+      }
     }
   }
 
@@ -239,26 +408,56 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 14),
 
-              // Button 1: دخول (Black Button matching Figma)
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF191919),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                  ),
-                  onPressed: auth.isLoading ? null : _handleLogin,
-                  child: const Text(
-                    'دخول',
-                    style: TextStyle(
-                      fontFamily: 'Dubai',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+              // Button 1: دخول + زر البصمة / FaceID إن كانت مدعومة
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF191919),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        onPressed: auth.isLoading ? null : _handleLogin,
+                        child: const Text(
+                          'دخول',
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (_canUseBiometrics) ...[
+                    const SizedBox(width: 10),
+                    Container(
+                      height: 52,
+                      width: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFF00875A), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00875A).withOpacity(0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.fingerprint_rounded, color: Color(0xFF00875A), size: 28),
+                        tooltip: 'تسجيل الدخول بالبصمة أو الوجه',
+                        onPressed: _handleBiometricLogin,
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 16),
 
