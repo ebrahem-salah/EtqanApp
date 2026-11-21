@@ -24,56 +24,12 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
   bool _isLoading = false;
   bool _isOverlayVisible = true;
 
-  final List<Map<String, dynamic>> _reels = [
-    {
-      'id': 1,
-      'userName': 'Fahd saad',
-      'userRole': 'إمام مسجد',
-      'isVolunteer': true,
-      'timeAgo': 'منذ 7 شهر',
-      'avatar': 'assets/images/profile.png',
-      'caption': 'تحفه ما شاء الله - تلاوة مباركة خاشعة',
-      'likes': 4,
-      'comments': 5,
-      'shares': 2,
-      'isLiked': false,
-      'video_path': 'assets/videos/onboarding_video_1.mp4',
-    },
-    {
-      'id': 2,
-      'userName': 'الشيخ أحمد نور',
-      'userRole': 'إمام مسجد ومقرئ',
-      'isVolunteer': true,
-      'timeAgo': 'منذ 21 يوم',
-      'avatar': 'assets/images/welcome_sheikh_illustration.png',
-      'caption': 'اعمل ما تحب - قراءة من سورة مريم',
-      'likes': 18,
-      'comments': 3,
-      'shares': 4,
-      'isLiked': false,
-      'video_path': 'assets/videos/onboarding_video_2.mp4',
-    },
-    {
-      'id': 3,
-      'userName': 'د / عبد الله الرويلي',
-      'userRole': 'مشرف مقرأة',
-      'isVolunteer': false,
-      'timeAgo': 'منذ شهر',
-      'avatar': 'assets/images/profile.png',
-      'caption': 'من اعظم اسباب تجعلك سعيداً في الحياه',
-      'likes': 234,
-      'comments': 45,
-      'shares': 18,
-      'isLiked': true,
-      'video_path': 'assets/videos/onboarding_video_1.mp4',
-    },
-  ];
+  // Real Dynamic Reels fetched strictly from Backend API
+  final List<Map<String, dynamic>> _reels = [];
 
   @override
   void initState() {
     super.initState();
-    ReelsPreloadManager.instance.setVideos(_reels.map((r) => r['video_path'] as String).toList());
-    ReelsPreloadManager.instance.preloadAdjacentReels(0);
     _loadLiveVideos();
   }
 
@@ -158,6 +114,127 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF00875A)),
+        ),
+      );
+    }
+
+    if (_reels.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF141414),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Top Bar with Bell, Search, Add Video
+              Positioned(
+                top: 12,
+                left: 16,
+                right: 16,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        _buildHeaderCircleBtn(
+                          icon: Icons.notifications_none_rounded,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildHeaderCircleBtn(
+                          icon: Icons.search_rounded,
+                          onTap: () => _showSearchScreen(context),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildHeaderCircleBtn(
+                          icon: Icons.video_call_rounded,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AddVideoScreen()),
+                          ).then((_) => _loadLiveVideos()),
+                        ),
+                      ],
+                    ),
+                    const Text(
+                      'إتقان',
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Empty Content
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.videocam_outlined, size: 38, color: Colors.white54),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'لا توجد مقاطع تلاوة حالياً',
+                        style: TextStyle(
+                          fontFamily: 'Dubai',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'كن أول من يشارك تلاوة خاشعة على منصة إتقان',
+                        style: TextStyle(
+                          fontFamily: 'Dubai',
+                          fontSize: 13,
+                          color: Colors.white60,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00875A),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AddVideoScreen()),
+                          ).then((_) => _loadLiveVideos());
+                        },
+                        icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                        label: const Text(
+                          'إضافة فيديو جديد',
+                          style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
