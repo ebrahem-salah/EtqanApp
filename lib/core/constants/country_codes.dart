@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 class CountryCodeItem {
   final String nameAr;
   final String nameEn;
@@ -70,4 +72,28 @@ class CountryCodes {
   }
 
   static CountryCodeItem get defaultCountry => all.first; // السعودية (+966)
+
+  /// استرجاع الدولة عبر رمز الأيزو (ISO-2 Code: SA, EG, AE...)
+  static CountryCodeItem getByIsoCode(String? isoCode) {
+    if (isoCode == null || isoCode.trim().isEmpty) {
+      return defaultCountry;
+    }
+    final clean = isoCode.trim().toUpperCase();
+    return all.firstWhere(
+      (c) => c.code.toUpperCase() == clean,
+      orElse: () => defaultCountry,
+    );
+  }
+
+  /// الكشف الذكي عن دولة جهاز المستخدم تلقائياً
+  static CountryCodeItem detectDeviceCountry() {
+    try {
+      final locale = DateTime.now(); // trigger runtime
+      final platformCountry = WidgetsBinding.instance.platformDispatcher.locale.countryCode;
+      if (platformCountry != null && platformCountry.isNotEmpty) {
+        return getByIsoCode(platformCountry);
+      }
+    } catch (_) {}
+    return defaultCountry;
+  }
 }

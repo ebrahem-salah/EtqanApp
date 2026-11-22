@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../student/student_home_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import 'otp_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +33,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    // الالتقاط التلقائي لكود الدولة حسب موقع وجهاز المستخدم
+    final detectedCountry = CountryCodes.detectDeviceCountry();
+    _selectedCountryCode = detectedCountry.dialCode;
+    _selectedCountryFlag = detectedCountry.flag;
     _initBiometrics();
   }
 
@@ -222,6 +227,69 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
         );
       }
+    }
+  }
+
+  void _navigateToOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى إدخال رقم الجوال أولاً لإرسال رمز التحقق السريع',
+              style: TextStyle(fontFamily: 'Dubai')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    await auth.sendOtp(phone: phone, countryCode: _selectedCountryCode, viaWhatsApp: true);
+
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            phone: phone,
+            countryCode: _selectedCountryCode,
+            initialViaWhatsApp: true,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handleGoogleSignIn() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.signInWithGoogle();
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ تم تسجيل الدخول بحساب Google بنجاح!',
+              style: TextStyle(fontFamily: 'Dubai')),
+          backgroundColor: Color(0xFF00875A),
+        ),
+      );
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      );
+    }
+  }
+
+  void _handleAppleSignIn() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.signInWithApple();
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ تم تسجيل الدخول بـ Apple ID بنجاح!',
+              style: TextStyle(fontFamily: 'Dubai')),
+          backgroundColor: Color(0xFF00875A),
+        ),
+      );
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      );
     }
   }
 
@@ -480,6 +548,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 14),
+
+              // Button: الدخول السريع برمز التحقق (WhatsApp / SMS OTP)
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF2FAF5),
+                    side: const BorderSide(color: Color(0xFF00875A), width: 1.2),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: _navigateToOtp,
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF00875A), size: 18),
+                  label: const Text(
+                    'الدخول السريع برمز التحقق (WhatsApp / SMS OTP)',
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      color: Color(0xFF00875A),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
 
               // Divider: أو من خلال
@@ -501,12 +593,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   _buildSocialCircle(
                     icon: SvgPicture.asset('assets/svgs/google_icon.svg', width: 22, height: 22),
-                    onTap: () {},
+                    onTap: _handleGoogleSignIn,
                   ),
                   const SizedBox(width: 16),
                   _buildSocialCircle(
                     icon: SvgPicture.asset('assets/svgs/apple_icon.svg', width: 22, height: 22),
-                    onTap: () {},
+                    onTap: _handleAppleSignIn,
                   ),
                 ],
               ),

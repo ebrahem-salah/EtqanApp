@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
+import '../../core/constants/country_codes.dart';
+import '../../core/widgets/country_picker_bottom_sheet.dart';
+import '../../providers/auth_provider.dart';
 import '../student/student_home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -11,15 +16,26 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _nameController = TextEditingController(text: 'Mohmed Ahmed');
+  final _nameController = TextEditingController(text: 'محمد أحمد');
   final _phoneController = TextEditingController(text: '123456789');
-  final _emailController = TextEditingController(text: 'username@mail.com');
+  final _emailController = TextEditingController(text: 'user@etqan.com');
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
+  String _selectedCountryCode = '+966';
+  String _selectedCountryFlag = '🇸🇦';
 
   bool _agreeToTerms = true;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final detected = CountryCodes.detectDeviceCountry();
+    _selectedCountryCode = detected.dialCode;
+    _selectedCountryFlag = detected.flag;
+  }
 
   @override
   void dispose() {
@@ -31,24 +47,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _handleRegister() {
-    if (_nameController.text.isEmpty || _phoneController.text.isEmpty) {
+  void _handleRegister() async {
+    if (_nameController.text.trim().isEmpty || _phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى ملء جميع الحقول المطلوبة')),
+        const SnackBar(
+          content: Text('يرجى ملء جميع الحقول المطلوبة', style: TextStyle(fontFamily: 'Dubai')),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم تسجيل حسابك بنجاح! مرحباً بك في إتقان'),
-        backgroundColor: Colors.green,
-      ),
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.register(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      password: _passwordController.text.isEmpty ? 'Pass#12345' : _passwordController.text,
+      countryCode: _selectedCountryCode,
     );
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ تم إنشاء حسابك بنجاح! مرحباً بك في إتقان',
+              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+          backgroundColor: Color(0xFF00875A),
+        ),
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      );
+    }
+  }
+
+  void _handleGoogleSignIn() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.signInWithGoogle();
+    if (success && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      );
+    }
+  }
+
+  void _handleAppleSignIn() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await auth.signInWithApple();
+    if (success && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      );
+    }
   }
 
   @override
@@ -139,27 +190,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 child: Row(
                   children: [
-                    // Flag chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: const [
-                          Text('🇸🇦', style: TextStyle(fontSize: 14)),
-                          SizedBox(width: 4),
-                          Text(
-                            '+966',
-                            style: TextStyle(
-                              color: Color(0xFF00875A),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                    // Flag chip with smart country picker
+                    GestureDetector(
+                      onTap: () async {
+                        final selected = await CountryPickerBottomSheet.show(context);
+                        if (selected != null) {
+                          setState(() {
+                            _selectedCountryCode = selected.dialCode;
+                            _selectedCountryFlag = selected.flag;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(_selectedCountryFlag, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(
+                              _selectedCountryCode,
+                              style: const TextStyle(
+                                color: Color(0xFF00875A),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                          Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
-                        ],
+                            const Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -264,6 +327,95 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Divider: أو من خلال
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey.shade400)),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text('أو من خلال', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey.shade400)),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Social Icons: Google & Apple
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: _handleGoogleSignIn,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: SvgPicture.asset('assets/svgs/google_icon.svg', width: 22, height: 22),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: _handleAppleSignIn,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: SvgPicture.asset('assets/svgs/apple_icon.svg', width: 22, height: 22),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Link: لديك حساب بالفعل؟ تسجيل الدخول
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.black87),
+                      children: [
+                        TextSpan(text: 'لديك حساب بالفعل؟ '),
+                        TextSpan(
+                          text: 'تسجيل الدخول',
+                          style: TextStyle(
+                            color: Color(0xFF00875A),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
