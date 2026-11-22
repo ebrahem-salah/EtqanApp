@@ -5,9 +5,13 @@ import '../../core/constants/app_assets.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
 import '../../core/services/reels_preload_manager.dart';
+import '../../core/services/live_streams_service.dart';
 import '../competitions/competitions_screen.dart';
 import '../profile/user_profile_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../call/live_recitation_room.dart';
+import '../sections/sections_hub_screen.dart';
+import '../sections/dialogs/create_section_session_dialog.dart';
 import 'add_video_screen.dart';
 
 class ReelsHomeScreen extends StatefulWidget {
@@ -30,11 +34,17 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
   @override
   void initState() {
     super.initState();
+    LiveStreamsService.instance.addListener(_onLiveStreamsChanged);
     _loadLiveVideos();
+  }
+
+  void _onLiveStreamsChanged() {
+    if (mounted) _loadLiveVideos();
   }
 
   @override
   void dispose() {
+    LiveStreamsService.instance.removeListener(_onLiveStreamsChanged);
     _pageController.dispose();
     ReelsPreloadManager.instance.disposeAll();
     super.dispose();
@@ -42,6 +52,32 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
 
   Future<void> _loadLiveVideos() async {
     setState(() => _isLoading = true);
+    final List<Map<String, dynamic>> combined = [];
+
+    // 1. Fetch all active live broadcasts across the 16 sections (Quran, Ruqyah, Fatwa, Sunnah...)
+    final liveStreams = LiveStreamsService.instance.activeStreams;
+    for (final stream in liveStreams) {
+      combined.add({
+        'id': stream.id,
+        'isLive': true,
+        'roomId': stream.roomId,
+        'userName': stream.sheikhName,
+        'userRole': 'بث مباشر • ${stream.sectionName} (${stream.subSectionName})',
+        'isVolunteer': false,
+        'timeAgo': 'مباشر الآن',
+        'avatar': stream.sheikhAvatar ?? 'assets/images/profile.png',
+        'caption': stream.title,
+        'likes': stream.viewerCount * 3,
+        'comments': stream.viewerCount,
+        'shares': 12,
+        'isLiked': false,
+        'video_path': '',
+        'sectionName': stream.sectionName,
+        'subSectionName': stream.subSectionName,
+        'viewerCount': stream.viewerCount,
+      });
+    }
+
     try {
       final res = await _apiClient.getVideos();
       if (res.statusCode == 200 && res.data != null) {
@@ -51,6 +87,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
             final user = item['user'] ?? {};
             return {
               'id': item['id'] ?? 1,
+              'isLive': false,
               'userName': user['name'] ?? 'مستخدم إتقان',
               'userRole': user['type'] == 'Sheikh' ? 'قارئ ومقرئ' : (user['is_volunteer'] == true ? 'متطوع' : 'طالب علم'),
               'isVolunteer': user['is_volunteer'] == true,
@@ -64,22 +101,22 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
               'video_path': item['video_url'] ?? 'assets/videos/onboarding_video_1.mp4',
             };
           }).toList();
-
-          if (mounted) {
-            setState(() {
-              _reels.clear();
-              _reels.addAll(liveReels);
-              _isLoading = false;
-            });
-            ReelsPreloadManager.instance.setVideos(_reels.map((r) => r['video_path'] as String).toList());
-            ReelsPreloadManager.instance.preloadAdjacentReels(_currentIndex);
-            return;
-          }
+          combined.addAll(liveReels);
         }
       }
     } catch (_) {}
+
     if (mounted) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _reels.clear();
+        _reels.addAll(combined);
+        _isLoading = false;
+      });
+      final videoPaths = _reels.where((r) => r['isLive'] != true).map((r) => r['video_path'] as String).toList();
+      if (videoPaths.isNotEmpty) {
+        ReelsPreloadManager.instance.setVideos(videoPaths);
+        ReelsPreloadManager.instance.preloadAdjacentReels(_currentIndex);
+      }
     }
   }
 
@@ -257,17 +294,19 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Real Autoplaying Video Item with 0ms Preloading Cache
-                  ReelVideoPlayerItem(
-                    index: index,
-                    videoPath: reel['video_path'],
-                    isCurrent: isCurrent,
-                    onTap: () {
-                      setState(() {
-                        _isOverlayVisible = !_isOverlayVisible;
-                      });
-                    },
-                  ),
+                  // Real Autoplaying Video Item or Live Stream Card
+                  reel['isLive'] == true
+                      ? _buildLiveStreamReelItem(reel)
+                      : ReelVideoPlayerItem(
+                          index: index,
+                          videoPath: reel['video_path'],
+                          isCurrent: isCurrent,
+                          onTap: () {
+                            setState(() {
+                              _isOverlayVisible = !_isOverlayVisible;
+                            });
+                          },
+                        ),
 
                   // Overlay gradient for contrast
                   if (_isOverlayVisible)
@@ -511,10 +550,10 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left: 3 Circular Buttons (Bell, Search, Add Video directly!)
+                    // Left: 4 Circular Buttons (Bell, Search, Start Live, Add Video)
                     Row(
                       children: [
-                        // 1. Notification Bell من الصورة 2
+                        // 1. Notification Bell
                         _buildHeaderCircleBtn(
                           icon: Icons.notifications_none_rounded,
                           onTap: () {
@@ -524,7 +563,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        // 2. Search من الصورة 2 و 17
+                        // 2. Search
                         _buildHeaderCircleBtn(
                           icon: Icons.search_rounded,
                           onTap: () {
@@ -532,7 +571,15 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        // 3. Circular Add Button with Green Rings: Navigates DIRECTLY to AddVideoScreen (Image 3)
+                        // 3. Start Live Stream (Broadcast to Reels)
+                        _buildHeaderCircleBtn(
+                          icon: Icons.sensors_rounded,
+                          onTap: () {
+                            CreateSectionSessionDialog.show(context);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        // 4. Add Video
                         GestureDetector(
                           onTap: () {
                             Navigator.of(context).push(
@@ -563,54 +610,277 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                       ],
                     ),
 
-                    // Right: Gold Competitions Button (< المسابقات)
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const CompetitionsScreen()),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
+                    // Right: 16 Sections Hub Button & Competitions Button
+                    Row(
+                      children: [
+                        // 16 Sections Hub button
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const SectionsHubScreen()),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00875A),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00875A).withOpacity(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.grid_view_rounded, color: Colors.white, size: 13),
+                                SizedBox(width: 4),
+                                Text(
+                                  'الأقسام (16)',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Dubai',
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.amber.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              'assets/images/badg_gold.png',
-                              height: 18,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events, color: Colors.white, size: 16),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              '< المسابقات',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Dubai',
+                        const SizedBox(width: 6),
+                        // Gold Competitions Button
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const CompetitionsScreen()),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
                               ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/images/badg_gold.png',
+                                  height: 15,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events, color: Colors.white, size: 13),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  '< المسابقات',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Dubai',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveStreamReelItem(Map<String, dynamic> reel) {
+    return Container(
+      color: const Color(0xFF0A1813),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Islamic Background Ambient Glow
+          Center(
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFE53935).withOpacity(0.2),
+                    blurRadius: 100,
+                    spreadRadius: 40,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Live Broadcast Content Card
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Glowing Live Avatar
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFE53935), width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE53935).withOpacity(0.5),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 54,
+                      backgroundColor: Colors.white24,
+                      backgroundImage: reel['avatar'].toString().startsWith('assets/')
+                          ? AssetImage(reel['avatar']) as ImageProvider
+                          : NetworkImage(reel['avatar']),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 🔴 Live Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE53935).withOpacity(0.5),
+                          blurRadius: 12,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.circle, color: Colors.white, size: 8),
+                        const SizedBox(width: 6),
+                        Text(
+                          'بث مباشر حي • ${reel['viewerCount']} مشاهد',
+                          style: const TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Animated Live Audio Equalizer Bars
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(14, (i) {
+                      final heights = [14.0, 26.0, 38.0, 18.0, 32.0, 44.0, 28.0, 16.0, 36.0, 24.0, 30.0, 20.0, 40.0, 22.0];
+                      return Container(
+                        width: 4,
+                        height: heights[i % heights.length],
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00875A),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Section Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00875A).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF00875A).withOpacity(0.4)),
+                    ),
+                    child: Text(
+                      reel['userRole'] ?? 'بث مباشر',
+                      style: const TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF66BB6A),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Live Broadcast Title
+                  Text(
+                    reel['caption'] ?? 'بث مباشر مبارك',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Direct Join Button
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE53935),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      elevation: 6,
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LiveRecitationRoom(
+                            roomId: reel['roomId'] ?? 'room_${reel['id']}',
+                            circleTitle: reel['caption'] ?? 'بث مباشر بإتقان',
+                            isSheikh: false,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.sensors_rounded, color: Colors.white, size: 20),
+                    label: const Text(
+                      'انضم للبث المباشر الآن (تحدث واستمع)',
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

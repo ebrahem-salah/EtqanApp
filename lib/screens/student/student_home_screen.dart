@@ -26,6 +26,8 @@ import '../appreciations/appreciations_screen.dart';
 import '../support/support_screen.dart';
 import 'student_record_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../sections/sections_hub_screen.dart';
+import '../sections/dialogs/create_section_session_dialog.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -309,6 +311,82 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
                   children: [
+                    // بطاقة الأقسام الـ 16 الرئيسية الشاملة
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const SectionsHubScreen()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00875A), Color(0xFF005A3C)],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00875A).withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.grid_view_rounded, color: Colors.white, size: 26),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'الأقسام الرئيسية (16 قسماً)',
+                                        style: TextStyle(
+                                          fontFamily: 'Dubai',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Icon(Icons.verified, color: Colors.amber, size: 16),
+                                    ],
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'القرآن، السنة، الفتاوى، الرقية، النورانية، الطفل، المرأة...',
+                                    style: TextStyle(
+                                      fontFamily: 'Dubai',
+                                      fontSize: 11,
+                                      color: Colors.white70,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
                     // المحفظة
                     _buildMenuItem(
                       title: 'المحفظة',
