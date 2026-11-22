@@ -303,7 +303,7 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: !_useCreatorName ? const Color(0xFF00875A) : Colors.grey.shade300),
                               ),
-                              child: const Center(
+                              child: Center(
                                 child: Text(
                                   'اسم مخصص للحلقة',
                                   style: TextStyle(

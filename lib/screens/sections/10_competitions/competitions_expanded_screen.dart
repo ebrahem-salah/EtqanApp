@@ -241,8 +241,9 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (_) => CompetitionExamSheet(
-                        competitionId: c['id'],
-                        competitionTitle: c['title'],
+                        competitionId: c['id'] ?? 1,
+                        studentId: 1,
+                        studentName: 'الطالب المتسابق',
                       ),
                     );
                   },

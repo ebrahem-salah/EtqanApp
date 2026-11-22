@@ -314,7 +314,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _viaWhatsApp ? Icons.whatsapp : Icons.sms_outlined,
+                        _viaWhatsApp ? Icons.chat_bubble_outline : Icons.sms_outlined,
                         size: 16,
                         color: _viaWhatsApp ? const Color(0xFF0F8A43) : const Color(0xFF1967D2),
                       ),
