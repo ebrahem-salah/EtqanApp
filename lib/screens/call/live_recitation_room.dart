@@ -193,11 +193,14 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   Future<void> _initZegoRTC() async {
     try {
       // طلب أذونات الكاميرا والميكروفون من نظام التشغيل فور دخول الغرفة
-      await [Permission.camera, Permission.microphone].request();
+      try {
+        await Permission.camera.request();
+        await Permission.microphone.request();
+      } catch (_) {}
 
       final profile = ZegoEngineProfile(
         ZegoCloudConfig.appID,
-        ZegoScenario.StandardVideoCall,
+        ZegoScenario.Default,
         appSign: ZegoCloudConfig.appSign,
       );
       await ZegoExpressEngine.createEngineWithProfile(profile);
@@ -215,28 +218,18 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       await ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
 
       // ربط نافذة معاينة الكاميرا الحقيقية عبر Zego Canvas View
-      final widgetView = await ZegoExpressEngine.instance.createCanvasView((viewID) {
+      await ZegoExpressEngine.instance.createCanvasView((viewID) {
         _localViewID = viewID;
         final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
         ZegoExpressEngine.instance.startPreview(canvas: canvas);
-      });
-
-      // رصد تموجات الصوت الحي عند التلاوة لتحديث الواجهة التفاعلية
-      ZegoExpressEngine.onCapturedSoundLevelUpdate = (soundLevel) {
-        if (mounted && soundLevel > 3) {
+      }).then((widgetView) {
+        if (mounted && widgetView != null) {
           setState(() {
-            _soundLevel = soundLevel;
+            _localVideoWidget = widgetView;
+            _isEngineReady = true;
           });
         }
-      };
-      await ZegoExpressEngine.instance.startSoundLevelMonitor();
-
-      if (mounted) {
-        setState(() {
-          _localVideoWidget = widgetView;
-          _isEngineReady = true;
-        });
-      }
+      });
     } catch (_) {
       if (mounted) setState(() => _isEngineReady = true);
     }
@@ -244,11 +237,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   Future<void> _destroyZego() async {
     try {
-      await ZegoExpressEngine.instance.stopSoundLevelMonitor();
       await ZegoExpressEngine.instance.stopPreview();
-      if (_localViewID != null) {
-        await ZegoExpressEngine.instance.destroyCanvasView(_localViewID!);
-      }
       await ZegoExpressEngine.instance.stopPublishingStream();
       await ZegoExpressEngine.instance.logoutRoom(widget.roomId);
       await ZegoExpressEngine.destroyEngine();
@@ -872,7 +861,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                 GestureDetector(
                   onTap: () async {
                     setState(() => _useFrontCamera = !_useFrontCamera);
-                    await ZegoExpressEngine.instance.useFrontCamera(_useFrontCamera);
+                    try {
+                      await ZegoExpressEngine.instance.useFrontCamera(_useFrontCamera);
+                    } catch (_) {}
                   },
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -1201,13 +1192,15 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                       _isVoiceOnly = false;
                       _isCameraOn = !_isCameraOn;
                     });
-                    await ZegoExpressEngine.instance.enableCamera(_isCameraOn);
-                    if (_isCameraOn && _localViewID != null) {
-                      final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
-                      await ZegoExpressEngine.instance.startPreview(canvas: canvas);
-                    } else {
-                      await ZegoExpressEngine.instance.stopPreview();
-                    }
+                    try {
+                      await ZegoExpressEngine.instance.enableCamera(_isCameraOn);
+                      if (_isCameraOn && _localViewID != null) {
+                        final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
+                        await ZegoExpressEngine.instance.startPreview(canvas: canvas);
+                      } else {
+                        await ZegoExpressEngine.instance.stopPreview();
+                      }
+                    } catch (_) {}
                   },
                 ),
 
