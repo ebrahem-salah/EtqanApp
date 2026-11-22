@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/network/api_client.dart';
 import '../../call/live_recitation_room.dart';
 import '../dialogs/create_section_session_dialog.dart';
 
@@ -156,10 +157,44 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
     },
   ];
 
+  final ApiClient _apiClient = ApiClient();
+
   @override
   void initState() {
     super.initState();
     _selectedSub = widget.initialSubSection ?? 'المقرأة';
+    _loadLiveBackendCircles();
+  }
+
+  Future<void> _loadLiveBackendCircles() async {
+    try {
+      final res = await _apiClient.getClasses();
+      if (res.statusCode == 200 && res.data != null) {
+        final List items = res.data['data'] ?? [];
+        if (items.isNotEmpty) {
+          final liveList = items.map<Map<String, dynamic>>((item) {
+            final sheikh = item['sheikh'] ?? item['creator'] ?? {};
+            final sheikhName = sheikh['name'] ?? 'الشيخ عبد الله الرويلي';
+            final isOngoing = item['status'] == 'ongoing' || item['is_ongoing'] == true;
+            return {
+              'id': 'backend_${item['id']}',
+              'title': item['name'] ?? 'مقرأة قرآنية حية ومباشرة',
+              'sub': item['category']?['name'] ?? 'المقرأة',
+              'sheikh': sheikhName,
+              'students': '${item['students_count'] ?? 1} / ${item['capacity'] ?? 30}',
+              'isLive': isOngoing,
+              'viewers': item['views_count'] ?? 85,
+            };
+          }).toList();
+
+          if (mounted) {
+            setState(() {
+              _circles.insertAll(0, liveList);
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   @override

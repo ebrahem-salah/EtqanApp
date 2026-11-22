@@ -16,6 +16,7 @@ class ChaptersScreen extends StatefulWidget {
 class _ChaptersScreenState extends State<ChaptersScreen> {
   int _selectedCategoryIndex = 0;
   final ApiClient _apiClient = ApiClient();
+  final List<Map<String, dynamic>> _liveClasses = [];
 
   List<String> _categories = [
     'تعليم الحروف والقاعدة النورانية',
@@ -49,6 +50,19 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
               _categories = liveList;
             });
           }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final resClass = await _apiClient.getClasses();
+      if (resClass.statusCode == 200 && resClass.data != null) {
+        final List items = resClass.data['data'] ?? [];
+        if (items.isNotEmpty && mounted) {
+          setState(() {
+            _liveClasses.clear();
+            _liveClasses.addAll(items.map((i) => Map<String, dynamic>.from(i)));
+          });
         }
       }
     } catch (_) {}
@@ -237,11 +251,79 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
   }
 
   Widget _buildSubcategoryContent() {
+    Widget? liveHeader;
+    if (_liveClasses.isNotEmpty) {
+      final firstLive = _liveClasses.first;
+      final sheikhName = firstLive['sheikh']?['name'] ?? firstLive['creator']?['name'] ?? 'الشيخ عبد الله الرويلي';
+      final circleName = firstLive['name'] ?? 'مقرأة إتقان لتصحيح التلاوة وتدبر سورة البقرة';
+      final isOngoing = firstLive['status'] == 'ongoing' || firstLive['is_ongoing'] == true;
+
+      liveHeader = Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: isOngoing ? Border.all(color: const Color(0xFFE53935).withOpacity(0.5), width: 1.5) : null,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE53935),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.circle, color: Colors.white, size: 6),
+                      SizedBox(width: 4),
+                      Text('🔴 مباشر الآن', style: TextStyle(fontFamily: 'Dubai', fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                Text('الشيخ: $sheikhName', style: const TextStyle(fontFamily: 'Dubai', fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00875A))),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              circleName,
+              style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, fontWeight: FontWeight.bold),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 36,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE53935),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () => _openRoom(circleName),
+                icon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
+                label: const Text('دخول المقرأة المباشرة الآن', style: TextStyle(fontFamily: 'Dubai', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // 1. Noorani Qaida (3 Luxury Level Cards: 1, 2, 3)
     if (_selectedCategoryIndex == 0) {
       return ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          if (liveHeader != null) liveHeader,
           _buildLuxuryLevelCard(
             badgeNumber: '1',
             title: 'الجزء الأول',
@@ -277,64 +359,71 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
         {'title': 'علوم القرآن والتفسير', 'icon': '📜'},
       ];
 
-      return GridView.builder(
+      return ListView(
         padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 0.9,
-        ),
-        itemCount: quranCards.length,
-        itemBuilder: (context, index) {
-          final card = quranCards[index];
-          return GestureDetector(
-            onTap: () => _openRoom('حلقة: القرآن الكريم - ${card['title']}'),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E5D5)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(card['icon']!, style: const TextStyle(fontSize: 26)),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                    child: Text(
-                      card['title']!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'Dubai',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Color(0xFF191919),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+        children: [
+          if (liveHeader != null) liveHeader,
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.9,
             ),
-          );
-        },
+            itemCount: quranCards.length,
+            itemBuilder: (context, index) {
+              final card = quranCards[index];
+              return GestureDetector(
+                onTap: () => _openRoom('حلقة: القرآن الكريم - ${card['title']}'),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5E5D5)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFE8F5E9),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(card['icon']!, style: const TextStyle(fontSize: 26)),
+                      ),
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                        child: Text(
+                          card['title']!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF191919),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       );
     }
 
