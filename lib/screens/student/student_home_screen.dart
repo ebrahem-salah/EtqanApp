@@ -28,6 +28,7 @@ import 'student_record_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../sections/sections_hub_screen.dart';
 import '../sections/dialogs/create_section_session_dialog.dart';
+import '../../core/services/reels_preload_manager.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -39,23 +40,23 @@ class StudentHomeScreen extends StatefulWidget {
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _selectedTabIndex = 0;
 
-  final List<Widget> _screens = const [
-    ReelsHomeScreen(),
-    ChaptersScreen(),
-    SheikhsScreen(),
-    MyChaptersScreen(),
-    _MoreScreenPlaceholder(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final isSheikh = auth.currentUser?.role == UserRole.sheikh;
 
+    final List<Widget> screens = [
+      ReelsHomeScreen(isActive: _selectedTabIndex == 0),
+      const ChaptersScreen(),
+      const SheikhsScreen(),
+      const MyChaptersScreen(),
+      const _MoreScreenPlaceholder(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedTabIndex,
-        children: _screens,
+        children: screens,
       ),
       floatingActionButton: isSheikh
           ? FloatingActionButton.extended(
@@ -80,6 +81,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
         unselectedLabelStyle: const TextStyle(fontSize: 11),
         onTap: (index) {
+          if (index != 0) {
+            ReelsPreloadManager.instance.pauseAll();
+          }
           setState(() {
             _selectedTabIndex = index;
           });
@@ -93,7 +97,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           BottomNavigationBarItem(
             icon: SvgPicture.asset(AppAssets.chapters, width: 22, height: 22, colorFilter: ColorFilter.mode(Colors.grey.shade500, BlendMode.srcIn)),
             activeIcon: SvgPicture.asset(AppAssets.chapters, width: 22, height: 22, colorFilter: const ColorFilter.mode(AppColors.primary, BlendMode.srcIn)),
-            label: 'الحلقات',
+            label: 'الأقسام والحلقات',
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset(AppAssets.sheikhs, width: 22, height: 22, colorFilter: ColorFilter.mode(Colors.grey.shade500, BlendMode.srcIn)),

@@ -15,13 +15,14 @@ import '../sections/dialogs/create_section_session_dialog.dart';
 import 'add_video_screen.dart';
 
 class ReelsHomeScreen extends StatefulWidget {
-  const ReelsHomeScreen({super.key});
+  final bool isActive;
+  const ReelsHomeScreen({super.key, this.isActive = true});
 
   @override
   State<ReelsHomeScreen> createState() => _ReelsHomeScreenState();
 }
 
-class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
+class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingObserver {
   final PageController _pageController = PageController();
   final ApiClient _apiClient = ApiClient();
   int _currentIndex = 0;
@@ -34,8 +35,28 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     LiveStreamsService.instance.addListener(_onLiveStreamsChanged);
     _loadLiveVideos();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      ReelsPreloadManager.instance.pauseAll();
+    } else if (state == AppLifecycleState.resumed && widget.isActive) {
+      ReelsPreloadManager.instance.resumeIndex(_currentIndex);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ReelsHomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isActive && oldWidget.isActive) {
+      ReelsPreloadManager.instance.pauseAll();
+    } else if (widget.isActive && !oldWidget.isActive) {
+      ReelsPreloadManager.instance.resumeIndex(_currentIndex);
+    }
   }
 
   void _onLiveStreamsChanged() {
@@ -44,10 +65,22 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     LiveStreamsService.instance.removeListener(_onLiveStreamsChanged);
     _pageController.dispose();
     ReelsPreloadManager.instance.disposeAll();
     super.dispose();
+  }
+
+  void _navigateTo(Widget page) {
+    ReelsPreloadManager.instance.pauseAll();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => page),
+    ).then((_) {
+      if (mounted && widget.isActive) {
+        ReelsPreloadManager.instance.resumeIndex(_currentIndex);
+      }
+    });
   }
 
   Future<void> _loadLiveVideos() async {
@@ -139,12 +172,10 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
   }
 
   void _openUserProfile(Map<String, dynamic> reel) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => UserProfileScreen(
-          userName: reel['userName'],
-          userAvatar: reel['avatar'],
-        ),
+    _navigateTo(
+      UserProfileScreen(
+        userName: reel['userName'],
+        userAvatar: reel['avatar'],
       ),
     );
   }
@@ -301,6 +332,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           index: index,
                           videoPath: reel['video_path'],
                           isCurrent: isCurrent,
+                          isActive: widget.isActive,
                           onTap: () {
                             setState(() {
                               _isOverlayVisible = !_isOverlayVisible;
@@ -550,16 +582,14 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left: 4 Circular Buttons (Bell, Search, Start Live, Add Video)
+                    // Left: Header Action Buttons (Bell, Search, 16 Sections, Start Live, Add Video)
                     Row(
                       children: [
                         // 1. Notification Bell
                         _buildHeaderCircleBtn(
                           icon: Icons.notifications_none_rounded,
                           onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                            );
+                            _navigateTo(const NotificationsScreen());
                           },
                         ),
                         const SizedBox(width: 8),
@@ -571,7 +601,15 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        // 3. Start Live Stream (Broadcast to Reels)
+                        // 3. الأقسام الـ 16 كاملة
+                        _buildHeaderCircleBtn(
+                          icon: Icons.grid_view_rounded,
+                          onTap: () {
+                            _navigateTo(const SectionsHubScreen());
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        // 4. Start Live Stream (Broadcast to Reels)
                         _buildHeaderCircleBtn(
                           icon: Icons.sensors_rounded,
                           onTap: () {
@@ -579,12 +617,10 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        // 4. Add Video
+                        // 5. Add Video
                         GestureDetector(
                           onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const AddVideoScreen()),
-                            );
+                            _navigateTo(const AddVideoScreen());
                           },
                           child: Container(
                             width: 38,
@@ -856,13 +892,11 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                       elevation: 6,
                     ),
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => LiveRecitationRoom(
-                            roomId: reel['roomId'] ?? 'room_${reel['id']}',
-                            circleTitle: reel['caption'] ?? 'بث مباشر بإتقان',
-                            isSheikh: false,
-                          ),
+                      _navigateTo(
+                        LiveRecitationRoom(
+                          roomId: reel['roomId'] ?? 'room_${reel['id']}',
+                          circleTitle: reel['caption'] ?? 'بث مباشر بإتقان',
+                          isSheikh: false,
                         ),
                       );
                     },
@@ -937,18 +971,27 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
     );
   }
 
-  // Exact Comments Modal Matching Image 1
+  // Comments Bottom Sheet with Safe Area & Clean Modern Islamic Design
   void _showCommentsSheet(BuildContext context, Map<String, dynamic> reel) {
     final commentController = TextEditingController();
     final List<Map<String, dynamic>> comments = [
       {
         'id': 1,
-        'name': 'Fahd saad',
-        'time': 'منذ شهر',
-        'text': 'السلام عليكم',
+        'name': 'فهد سعد',
+        'time': 'منذ ساعتين',
+        'text': 'ما شاء الله تبارك الله، تلاوة ندية خاشعة تشرح الصدور، نفع الله بكم.',
         'avatar': 'assets/images/profile.png',
-        'likes': 1,
+        'likes': 8,
         'isLiked': false,
+      },
+      {
+        'id': 2,
+        'name': 'عبد الرحمن القحطاني',
+        'time': 'منذ 5 ساعات',
+        'text': 'جزاكم الله خيراً يا شيخنا الفاضل وزادكم الله توفيقاً وإتقاناً.',
+        'avatar': 'assets/images/profile.png',
+        'likes': 3,
+        'isLiked': true,
       },
     ];
 
@@ -958,202 +1001,246 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Container(
-          height: MediaQuery.of(context).size.height * 0.70,
+          height: MediaQuery.of(context).size.height * 0.72,
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(
-            children: [
-              // 1. Top Close Button ✕ (Centered grey circular badge - Image 1)
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: () => Navigator.pop(ctx),
-                child: Container(
-                  width: 34,
-                  height: 34,
+          child: SafeArea(
+            top: false,
+            bottom: true,
+            child: Column(
+              children: [
+                // 1. Sleek top pill handle
+                const SizedBox(height: 10),
+                Container(
+                  width: 44,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    shape: BoxShape.circle,
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: const Icon(Icons.close, size: 20, color: Colors.black87),
                 ),
-              ),
-              const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
-              // Title: التعليقات (Matching Image 1)
-              const Text(
-                'التعليقات',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Dubai',
-                  color: Color(0xFF1E2822),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 2. Comments List
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  itemCount: comments.length,
-                  itemBuilder: (context, i) {
-                    final c = comments[i];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                // 2. Clean Header Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.black54),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Left: Heart outline with count (Image 1)
-                          Column(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  setModalState(() {
-                                    c['isLiked'] = !c['isLiked'];
-                                    if (c['isLiked']) {
-                                      c['likes'] += 1;
-                                    } else {
-                                      c['likes'] -= 1;
-                                    }
-                                  });
-                                },
-                                child: Icon(
-                                  c['isLiked'] ? Icons.favorite : Icons.favorite_border_rounded,
-                                  color: c['isLiked'] ? Colors.redAccent : Colors.grey,
-                                  size: 22,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${c['likes']}',
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
-                              ),
-                            ],
+                          const Text(
+                            'التعليقات',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Dubai',
+                              color: Color(0xFF1E2822),
+                            ),
                           ),
-                          const Spacer(),
-
-                          // Right: User info & Comment Text (Image 1)
-                          Expanded(
-                            flex: 8,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          c['name'],
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                        ),
-                                        Text(
-                                          c['time'],
-                                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 10),
-                                    CircleAvatar(
-                                      radius: 20,
-                                      backgroundImage: AssetImage(c['avatar']),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 50.0),
-                                  child: Text(
-                                    c['text'],
-                                    textAlign: TextAlign.right,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Color(0xFF1E2822),
-                                      fontFamily: 'Dubai',
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${comments.length}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Dubai',
+                                color: Color(0xFF00875A),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  },
+                      const SizedBox(width: 40),
+                    ],
+                  ),
                 ),
-              ),
+                const Divider(height: 1, thickness: 0.8, color: Color(0xFFEEEEEE)),
 
-              // 3. Bottom Comment Input Bar (Matching Image 1)
-              Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-                  top: 8,
-                  left: 16,
-                  right: 16,
-                ),
-                child: Row(
-                  children: [
-                    // Green circular send button on far left
-                    GestureDetector(
-                      onTap: () {
-                        final text = commentController.text.trim();
-                        if (text.isNotEmpty) {
-                          setModalState(() {
-                            comments.add({
-                              'id': comments.length + 1,
-                              'name': 'أنت',
-                              'time': 'الآن',
-                              'text': text,
-                              'avatar': 'assets/images/profile.png',
-                              'likes': 0,
-                              'isLiked': false,
-                            });
-                            reel['comments'] += 1;
-                          });
-                          setState(() {});
-                          _apiClient.postVideoComment(reel['id'], text);
-                          commentController.clear();
-                        }
-                      },
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF00875A),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.send_rounded, color: Colors.white, size: 24),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    // Rounded comment input container
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.grey.shade300, width: 1.2),
-                        ),
-                        child: TextField(
-                          controller: commentController,
-                          textAlign: TextAlign.right,
-                          decoration: const InputDecoration(
-                            hintText: 'اكتب تعليق',
-                            hintStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14,
-                              fontFamily: 'Dubai',
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                // 3. Comments List
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    itemCount: comments.length,
+                    itemBuilder: (context, i) {
+                      final c = comments[i];
+                      return Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: const Color(0xFFE8F5E9),
+                                backgroundImage: c['avatar'].toString().startsWith('assets/')
+                                    ? AssetImage(c['avatar']) as ImageProvider
+                                    : NetworkImage(c['avatar']),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF7F8F9),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            c['name'],
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              fontFamily: 'Dubai',
+                                              color: Color(0xFF1E2822),
+                                            ),
+                                          ),
+                                          Text(
+                                            c['time'],
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontFamily: 'Dubai',
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        c['text'],
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontFamily: 'Dubai',
+                                          color: Color(0xFF2D3748),
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    constraints: const BoxConstraints(),
+                                    padding: const EdgeInsets.all(4),
+                                    icon: Icon(
+                                      c['isLiked'] ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                      color: c['isLiked'] ? Colors.redAccent : Colors.grey.shade400,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        c['isLiked'] = !c['isLiked'];
+                                        if (c['isLiked']) {
+                                          c['likes'] += 1;
+                                        } else {
+                                          c['likes'] -= 1;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  Text(
+                                    '${c['likes']}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 11,
+                                      fontFamily: 'Dubai',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          onSubmitted: (_) {
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // 4. Bottom Input Bar with Safe Area & Modern Single Pill
+                Container(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 8,
+                    top: 10,
+                    left: 14,
+                    right: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: Colors.grey.shade200, width: 0.8)),
+                  ),
+                  child: Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2F4F7),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: TextField(
+                              controller: commentController,
+                              style: const TextStyle(fontFamily: 'Dubai', fontSize: 14),
+                              decoration: const InputDecoration(
+                                hintText: 'أضف تعليقاً مباركاً...',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                  fontFamily: 'Dubai',
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                              ),
+                              onSubmitted: (_) {
+                                final text = commentController.text.trim();
+                                if (text.isNotEmpty) {
+                                  setModalState(() {
+                                    comments.add({
+                                      'id': comments.length + 1,
+                                      'name': 'أنت',
+                                      'time': 'الآن',
+                                      'text': text,
+                                      'avatar': 'assets/images/profile.png',
+                                      'likes': 0,
+                                      'isLiked': false,
+                                    });
+                                    reel['comments'] += 1;
+                                  });
+                                  setState(() {});
+                                  _apiClient.postVideoComment(reel['id'], text);
+                                  commentController.clear();
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
                             final text = commentController.text.trim();
                             if (text.isNotEmpty) {
                               setModalState(() {
@@ -1173,21 +1260,35 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
                               commentController.clear();
                             }
                           },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF00875A),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    );
+    ).then((_) {
+      if (mounted && widget.isActive) {
+        ReelsPreloadManager.instance.resumeIndex(_currentIndex);
+      }
+    });
   }
 
   // مشغل ملء الشاشة الأفقي المطابق للصورة 3 (Screenshot 3)
   void _showFullscreenPlayer(BuildContext context, Map<String, dynamic> reel) {
+    ReelsPreloadManager.instance.pauseAll();
     showDialog(
       context: context,
       useSafeArea: false,
@@ -1291,11 +1392,16 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
           ),
         );
       },
-    );
+    ).then((_) {
+      if (mounted && widget.isActive) {
+        ReelsPreloadManager.instance.resumeIndex(_currentIndex);
+      }
+    });
   }
 
   // شاشة البحث المطابقة بكسل ببكسل للصورة 17 (Screenshot 17)
   void _showSearchScreen(BuildContext context) {
+    ReelsPreloadManager.instance.pauseAll();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1375,7 +1481,11 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> {
           ],
         ),
       ),
-    );
+    ).then((_) {
+      if (mounted && widget.isActive) {
+        ReelsPreloadManager.instance.resumeIndex(_currentIndex);
+      }
+    });
   }
 }
 
@@ -1384,6 +1494,7 @@ class ReelVideoPlayerItem extends StatefulWidget {
   final int index;
   final String videoPath;
   final bool isCurrent;
+  final bool isActive;
   final VoidCallback onTap;
 
   const ReelVideoPlayerItem({
@@ -1391,6 +1502,7 @@ class ReelVideoPlayerItem extends StatefulWidget {
     required this.index,
     required this.videoPath,
     required this.isCurrent,
+    this.isActive = true,
     required this.onTap,
   });
 
@@ -1412,7 +1524,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   Future<void> _initVideo() async {
     try {
       _controller = await ReelsPreloadManager.instance.getControllerForIndex(widget.index);
-      if (widget.isCurrent && mounted) {
+      if (widget.isCurrent && widget.isActive && mounted) {
         await _controller!.setVolume(1.0);
         await _controller!.play();
       }
@@ -1430,7 +1542,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
         }
         await _controller!.initialize();
         _controller!.setLooping(true);
-        if (widget.isCurrent && mounted) {
+        if (widget.isCurrent && widget.isActive && mounted) {
           _controller!.play();
         }
         if (mounted) {
@@ -1452,18 +1564,30 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   void didUpdateWidget(covariant ReelVideoPlayerItem oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_controller != null && _isInitialized) {
-      if (widget.isCurrent && !oldWidget.isCurrent) {
+      final shouldPlay = widget.isCurrent && widget.isActive;
+      final wasPlaying = oldWidget.isCurrent && oldWidget.isActive;
+      if (shouldPlay && !wasPlaying) {
         _controller!.setVolume(1.0);
         _controller!.play();
-      } else if (!widget.isCurrent && oldWidget.isCurrent) {
+      } else if (!shouldPlay && wasPlaying) {
         _controller!.pause();
       }
     }
   }
 
   @override
+  void deactivate() {
+    try {
+      _controller?.pause();
+    } catch (_) {}
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
-    // Note: VideoPlayerController lifecycle is kept hot by ReelsPreloadManager
+    try {
+      _controller?.pause();
+    } catch (_) {}
     super.dispose();
   }
 

@@ -97,10 +97,37 @@ class ReelsPreloadManager {
     }
   }
 
+  /// إيقاف تشغيل كافة الفيديوهات المحملة في الكاش لمنع استمرار الصوت بالخلفية
+  void pauseAll() {
+    for (final controller in _controllerCache.values) {
+      try {
+        if (controller.value.isPlaying) {
+          controller.pause();
+        }
+      } catch (_) {}
+    }
+  }
+
+  /// استئناف تشغيل فيديو محدد
+  void resumeIndex(int index) {
+    if (index >= 0 && index < _videoUrls.length) {
+      final path = _videoUrls[index];
+      if (_controllerCache.containsKey(path)) {
+        try {
+          _controllerCache[path]?.setVolume(1.0);
+          _controllerCache[path]?.play();
+        } catch (_) {}
+      }
+    }
+  }
+
   /// إيقاف وتفريغ كافة الفيديوهات عند مغادرة شاشة الريلز
   void disposeAll() {
     for (final controller in _controllerCache.values) {
-      controller.dispose();
+      try {
+        controller.pause();
+        controller.dispose();
+      } catch (_) {}
     }
     _controllerCache.clear();
   }
