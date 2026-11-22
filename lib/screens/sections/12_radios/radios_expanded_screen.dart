@@ -117,9 +117,9 @@ class _RadiosExpandedScreenState extends State<RadiosExpandedScreen> {
           ),
           iOS: AudioContextIOS(
             category: AVAudioSessionCategory.playback,
-            options: const [
+            options: const {
               AVAudioSessionOptions.defaultToSpeaker,
-            ],
+            },
           ),
         ),
       );

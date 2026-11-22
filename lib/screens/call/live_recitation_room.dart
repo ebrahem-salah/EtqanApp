@@ -177,7 +177,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
               await UserChaptersService.instance.endAndSaveChapter(
                 roomId: widget.roomId,
                 title: widget.circleTitle,
-                durationFormatted: _formatCallTimer(_secondsElapsed > 0 ? _secondsElapsed : 150),
+                durationFormatted: _formatCallTimer(_callSeconds > 0 ? _callSeconds : 150),
               );
               if (widget.classRoomId != null) {
                 try {

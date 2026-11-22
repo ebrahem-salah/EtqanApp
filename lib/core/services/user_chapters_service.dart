@@ -84,9 +84,9 @@ class UserChaptersService {
 
     // If marked to appear in reels as live broadcast
     if (showInReelsAsLive) {
-      LiveStreamsService.instance.registerStream(
+      LiveStreamsService.instance.addLiveStream(
         LiveStreamItem(
-          id: newId,
+          id: '$newId',
           roomId: roomId,
           title: name,
           sheikhName: supervisor,
@@ -137,9 +137,9 @@ class UserChaptersService {
     await _saveToStorage();
 
     // Remove from live streams if it was active
-    final liveId = chapter['id'] is int ? chapter['id'] as int : null;
+    final liveId = chapter['id'];
     if (liveId != null) {
-      LiveStreamsService.instance.removeStream(liveId);
+      LiveStreamsService.instance.removeLiveStream('$liveId');
     }
 
     changeNotifier.value++;
