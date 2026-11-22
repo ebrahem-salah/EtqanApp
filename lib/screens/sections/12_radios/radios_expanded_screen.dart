@@ -20,55 +20,31 @@ class _RadiosExpandedScreenState extends State<RadiosExpandedScreen> {
       'id': 'radio_cairo',
       'name': 'إذاعة القرآن الكريم من القاهرة',
       'country': 'مصر 🇪🇬',
-      'url': 'https://stream.radiojar.com/8s5u5tpdtwzuv',
-      'desc': 'أقدم وأعرق إذاعة قرآنية في العالم العربي والإسلامي (تلاوات نادرة ومصاحف مجودة).',
+      'url': 'https://backup.qurango.net/radio/tarteel',
+      'desc': 'أقدم وأعرق إذاعة قرآنية في العالم العربي والإسلامي (تلاوات خاشعة ومصاحف مجودة).',
       'icon': '📻',
     },
     {
       'id': 'radio_makkah',
       'name': 'إذاعة القرآن الكريم من مكة المكرمة',
       'country': 'السعودية 🇸🇦',
-      'url': 'https://stream.radiojar.com/0t5t1g9051zuv',
-      'desc': 'بث حي ومباشر على مدار الساعة لصلوات الحرم المكي وتلاوات أئمة الحرمين الشريفين.',
+      'url': 'https://backup.qurango.net/radio/saud_alshuraim',
+      'desc': 'بث حي ومباشر على مدار الساعة لصلوات وتلاوات الحرمين الشريفين.',
       'icon': '🕋',
     },
     {
       'id': 'radio_riyadh',
       'name': 'إذاعة القرآن الكريم من الرياض',
       'country': 'السعودية 🇸🇦',
-      'url': 'https://stream.zeno.fm/f3wvbbqmdg8uv',
-      'desc': 'برامج قرآنية وتفاسير وقراءات خاشعة على مدار 24 ساعة.',
+      'url': 'https://backup.qurango.net/radio/abdurrahman_alsudais',
+      'desc': 'برامج وتلاوات وتفاسير وقراءات خاشعة على مدار 24 ساعة.',
       'icon': '📻',
-    },
-    {
-      'id': 'radio_sharjah',
-      'name': 'إذاعة القرآن الكريم من الشارقة',
-      'country': 'الإمارات 🇦🇪',
-      'url': 'https://stream.zeno.fm/cqfgt7amdg8uv',
-      'desc': 'تلاوات عذبة وختمات مجودة بأصوات مشاهير القراء.',
-      'icon': '📻',
-    },
-    {
-      'id': 'radio_abudhabi',
-      'name': 'إذاعة القرآن الكريم من أبوظبي',
-      'country': 'الإمارات 🇦🇪',
-      'url': 'https://stream.zeno.fm/4v7m7z5mdg8uv',
-      'desc': 'تلاوات خاشعة وبرامج علوم القرآن الكريم والسنة النبوية.',
-      'icon': '📻',
-    },
-    {
-      'id': 'radio_hadith',
-      'name': 'إذاعة الحديث النبوي الشريف',
-      'country': 'العالم الإسلامي 🌐',
-      'url': 'https://stream.zeno.fm/2k5u6k8mdg8uv',
-      'desc': 'قراءة أحاديث صحيح البخاري وصحيح مسلم وشروح الأحاديث على مدار الساعة.',
-      'icon': '📜',
     },
     {
       'id': 'radio_minshawi',
       'name': 'إذاعة الشيخ محمد صديق المنشاوي',
       'country': 'المصحف المرتل والمجود 🎙️',
-      'url': 'https://stream.zeno.fm/87u51w8mdg8uv',
+      'url': 'https://backup.qurango.net/radio/mohammed_siddiq_alminshawi_mojawwad',
       'desc': 'تلاوات متصلة للشيخ المنشاوي صاحب الصوت الباكي الخاشع.',
       'icon': '🎙️',
     },
@@ -76,7 +52,7 @@ class _RadiosExpandedScreenState extends State<RadiosExpandedScreen> {
       'id': 'radio_abdulbasit',
       'name': 'إذاعة الشيخ عبد الباسط عبد الصمد',
       'country': 'الحناجر الذهبية 🎙️',
-      'url': 'https://stream.zeno.fm/6u7t3x9mdg8uv',
+      'url': 'https://backup.qurango.net/radio/abdulbasit_abdulsamad_mojawwad',
       'desc': 'روائع التلاوات والمحافل القرآنية التاريخية للشيخ عبد الباسط.',
       'icon': '🎙️',
     },
@@ -84,11 +60,81 @@ class _RadiosExpandedScreenState extends State<RadiosExpandedScreen> {
       'id': 'radio_hussary',
       'name': 'إذاعة الشيخ محمود خليل الحصري',
       'country': 'شيخ عموم المقارئ 🎙️',
-      'url': 'https://stream.zeno.fm/1r2w4z9mdg8uv',
-      'desc': 'المصحف المرتل والمجود وروايات قالون والدوري وورش.',
+      'url': 'https://backup.qurango.net/radio/mahmoud_khalil_alhussary_mojawwad',
+      'desc': 'المصحف المرتل والمجود بروايات حفص وورش وقالون والدوري.',
       'icon': '🎙️',
     },
+    {
+      'id': 'radio_alafasi',
+      'name': 'إذاعة الشيخ مشاري راشد العفاسي',
+      'country': 'تلاوات عذبة 🎙️',
+      'url': 'https://backup.qurango.net/radio/mishary_alafasi',
+      'desc': 'المصحف المرتل كاملاً بصوت الشيخ مشاري العفاسي.',
+      'icon': '🎙️',
+    },
+    {
+      'id': 'radio_ajmy',
+      'name': 'إذاعة الشيخ أحمد بن علي العجمي',
+      'country': 'تلاوات خاشعة 🎙️',
+      'url': 'https://backup.qurango.net/radio/ahmad_alajmy',
+      'desc': 'تلاوات مؤثرة من صلوات التراويح والمصحف المرتل.',
+      'icon': '🎙️',
+    },
+    {
+      'id': 'radio_qatami',
+      'name': 'إذاعة الشيخ ناصر القطامي',
+      'country': 'تلاوات نادية 🎙️',
+      'url': 'https://backup.qurango.net/radio/nasser_alqatami',
+      'desc': 'قراءات خاشعة ومتنوعة لجميع سور القرآن الكريم.',
+      'icon': '🎙️',
+    },
+    {
+      'id': 'radio_dosari',
+      'name': 'إذاعة الشيخ ياسر الدوسري',
+      'country': 'أئمة الحرم المكي 🕋',
+      'url': 'https://backup.qurango.net/radio/yasser_aldosari',
+      'desc': 'تلاوات الحرم المكي الشريف وسور القرآن الكريم.',
+      'icon': '🕋',
+    },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initAudioSession();
+  }
+
+  Future<void> _initAudioSession() async {
+    try {
+      await AudioPlayer.global.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            isSpeakerphoneOn: true,
+            stayAwake: true,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gain,
+          ),
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: const [
+              AVAudioSessionOptions.defaultToSpeaker,
+            ],
+          ),
+        ),
+      );
+
+      _audioPlayer.onPlayerStateChanged.listen((state) {
+        if (!mounted) return;
+        setState(() {
+          _isPlaying = state == PlayerState.playing;
+          if (state == PlayerState.playing || state == PlayerState.paused || state == PlayerState.stopped) {
+            _isLoadingAudio = false;
+          }
+        });
+      });
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -112,6 +158,7 @@ class _RadiosExpandedScreenState extends State<RadiosExpandedScreen> {
 
     try {
       await _audioPlayer.stop();
+      await _audioPlayer.setVolume(1.0);
       await _audioPlayer.play(UrlSource(radio['url']));
       if (mounted) {
         setState(() {
@@ -119,17 +166,16 @@ class _RadiosExpandedScreenState extends State<RadiosExpandedScreen> {
           _isLoadingAudio = false;
         });
       }
-    } catch (_) {
-      // Fallback state for streaming test
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _isPlaying = true;
+          _isPlaying = false;
           _isLoadingAudio = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('جارٍ البث المباشر: ${radio['name']}'),
-            backgroundColor: const Color(0xFF00875A),
+            content: Text('تعذر تشغيل بث ${radio['name']}. يرجى التحقق من اتصال الإنترنت.'),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
@@ -158,52 +204,92 @@ class _RadiosExpandedScreenState extends State<RadiosExpandedScreen> {
           final r = _radios[idx];
           final bool isCurrent = _currentPlayingId == r['id'];
           final bool isPlayingThis = isCurrent && _isPlaying;
+          final bool isLoadingThis = isCurrent && _isLoadingAudio;
 
           return Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isPlayingThis ? const Color(0xFFE8F5E9) : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: isPlayingThis ? Border.all(color: const Color(0xFF00875A), width: 1.5) : null,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3))],
+              border: Border.all(
+                color: isPlayingThis ? const Color(0xFF00875A) : Colors.grey.shade200,
+                width: isPlayingThis ? 1.5 : 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
-                width: 48,
-                height: 48,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: isPlayingThis ? const Color(0xFF00875A) : const Color(0xFFF1F8E9),
+                  color: isPlayingThis ? const Color(0xFF00875A) : const Color(0xFFF1F8F5),
                   shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: Text(
-                    r['icon'] ?? '📻',
-                    style: const TextStyle(fontSize: 22),
-                  ),
+                alignment: Alignment.center,
+                child: Text(
+                  r['icon'],
+                  style: const TextStyle(fontSize: 22),
                 ),
               ),
-              title: Text(
-                r['name'],
-                style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              title: Row(
                 children: [
-                  const SizedBox(height: 2),
-                  Text(r['desc'], style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  Text(r['country'], style: const TextStyle(fontFamily: 'Dubai', fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00875A))),
+                  Expanded(
+                    child: Text(
+                      r['name'],
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: isPlayingThis ? const Color(0xFF00875A) : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isPlayingThis ? Colors.green.shade700 : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      r['country'],
+                      style: TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 10,
+                        color: isPlayingThis ? Colors.white : Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              trailing: IconButton(
-                icon: (isCurrent && _isLoadingAudio)
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00875A)))
-                    : Icon(
-                        isPlayingThis ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-                        color: const Color(0xFF00875A),
-                        size: 38,
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  r['desc'],
+                  style: TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ),
+              trailing: SizedBox(
+                width: 48,
+                height: 48,
+                child: isLoadingThis
+                    ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF00875A)),
+                      )
+                    : IconButton(
+                        icon: Icon(
+                          isPlayingThis ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                          color: isPlayingThis ? const Color(0xFF00875A) : const Color(0xFF2E7D32),
+                          size: 38,
+                        ),
+                        onPressed: () => _togglePlayRadio(r),
                       ),
-                onPressed: () => _togglePlayRadio(r),
               ),
             ),
           );

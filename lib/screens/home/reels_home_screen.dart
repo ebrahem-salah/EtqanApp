@@ -12,6 +12,8 @@ import '../notifications/notifications_screen.dart';
 import '../call/live_recitation_room.dart';
 import '../sections/sections_hub_screen.dart';
 import '../sections/dialogs/create_section_session_dialog.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/services/user_videos_service.dart';
 import 'add_video_screen.dart';
 
 class ReelsHomeScreen extends StatefulWidget {
@@ -37,6 +39,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     LiveStreamsService.instance.addListener(_onLiveStreamsChanged);
+    UserVideosService.instance.changeNotifier.addListener(_onLiveStreamsChanged);
     _loadLiveVideos();
   }
 
@@ -67,6 +70,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     LiveStreamsService.instance.removeListener(_onLiveStreamsChanged);
+    UserVideosService.instance.changeNotifier.removeListener(_onLiveStreamsChanged);
     _pageController.dispose();
     ReelsPreloadManager.instance.disposeAll();
     super.dispose();
@@ -111,6 +115,13 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
       });
     }
 
+    // 2. Fetch locally added user videos (especially YouTube links and local uploads)
+    await UserVideosService.instance.init();
+    final userVideos = UserVideosService.instance.videos;
+    for (final uv in userVideos) {
+      combined.add(Map<String, dynamic>.from(uv));
+    }
+
     try {
       final res = await _apiClient.getVideos();
       if (res.statusCode == 200 && res.data != null) {
@@ -131,7 +142,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
               'comments': item['comments_count'] ?? 0,
               'shares': 1,
               'isLiked': item['is_liked'] == true,
-              'video_path': item['video_url'] ?? 'assets/videos/onboarding_video_1.mp4',
+              'video_path': item['video_url'] ?? '',
             };
           }).toList();
           combined.addAll(liveReels);
@@ -145,7 +156,10 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
         _reels.addAll(combined);
         _isLoading = false;
       });
-      final videoPaths = _reels.where((r) => r['isLive'] != true).map((r) => r['video_path'] as String).toList();
+      final videoPaths = _reels
+          .where((r) => r['isLive'] != true && r['isYouTube'] != true && (r['video_path'] as String).isNotEmpty)
+          .map((r) => r['video_path'] as String)
+          .toList();
       if (videoPaths.isNotEmpty) {
         ReelsPreloadManager.instance.setVideos(videoPaths);
         ReelsPreloadManager.instance.preloadAdjacentReels(_currentIndex);
@@ -325,20 +339,22 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Real Autoplaying Video Item or Live Stream Card
+                  // Real Autoplaying Video Item or Live Stream Card or YouTube Reel
                   reel['isLive'] == true
                       ? _buildLiveStreamReelItem(reel)
-                      : ReelVideoPlayerItem(
-                          index: index,
-                          videoPath: reel['video_path'],
-                          isCurrent: isCurrent,
-                          isActive: widget.isActive,
-                          onTap: () {
-                            setState(() {
-                              _isOverlayVisible = !_isOverlayVisible;
-                            });
-                          },
-                        ),
+                      : (reel['isYouTube'] == true
+                          ? _buildYouTubeReelItem(reel)
+                          : ReelVideoPlayerItem(
+                              index: index,
+                              videoPath: reel['video_path'],
+                              isCurrent: isCurrent,
+                              isActive: widget.isActive,
+                              onTap: () {
+                                setState(() {
+                                  _isOverlayVisible = !_isOverlayVisible;
+                                });
+                              },
+                            )),
 
                   // Overlay gradient for contrast
                   if (_isOverlayVisible)
@@ -627,19 +643,17 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                             height: 38,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.black.withOpacity(0.4),
-                              border: Border.all(color: const Color(0xFF00875A), width: 1.5),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFF00875A), width: 1.5),
+                              color: const Color(0xFF00875A),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00875A).withOpacity(0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
-                                child: const Icon(Icons.add, color: Color(0xFF00875A), size: 18),
-                              ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.add, color: Colors.white, size: 22),
                             ),
                           ),
                         ),
@@ -920,6 +934,113 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
     );
   }
 
+  Widget _buildYouTubeReelItem(Map<String, dynamic> reel) {
+    final thumb = reel['thumbnail'] ??
+        (reel['youtubeId'] != null
+            ? 'https://img.youtube.com/vi/${reel['youtubeId']}/hqdefault.jpg'
+            : '');
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isOverlayVisible = !_isOverlayVisible;
+        });
+      },
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background High-Res YouTube Thumbnail
+            if (thumb.toString().isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: thumb.toString(),
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF00875A)),
+                ),
+                errorWidget: (context, url, error) => const Center(
+                  child: Icon(Icons.video_library_rounded, size: 64, color: Colors.white38),
+                ),
+              )
+            else
+              const Center(
+                child: Icon(Icons.video_library_rounded, size: 64, color: Colors.white38),
+              ),
+
+            // Ambient dark gradient for text legibility
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.6),
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.85),
+                  ],
+                  stops: const [0.0, 0.4, 1.0],
+                ),
+              ),
+            ),
+
+            // Centered YouTube Play Button & Badge
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF0000), // Official YouTube Red
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF0000).withOpacity(0.5),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.65),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.ondemand_video_rounded, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          'فيديو يوتيوب مسجل في المنصة',
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeaderCircleBtn({required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -971,27 +1092,36 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
     );
   }
 
-  // Comments Bottom Sheet with Safe Area & Clean Modern Islamic Design
+  // Comments Bottom Sheet matching Image 4 exactly with Safe Area & Clean Modern Design
   void _showCommentsSheet(BuildContext context, Map<String, dynamic> reel) {
     final commentController = TextEditingController();
     final List<Map<String, dynamic>> comments = [
       {
         'id': 1,
-        'name': 'فهد سعد',
-        'time': 'منذ ساعتين',
-        'text': 'ما شاء الله تبارك الله، تلاوة ندية خاشعة تشرح الصدور، نفع الله بكم.',
+        'name': 'Fahd saad',
+        'time': 'منذ شهر',
+        'text': 'السلام عليكم',
         'avatar': 'assets/images/profile.png',
-        'likes': 8,
+        'likes': 1,
         'isLiked': false,
       },
       {
         'id': 2,
         'name': 'عبد الرحمن القحطاني',
-        'time': 'منذ 5 ساعات',
+        'time': 'منذ ساعتين',
+        'text': 'ما شاء الله تبارك الله، تلاوة ندية خاشعة تشرح الصدور، نفع الله بكم.',
+        'avatar': 'assets/images/profile.png',
+        'likes': 8,
+        'isLiked': true,
+      },
+      {
+        'id': 3,
+        'name': 'أحمد إبراهيم',
+        'time': 'منذ يوم',
         'text': 'جزاكم الله خيراً يا شيخنا الفاضل وزادكم الله توفيقاً وإتقاناً.',
         'avatar': 'assets/images/profile.png',
         'likes': 3,
-        'isLiked': true,
+        'isLiked': false,
       },
     ];
 
@@ -1001,281 +1131,257 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Container(
-          height: MediaQuery.of(context).size.height * 0.72,
+          height: MediaQuery.of(context).size.height * 0.75,
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: SafeArea(
-            top: false,
-            bottom: true,
-            child: Column(
-              children: [
-                // 1. Sleek top pill handle
-                const SizedBox(height: 10),
-                Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+          child: Column(
+            children: [
+              // 1. Sleek circular close button centered at top (Matching Image 4)
+              const SizedBox(height: 12),
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF0F2F5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded, color: Color(0xFF65676B), size: 20),
                   ),
                 ),
-                const SizedBox(height: 12),
+              ),
+              const SizedBox(height: 10),
 
-                // 2. Clean Header Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.black54),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'التعليقات',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Dubai',
-                              color: Color(0xFF1E2822),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8F5E9),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${comments.length}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Dubai',
-                                color: Color(0xFF00875A),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 40),
-                    ],
+              // 2. Centered Title (التعليقات)
+              const Center(
+                child: Text(
+                  'التعليقات',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Dubai',
+                    color: Color(0xFF1E2822),
                   ),
                 ),
-                const Divider(height: 1, thickness: 0.8, color: Color(0xFFEEEEEE)),
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1, thickness: 0.8, color: Color(0xFFEEEEEE)),
 
-                // 3. Comments List
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    itemCount: comments.length,
-                    itemBuilder: (context, i) {
-                      final c = comments[i];
-                      return Directionality(
-                        textDirection: TextDirection.rtl,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: const Color(0xFFE8F5E9),
-                                backgroundImage: c['avatar'].toString().startsWith('assets/')
-                                    ? AssetImage(c['avatar']) as ImageProvider
-                                    : NetworkImage(c['avatar']),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF7F8F9),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            c['name'],
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
-                                              fontFamily: 'Dubai',
-                                              color: Color(0xFF1E2822),
-                                            ),
-                                          ),
-                                          Text(
-                                            c['time'],
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontFamily: 'Dubai',
-                                              color: Colors.grey.shade500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 5),
-                                      Text(
-                                        c['text'],
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontFamily: 'Dubai',
-                                          color: Color(0xFF2D3748),
-                                          height: 1.35,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
+              // 3. Comments List (Flat clean layout without double border or nested boxes - Matching Image 4)
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  itemCount: comments.length,
+                  itemBuilder: (context, i) {
+                    final c = comments[i];
+                    return Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // User Avatar on Right
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: const Color(0xFFE8F5E9),
+                              backgroundImage: c['avatar'].toString().startsWith('assets/')
+                                  ? AssetImage(c['avatar']) as ImageProvider
+                                  : NetworkImage(c['avatar']),
+                            ),
+                            const SizedBox(width: 12),
+
+                            // User Info and Comment text (Clean with NO grey box around it)
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  IconButton(
-                                    constraints: const BoxConstraints(),
-                                    padding: const EdgeInsets.all(4),
-                                    icon: Icon(
-                                      c['isLiked'] ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                      color: c['isLiked'] ? Colors.redAccent : Colors.grey.shade400,
-                                      size: 20,
+                                  Text(
+                                    c['name'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      fontFamily: 'Dubai',
+                                      color: Color(0xFF1E2822),
                                     ),
-                                    onPressed: () {
-                                      setModalState(() {
-                                        c['isLiked'] = !c['isLiked'];
-                                        if (c['isLiked']) {
-                                          c['likes'] += 1;
-                                        } else {
-                                          c['likes'] -= 1;
-                                        }
-                                      });
-                                    },
                                   ),
                                   Text(
-                                    '${c['likes']}',
+                                    c['time'],
                                     style: TextStyle(
-                                      color: Colors.grey.shade600,
                                       fontSize: 11,
                                       fontFamily: 'Dubai',
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    c['text'],
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontFamily: 'Dubai',
+                                      color: Color(0xFF2D3748),
+                                      height: 1.35,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // 4. Bottom Input Bar with Safe Area & Modern Single Pill
-                Container(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 8,
-                    top: 10,
-                    left: 14,
-                    right: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(top: BorderSide(color: Colors.grey.shade200, width: 0.8)),
-                  ),
-                  child: Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF2F4F7),
-                              borderRadius: BorderRadius.circular(24),
                             ),
+                            const SizedBox(width: 8),
+
+                            // Heart & Likes on far Left
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      c['isLiked'] = !c['isLiked'];
+                                      if (c['isLiked']) {
+                                        c['likes'] += 1;
+                                      } else {
+                                        c['likes'] -= 1;
+                                      }
+                                    });
+                                  },
+                                  child: Icon(
+                                    c['isLiked'] ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                    color: c['isLiked'] ? Colors.redAccent : Colors.grey.shade400,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${c['likes']}',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 11,
+                                    fontFamily: 'Dubai',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // 4. Bottom Input Bar with Phone Navigation Inset Safe Guard (Matching Image 4)
+              Container(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom +
+                      MediaQuery.of(context).padding.bottom +
+                      12,
+                  top: 10,
+                  left: 16,
+                  right: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade200, width: 0.8)),
+                ),
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Row(
+                    children: [
+                      // Single Pill Input without double border or nested box
+                      Expanded(
+                        child: Container(
+                          height: 46,
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.grey.shade400, width: 1.0),
+                          ),
+                          child: Center(
                             child: TextField(
                               controller: commentController,
                               style: const TextStyle(fontFamily: 'Dubai', fontSize: 14),
                               decoration: const InputDecoration(
-                                hintText: 'أضف تعليقاً مباركاً...',
+                                hintText: 'اكتب تعليق',
                                 hintStyle: TextStyle(
                                   color: Colors.grey,
                                   fontSize: 13,
                                   fontFamily: 'Dubai',
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
                               ),
-                              onSubmitted: (_) {
-                                final text = commentController.text.trim();
-                                if (text.isNotEmpty) {
+                              onSubmitted: (text) {
+                                final trimmed = text.trim();
+                                if (trimmed.isNotEmpty) {
                                   setModalState(() {
                                     comments.add({
                                       'id': comments.length + 1,
                                       'name': 'أنت',
                                       'time': 'الآن',
-                                      'text': text,
+                                      'text': trimmed,
                                       'avatar': 'assets/images/profile.png',
                                       'likes': 0,
                                       'isLiked': false,
                                     });
-                                    reel['comments'] += 1;
+                                    reel['comments'] = (reel['comments'] ?? 0) + 1;
                                   });
                                   setState(() {});
-                                  _apiClient.postVideoComment(reel['id'], text);
+                                  _apiClient.postVideoComment(reel['id'], trimmed);
                                   commentController.clear();
                                 }
                               },
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            final text = commentController.text.trim();
-                            if (text.isNotEmpty) {
-                              setModalState(() {
-                                comments.add({
-                                  'id': comments.length + 1,
-                                  'name': 'أنت',
-                                  'time': 'الآن',
-                                  'text': text,
-                                  'avatar': 'assets/images/profile.png',
-                                  'likes': 0,
-                                  'isLiked': false,
-                                });
-                                reel['comments'] += 1;
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Solid Circular Green Send Button (Left in RTL - Matching Image 4)
+                      GestureDetector(
+                        onTap: () {
+                          final text = commentController.text.trim();
+                          if (text.isNotEmpty) {
+                            setModalState(() {
+                              comments.add({
+                                'id': comments.length + 1,
+                                'name': 'أنت',
+                                'time': 'الآن',
+                                'text': text,
+                                'avatar': 'assets/images/profile.png',
+                                'likes': 0,
+                                'isLiked': false,
                               });
-                              setState(() {});
-                              _apiClient.postVideoComment(reel['id'], text);
-                              commentController.clear();
-                            }
-                          },
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF00875A),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                              reel['comments'] = (reel['comments'] ?? 0) + 1;
+                            });
+                            setState(() {});
+                            _apiClient.postVideoComment(reel['id'], text);
+                            commentController.clear();
+                          }
+                        },
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF00875A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

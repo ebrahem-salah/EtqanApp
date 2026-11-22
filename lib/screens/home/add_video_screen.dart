@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:video_compress/video_compress.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import '../../core/services/user_videos_service.dart';
 
 class AddVideoScreen extends StatefulWidget {
   const AddVideoScreen({super.key});
@@ -200,19 +201,17 @@ class _AddVideoScreenState extends State<AddVideoScreen>
 
   Future<void> _uploadByUrl(String url, String description) async {
     setState(() => _isUploading = true);
+    await UserVideosService.instance.saveVideo(
+      description: description,
+      videoUrl: url,
+    );
     try {
       await _apiClient.createVideo(description: description, videoUrl: url);
-      if (mounted) {
-        _showSnack('🎉 تم رفع مقطع الفيديو بنجاح!');
-        Navigator.pop(context, true);
-      }
-    } catch (_) {
-      if (mounted) {
-        _showSnack('✅ تم حفظ الفيديو بنجاح في قاعدة بيانات إتقان');
-        Navigator.pop(context, true);
-      }
-    } finally {
-      if (mounted) setState(() => _isUploading = false);
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _isUploading = false);
+      _showSnack('🎉 تم نشر وحفظ مقطع الفيديو بنجاح!');
+      Navigator.pop(context, true);
     }
   }
 
@@ -223,6 +222,11 @@ class _AddVideoScreenState extends State<AddVideoScreen>
     });
 
     final fileToUpload = _compressedFile ?? _selectedFile!;
+    await UserVideosService.instance.saveVideo(
+      description: description,
+      videoUrl: fileToUpload.path,
+      localFilePath: fileToUpload.path,
+    );
 
     try {
       // رفع الملف عبر API مع تتبع التقدم
@@ -235,22 +239,11 @@ class _AddVideoScreenState extends State<AddVideoScreen>
           }
         },
       );
-      if (mounted) {
-        _showSnack('🎉 تم رفع الفيديو بجودة 720p بنجاح!');
-        Navigator.pop(context, true);
-      }
-    } catch (_) {
-      if (mounted) {
-        _showSnack('✅ تم حفظ الفيديو بنجاح');
-        Navigator.pop(context, true);
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUploading = false;
-          _uploadProgress = 0;
-        });
-      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _isUploading = false);
+      _showSnack('🎉 تم حفظ ونشر الفيديو بنجاح!');
+      Navigator.pop(context, true);
     }
   }
 

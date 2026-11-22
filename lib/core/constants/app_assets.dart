@@ -37,17 +37,8 @@ class AppAssets {
   static const String share = 'assets/svgs/icon_share.svg';
   static const String rankingStar = 'assets/svgs/ranking_star.svg';
 
-  // Animations & GIFs
-  static const String callGif = 'assets/animation/call.gif';
-  static const String loadingAnimation = 'assets/animation/loading_animation.gif';
+  // Animations (Lottie JSON)
   static const String successJson = 'assets/animation/success.json';
-  static const String checkmarkGif = 'assets/animation/checkmark_icon.gif';
-  static const String errorGif = 'assets/animation/error_animation.gif';
-  static const String chatFloating = 'assets/animation/chat_floating_icon.gif';
-
-  // Videos
-  static const String onboardingVideo1 = 'assets/videos/onboarding_video_1.mp4';
-  static const String onboardingVideo2 = 'assets/videos/onboarding_video_2.mp4';
 
   // Translations
   static const String arTranslation = 'assets/translations/ar.json';

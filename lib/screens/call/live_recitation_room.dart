@@ -9,6 +9,7 @@ import '../../core/network/api_client.dart';
 import '../../core/services/deep_link_service.dart';
 import '../../core/services/zego_cloud_service.dart';
 import '../../core/services/reels_preload_manager.dart';
+import '../../core/services/user_chapters_service.dart';
 import '../competitions/widgets/competition_exam_sheet.dart';
 
 class LiveRecitationRoom extends StatefulWidget {
@@ -173,6 +174,11 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
             onPressed: () async {
               Navigator.pop(ctx);
+              await UserChaptersService.instance.endAndSaveChapter(
+                roomId: widget.roomId,
+                title: widget.circleTitle,
+                durationFormatted: _formatCallTimer(_secondsElapsed > 0 ? _secondsElapsed : 150),
+              );
               if (widget.classRoomId != null) {
                 try {
                   await _apiClient.endClass(

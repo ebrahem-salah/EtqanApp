@@ -344,14 +344,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                   ],
                 ),
                 padding: const EdgeInsets.all(10),
-                child: Image.asset(
-                  'assets/animation/chat_floating_icon.gif',
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.chat_bubble_rounded,
-                    color: Color(0xFF00875A),
-                    size: 28,
-                  ),
+                child: const Icon(
+                  Icons.chat_bubble_rounded,
+                  color: Color(0xFF00875A),
+                  size: 28,
                 ),
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
+import '../../core/services/user_chapters_service.dart';
 import '../call/live_recitation_room.dart';
 import '../chapters/circle_replay_screen.dart';
 
@@ -67,12 +68,17 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
 
   Future<void> _loadMyChapters() async {
     setState(() => _isLoading = true);
+    await UserChaptersService.instance.init();
+
+    final List<Map<String, dynamic>> userOngoing = List.from(UserChaptersService.instance.ongoingChapters);
+    final List<Map<String, dynamic>> userFinished = List.from(UserChaptersService.instance.finishedChapters);
+
     try {
       final res = await _apiClient.getMyClasses();
       if (res.statusCode == 200 && res.data != null) {
         final List items = res.data['data'] ?? [];
-        final List<Map<String, dynamic>> ongoing = [];
-        final List<Map<String, dynamic>> finished = [];
+        final List<Map<String, dynamic>> apiOngoing = [];
+        final List<Map<String, dynamic>> apiFinished = [];
 
         for (var c in items) {
           final isFinished = c['is_finished'] == true || c['status'] == 'completed';
@@ -86,23 +92,19 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
             'avatar': c['image_url'],
           };
           if (isFinished) {
-            finished.add(mapItem);
+            apiFinished.add(mapItem);
           } else {
-            ongoing.add(mapItem);
+            apiOngoing.add(mapItem);
           }
         }
 
-        if (ongoing.isNotEmpty) _ongoingChapters = ongoing;
-        if (finished.isNotEmpty) _finishedChapters = finished;
+        userOngoing.addAll(apiOngoing);
+        userFinished.addAll(apiFinished);
       }
     } catch (_) {}
 
-    if (_ongoingChapters.isEmpty) {
-      _ongoingChapters = List.from(_fallbackOngoing);
-    }
-    if (_finishedChapters.isEmpty) {
-      _finishedChapters = List.from(_fallbackFinished);
-    }
+    _ongoingChapters = userOngoing.isNotEmpty ? userOngoing : List.from(_fallbackOngoing);
+    _finishedChapters = userFinished.isNotEmpty ? userFinished : List.from(_fallbackFinished);
 
     if (mounted) {
       setState(() => _isLoading = false);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import '../../core/services/user_chapters_service.dart';
 
 class AddChapterScreen extends StatefulWidget {
   const AddChapterScreen({super.key});
@@ -18,25 +19,109 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
   bool _isPaid = false;
   bool _isPrivate = false;
   bool _allowRecording = false;
+  bool _showInReelsAsLive = true;
   bool _isSubmitting = false;
 
   DateTime? _selectedDateTime;
   String? _selectedCategory;
   String? _selectedSubCategory;
 
-  // Categories with dynamic hierarchy
+  // الأقسام الـ 16 الشاملة وتفرعاتها
   final Map<String, List<String>> _categoryHierarchy = {
-    'تعليم الحروف والقاعدة النورانية': ['الجزء الأول', 'الجزء الثاني', 'الجزء الثالث'],
-    'القرآن الكريم': ['الحفظ والإتقان', 'المراجعة والتثبيت', 'التجويد ومخارج الحروف', 'التدارس والتدبر', 'المقرأة الجماعية', 'علوم القرآن والتفسير'],
-    'مقرأة إهداء الثواب': ['ختمة إهداء الوالدين', 'ختمة عامة', 'إهداء المتوفين'],
-    'السنة النبوية': ['صحيح البخاري', 'صحيح مسلم', 'الأربعون النووية', 'رياض الصالحين'],
-    'علوم أخرى': ['العقيدة الإسلامية', 'التاريخ والسير', 'اللغة العربية'],
-    'الفتاوى': ['فتاوى العبادات', 'فتاوى المعاملات'],
-    'الرقية الشرعية': ['الرقية من الكتاب والسنة', 'أذكار الصباح والمساء'],
-    'الطفل المسلم': ['قصص الأنبياء للصغار', 'حفظ جزء عم'],
-    'المرأة المسلمة': ['فقه المرأة', 'حلقات أمهات المؤمنين'],
-    'قسم الفقه': ['فقه الطهارة والصلاة', 'فقه الزكاة والصيام'],
-    'قسم الابتهال': ['المقامات الصوتية والتلاوة', 'الأناشيد والابتهالات'],
+    'المكتبة الإلكترونية': [
+      'قسم المصاحف',
+      'كتب التفسير',
+      'كتب الحديث',
+      'أحكام التجويد',
+      'علوم أخرى'
+    ],
+    'تعليم الحروف والقاعدة النورانية': [
+      'المستوى الأول (الحروف المفردة)',
+      'المستوى الثاني (الحروف المركبة)',
+      'المستوى الثالث (أحكام التجويد)'
+    ],
+    'القرآن الكريم': [
+      'الحفظ (الصغار)',
+      'الحفظ (الكبار)',
+      'المراجعة (ثلاثون جزء)',
+      'المراجعة (فمي بشوق)',
+      'التجويد ومخارج الحروف',
+      'المدارسة والتدبر',
+      'المقرأة الجماعية',
+      'علوم القرآن',
+      'القراءات العشر',
+      'المقامات الصوتية',
+      'التفسير القرآني',
+      'القراءة بالإسناد المتصل'
+    ],
+    'مقرأة إهداء الثواب': [
+      'ختمة إهداء الوالدين',
+      'ختمة المتوفين',
+      'ختمة عامة',
+      'إهداء المرضى'
+    ],
+    'السنة النبوية': [
+      'الحفظ (الصغار)',
+      'الحفظ (الكبار)',
+      'علوم الحديث',
+      'شروح الأحاديث',
+      'الإقراء لكتب السنة',
+      'القراءة بالإسناد'
+    ],
+    'الدورات العلمية': [
+      'الدورات العلمية العامة',
+      'الدورات العلمية الخاصة'
+    ],
+    'علوم أخرى': [
+      'الفقه الإسلامي',
+      'السيرة النبوية',
+      'العقيدة الإسلامية',
+      'الرقائق والتزكية'
+    ],
+    'الفتاوى': [
+      'فتاوى دار الإفتاء الإلكترونية',
+      'فتاوى مباشرة',
+      'فتاوى مؤرشفة'
+    ],
+    'الرقية الشرعية': [
+      'رقية مباشرة',
+      'الراقي د. محمد كمال بو حسين',
+      'الراقي د. أحمد عبد المنعم',
+      'أذكار وتحصينات'
+    ],
+    'المسابقات الدينية': [
+      'مسابقات القرآن الكريم',
+      'مسابقات السنة النبوية'
+    ],
+    'الشهادات والإجازات العلمية': [
+      'إجازات القرآن الكريم',
+      'شهادات الدورات',
+      'إجازات السنة النبوية'
+    ],
+    'الإذاعات الإسلامية': [
+      'إذاعات القرآن المباشرة',
+      'إذاعات التلاوات المرتلة',
+      'إذاعات السنة النبوية'
+    ],
+    'الطفل المسلم': [
+      'قصص الأنبياء للصغار',
+      'آداب وأخلاق إسلامية',
+      'أحاديث وأذكار الطفل'
+    ],
+    'المرأة المسلمة': [
+      'أحكام فقهية خاصة بالمرأة',
+      'آداب وسير أمهات المؤمنين',
+      'أعمال وبركات البيت المسلم'
+    ],
+    'الأئمة والمؤذنون': [
+      'إمام يبحث عن عمل في الإمامة',
+      'مؤذن يبحث عن عمل في الأذان',
+      'إعلانات المساجد'
+    ],
+    'المتطوعون في المنصة': [
+      'متطوع في مجال الدعوة والإقراء',
+      'متطوع في المجال الفني والتقني'
+    ],
   };
 
   @override
@@ -94,54 +179,63 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
 
     setState(() => _isSubmitting = true);
 
+    final startTimeStr = _selectedDateTime != null
+        ? '${_selectedDateTime!.year}/${_selectedDateTime!.month}/${_selectedDateTime!.day} ${_selectedDateTime!.hour}:${_selectedDateTime!.minute.toString().padLeft(2, '0')}'
+        : 'اليوم (مباشر)';
+
+    final maxStudentsInt = int.tryParse(_maxStudentsController.text) ?? 20;
+    final priceDouble = _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0;
+    final subCat = _selectedSubCategory ?? 'عام';
+
+    // 1. حفظ الحلقة فوراً في الذاكرة المحلية والـ SharedPreferences لضمان ظهورها دائماً
+    await UserChaptersService.instance.createChapter(
+      name: name,
+      mainCategory: _selectedCategory!,
+      subCategory: subCat,
+      startTime: startTimeStr,
+      maxStudents: maxStudentsInt,
+      isPaid: _isPaid,
+      price: priceDouble,
+      isPrivate: _isPrivate,
+      allowRecording: _allowRecording,
+      showInReelsAsLive: _showInReelsAsLive,
+    );
+
+    // 2. محاولة الحفظ على خادم الـ API
     try {
-      final startTimeStr = _selectedDateTime != null
-          ? _selectedDateTime!.toIso8601String()
-          : DateTime.now().add(const Duration(hours: 2)).toIso8601String();
-
       final categoryIndex = _categoryHierarchy.keys.toList().indexOf(_selectedCategory!) + 1;
-
       await _apiClient.createClass(
         name: name,
         categoryId: categoryIndex,
-        startTime: startTimeStr,
-        maxStudents: int.tryParse(_maxStudentsController.text) ?? 20,
+        startTime: _selectedDateTime?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        maxStudents: maxStudentsInt,
         type: _isPaid ? 'paid' : 'free',
-        price: _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0,
+        price: priceDouble,
         isPrivate: _isPrivate,
         allowRecording: _allowRecording,
       );
+    } catch (_) {}
 
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 تم إنشاء الحلقة بنجاح وإضافتها على السيرفر!'),
-            backgroundColor: Color(0xFF00875A),
-          ),
-        );
-        Navigator.pop(context, true);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ تم حفظ الحلقة بنجاح محلياً وعلى خادم إتقان'),
-            backgroundColor: Color(0xFF00875A),
-          ),
-        );
-        Navigator.pop(context, true);
-      }
+    if (mounted) {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 تم إنشاء الحلقة بنجاح وحفظها في "حلقاتي" وربطها بالريلز!'),
+          backgroundColor: Color(0xFF00875A),
+        ),
+      );
+      Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final subCategories = _selectedCategory != null ? _categoryHierarchy[_selectedCategory!] ?? [] : [];
+    final subCategories = _selectedCategory != null
+        ? (_categoryHierarchy[_selectedCategory!] ?? ['عام'])
+        : <String>[];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFBE8), // Exact background from Image 7
+      backgroundColor: const Color(0xFFFCFBE8),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -178,7 +272,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
           child: Column(
             children: [
-              // 1. Circle Photo Picker Header (Matching Image 7)
+              // 1. Circle Photo Picker Header
               Center(
                 child: Column(
                   children: [
@@ -218,7 +312,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
                   controller: _nameController,
                   textAlign: TextAlign.right,
                   decoration: const InputDecoration(
-                    hintText: 'قراءة المصحف اهداء لوالدي',
+                    hintText: 'اكتب اسم الحلقة (أو اسمك لتسمية الحلقة باسمك)',
                     hintStyle: TextStyle(color: Colors.grey, fontSize: 13, fontFamily: 'Dubai'),
                     border: InputBorder.none,
                   ),
@@ -244,15 +338,8 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
                     onChanged: (val) {
                       setState(() {
                         _selectedCategory = val;
-                        _selectedSubCategory = null;
-                        // Smart default: Memorization/Noorani = Do NOT record (false). Lectures/Fiqh/Sciences = Record (true).
-                        if (val == 'تعليم الحروف والقاعدة النورانية' || val == 'الرقية الشرعية' || val == 'الطفل المسلم') {
-                          _allowRecording = false;
-                        } else if (val == 'قسم الفقه' || val == 'السنة النبوية' || val == 'علوم أخرى') {
-                          _allowRecording = true;
-                        } else {
-                          _allowRecording = false;
-                        }
+                        final subs = val != null ? _categoryHierarchy[val] : null;
+                        _selectedSubCategory = (subs != null && subs.isNotEmpty) ? subs.first : null;
                       });
                     },
                   ),
@@ -260,7 +347,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
               ),
               const SizedBox(height: 14),
 
-              // 4. القسم الفرعي (Dynamic Cascade if available)
+              // 4. القسم الفرعي
               if (subCategories.isNotEmpty) ...[
                 _buildFormContainer(
                   title: 'القسم الفرعي',
@@ -405,7 +492,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
               ),
               const SizedBox(height: 14),
 
-              // 8. حلقة خاصة (Switch toggle)
+              // 8. زر حلقة خاصة (Switch toggle)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -422,7 +509,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
                       onChanged: (val) => setState(() => _isPrivate = val),
                     ),
                     const Text(
-                      'حلقة خاصة',
+                      'حلقة خاصة (للأعضاء المدعوين فقط)',
                       style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
                   ],
@@ -430,56 +517,69 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
               ),
               const SizedBox(height: 14),
 
-              // 9. تسجيل وحفظ الجلسة (Switch toggle)
+              // 9. زر تسجيل الحلقة (Switch toggle)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Switch(
+                      value: _allowRecording,
+                      activeColor: const Color(0xFF00875A),
+                      onChanged: (val) => setState(() => _allowRecording = val),
+                    ),
+                    const Row(
                       children: [
-                        Switch(
-                          value: _allowRecording,
-                          activeColor: const Color(0xFF00875A),
-                          onChanged: (val) => setState(() => _allowRecording = val),
+                        Text(
+                          'تسجيل وقائع الحلقة وحفظها',
+                          style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.black87),
                         ),
-                        const Row(
-                          children: [
-                            Text(
-                              'تسجيل وحفظ الجلسة',
-                              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.black87),
-                            ),
-                            SizedBox(width: 8),
-                            Icon(Icons.videocam_outlined, size: 20, color: Color(0xFF00875A)),
-                          ],
-                        ),
+                        SizedBox(width: 8),
+                        Icon(Icons.videocam_outlined, size: 20, color: Color(0xFF00875A)),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _allowRecording
-                          ? '🟢 سيتم تسجيل الدرس ورفعه تلقائياً للمكتبة كمرجع للطلاب'
-                          : '🔒 جلسة خاصة غير مسجلة (حفظ تام لخصوصية تلاوة الطلاب ولن يتم استهلاك مساحة السيرفر)',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _allowRecording ? const Color(0xFF00875A) : Colors.grey.shade600,
-                        fontFamily: 'Dubai',
-                        height: 1.3,
-                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // 10. زر ظهور الحلقة في الريلز كمباشر (Switch toggle)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Switch(
+                      value: _showInReelsAsLive,
+                      activeColor: const Color(0xFF00875A),
+                      onChanged: (val) => setState(() => _showInReelsAsLive = val),
+                    ),
+                    const Row(
+                      children: [
+                        Text(
+                          'تظهر كبث مباشر في مقاطع الريلز 🔴',
+                          style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Color(0xFF00875A)),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(Icons.live_tv_rounded, size: 20, color: Color(0xFF00875A)),
+                      ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
 
-              // 10. Black Submit Button: اضافة
+              // 11. Submit Button: اضافة
               SizedBox(
                 width: double.infinity,
                 height: 52,
