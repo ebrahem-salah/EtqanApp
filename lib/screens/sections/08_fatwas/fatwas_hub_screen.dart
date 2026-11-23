@@ -102,56 +102,145 @@ class _FatwasHubScreenState extends State<FatwasHubScreen> with SingleTickerProv
 
   void _showAskQuestionDialog(BuildContext context) {
     final qController = TextEditingController();
+    bool isAudioSelected = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.help_outline_rounded, color: Color(0xFF00875A)),
-                  SizedBox(width: 8),
-                  Text('إرسال سؤال للفتوى', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-              const Divider(height: 20),
-              const Text('نص السؤال أو الاستفتاء:', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: qController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'اكتب سؤالك الشرعي بدقة مع ذكر التفاصيل المهمة...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: const Color(0xFF00875A).withOpacity(0.12), shape: BoxShape.circle),
+                      child: const Icon(Icons.help_outline_rounded, color: Color(0xFF00875A), size: 22),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('اطرح سؤالك على المفتي', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 17)),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00875A),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم إرسال سؤالك لهيئة الإفتاء بنجاح! سيصلك الإشعار فور ورود الجواب.'),
-                        backgroundColor: Color(0xFF00875A),
+                const Divider(height: 22),
+                const Text('طريقة طرح الاستفتاء:', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.edit_note_rounded, size: 16),
+                            SizedBox(width: 4),
+                            Text('سؤال مكتوب', style: TextStyle(fontFamily: 'Dubai', fontSize: 12)),
+                          ],
+                        ),
+                        selected: !isAudioSelected,
+                        selectedColor: const Color(0xFF00875A).withOpacity(0.15),
+                        onSelected: (val) => setDialogState(() => isAudioSelected = false),
                       ),
-                    );
-                  },
-                  child: const Text('إرسال السؤال لهيئة الإفتاء', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.mic_rounded, size: 16),
+                            SizedBox(width: 4),
+                            Text('تسجيل صوتي', style: TextStyle(fontFamily: 'Dubai', fontSize: 12)),
+                          ],
+                        ),
+                        selected: isAudioSelected,
+                        selectedColor: const Color(0xFF00875A).withOpacity(0.15),
+                        onSelected: (val) => setDialogState(() => isAudioSelected = true),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                if (!isAudioSelected)
+                  TextField(
+                    controller: qController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'اكتب سؤالك الشرعي بدقة مع ذكر التفاصيل المهمة...',
+                      hintStyle: const TextStyle(fontFamily: 'Dubai', fontSize: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: const Color(0xFF00875A).withOpacity(0.1),
+                          child: const Icon(Icons.mic_rounded, color: Color(0xFF00875A), size: 30),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text('اضغط للتسجيل الصوتي لسؤالك (حد أقصى دقيقتين)', style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.black54)),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.notifications_active_rounded, color: Color(0xFF00875A), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '🔔 سيصلك تنبيه إشعار تلقائي فور قيام المفتي بالإجابة المعتمدة على سؤالك.',
+                          style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Color(0xFF0F5B46), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00875A),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('🎉 تم إرسال سؤالك لهيئة الإفتاء بنجاح! سيصلك إشعار فوري فور ورود الإجابة.'),
+                          backgroundColor: Color(0xFF00875A),
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
+                    },
+                    child: const Text('إرسال السؤال لهيئة الإفتاء', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -211,18 +300,33 @@ class _FatwasHubScreenState extends State<FatwasHubScreen> with SingleTickerProv
           _buildArchivedView(),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF00875A),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.live_tv_rounded),
-        label: const Text('بث مجلس فتاوى في الريلز', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
-        onPressed: () {
-          CreateSectionSessionDialog.show(
-            context,
-            initialSection: 'الفتاوى',
-            initialSubSection: 'فتاوى مباشرة',
-          );
-        },
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'ask_fatwa_fab',
+            backgroundColor: const Color(0xFF00875A),
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.help_outline_rounded, size: 20),
+            label: const Text('اطرح سؤالك على المفتي', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
+            onPressed: () => _showAskQuestionDialog(context),
+          ),
+          const SizedBox(width: 8),
+          FloatingActionButton.small(
+            heroTag: 'live_fatwa_fab',
+            backgroundColor: const Color(0xFF0F5B46),
+            foregroundColor: Colors.white,
+            tooltip: 'بث مجلس فتاوى مباشر',
+            child: const Icon(Icons.live_tv_rounded, size: 18),
+            onPressed: () {
+              CreateSectionSessionDialog.show(
+                context,
+                initialSection: 'الفتاوى',
+                initialSubSection: 'فتاوى مباشرة',
+              );
+            },
+          ),
+        ],
       ),
     );
   }

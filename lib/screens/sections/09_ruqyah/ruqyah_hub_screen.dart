@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/notification_service.dart';
 import '../../call/live_recitation_room.dart';
 import '../dialogs/create_section_session_dialog.dart';
 
@@ -62,49 +63,116 @@ class _RuqyahHubScreenState extends State<RuqyahHubScreen> with SingleTickerProv
   }
 
   void _showBookSessionDialog(BuildContext context, String raqiName) {
+    String selectedSlot = 'اليوم - 8:30 مساءً';
+    final List<String> availableSlots = [
+      'اليوم - 8:30 مساءً',
+      'اليوم - 10:00 مساءً',
+      'غداً - 5:00 عصراً',
+      'غداً - 9:00 مساءً',
+      'بعد غد - 8:00 مساءً',
+    ];
+
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.calendar_today_rounded, color: Color(0xFF00875A)),
-                  const SizedBox(width: 8),
-                  Text('حجز جلسة رقية خاصة', style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-              const Divider(height: 20),
-              Text('المعالج: $raqiName', style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00875A))),
-              const SizedBox(height: 8),
-              const Text('نوع الجلسة: جلسة خاصة فردية عبر الاتصال الصوتي/المرئي المشفر (مدة 40 دقيقة).', style: TextStyle(fontFamily: 'Dubai', fontSize: 12, height: 1.4)),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00875A),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('تم حجز الجلسة بنجاح مع $raqiName! ستتلقى رابط الدخول المباشر قبل الموعد بـ 15 دقيقة.'),
-                        backgroundColor: const Color(0xFF00875A),
-                      ),
-                    );
-                  },
-                  child: const Text('تأكيد حجز الجلسة', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: const Color(0xFF00875A).withOpacity(0.12), shape: BoxShape.circle),
+                      child: const Icon(Icons.calendar_today_rounded, color: Color(0xFF00875A), size: 22),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('حجز جلسة رقية خاصة', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 17)),
+                  ],
                 ),
-              ),
-            ],
+                const Divider(height: 22),
+                Text('المعالج المعتمد: $raqiName', style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF00875A))),
+                const SizedBox(height: 6),
+                const Text('نوع الجلسة: جلسة استشفاء فردية مشفرة (صوتية أو مرئية مدة 40 دقيقة).', style: TextStyle(fontFamily: 'Dubai', fontSize: 12, height: 1.4, color: Colors.black87)),
+                const SizedBox(height: 14),
+
+                const Text('اختر الموعد المناسب:', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: selectedSlot,
+                      items: availableSlots.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontFamily: 'Dubai', fontSize: 13)))).toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => selectedSlot = val);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.notifications_active_rounded, color: Color(0xFF00875A), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '🔔 سيصلك تنبيه إشعار تلقائي على هاتفك قبل الموعد بـ 15 دقيقة مع رابط الدخول.',
+                          style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Color(0xFF0F5B46), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00875A),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      Navigator.of(ctx).pop();
+                      await NotificationService().scheduleSessionReminder(
+                        circleTitle: 'جلسة رقية مع $raqiName',
+                        timeSlot: selectedSlot,
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('🎉 تم تأكيد حجز جلستك مع $raqiName ($selectedSlot)! تم تفعيل إشعار التذكير قبلها بـ 15 دقيقة.'),
+                            backgroundColor: const Color(0xFF00875A),
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('تأكيد الحجز وتفعيل التذكير', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

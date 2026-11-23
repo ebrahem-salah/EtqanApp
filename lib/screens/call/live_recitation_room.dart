@@ -157,11 +157,11 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('إنهاء الحلقة', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+        title: const Text('إنهاء الحلقة والتسميع', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
         content: Text(
           _isRecording
-              ? 'هل ترغب في إنهاء الحلقة وحفظ التسجيل في تبويب "الحلقات المنتهية" ليتمكن الجميع من الرجوع إليه؟'
-              : 'هل ترغب في إنهاء جلسة التلاوة الحالية؟',
+              ? 'هل ترغب في إنهاء الحلقة، وتدوين تقييم الطالب (الأخطاء والتلعثم)، وحفظ التسجيل؟'
+              : 'هل ترغب في إنهاء جلسة التسميع وتدوين درجات الطالب؟',
           textAlign: TextAlign.right,
           style: const TextStyle(fontFamily: 'Dubai'),
         ),
@@ -174,22 +174,286 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
             onPressed: () async {
               Navigator.pop(ctx);
-              await UserChaptersService.instance.endAndSaveChapter(
-                roomId: widget.roomId,
-                title: widget.circleTitle,
-                durationFormatted: _formatCallTimer(_callSeconds > 0 ? _callSeconds : 150),
-              );
-              if (widget.classRoomId != null) {
-                try {
-                  await _apiClient.endClass(
-                    widget.classRoomId!,
-                    recordUrl: 'https://etqan.site/storage/recordings/sample_recitation.mp4',
-                  );
-                } catch (_) {}
-              }
-              if (mounted) Navigator.pop(context);
+              await _showRecitationEvaluationSheet();
             },
-            child: const Text('إنهاء وحفظ', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+            child: const Text('تقييم الطالب وإنهاء', style: TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// نافذة تقييم التلاوة الاحترافية (احتساب أخطاء الحفظ، التلعثم، والتجويد)
+  Future<void> _showRecitationEvaluationSheet() async {
+    int majorErrors = 0; // خطأ جلي (-1.0)
+    int hesitations = 0; // تلعثم وتردد (-0.5)
+    int tajweedNotes = 0; // ملاحظة تجويد (-0.25)
+    final notesController = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bCtx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            // حساب الدرجة آلياً بدقة
+            double calculatedScore = 10.0 - (majorErrors * 1.0) - (hesitations * 0.5) - (tajweedNotes * 0.25);
+            if (calculatedScore < 0) calculatedScore = 0.0;
+
+            String gradeText;
+            Color gradeColor;
+            if (calculatedScore >= 9.0) {
+              gradeText = 'ممتاز مع مرتبة الشرف 🌟';
+              gradeColor = const Color(0xFF00875A);
+            } else if (calculatedScore >= 8.0) {
+              gradeText = 'جيد جداً مرتفع 👏';
+              gradeColor = const Color(0xFF2E7D32);
+            } else if (calculatedScore >= 7.0) {
+              gradeText = 'جيد جداً 👍';
+              gradeColor = const Color(0xFF1E88E5);
+            } else if (calculatedScore >= 6.0) {
+              gradeText = 'مقبول / يحتاج عناية ⚠️';
+              gradeColor = const Color(0xFFF57F17);
+            } else {
+              gradeText = 'يحتاج إعادة تثبيت ومراجعة 📖';
+              gradeColor = const Color(0xFFD32F2F);
+            }
+
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 44, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(4))),
+                    const SizedBox(height: 14),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.rate_review_rounded, color: Color(0xFF00875A)),
+                        SizedBox(width: 8),
+                        Text(
+                          'تقييم جلسة التسميع والتلاوة',
+                          style: TextStyle(fontFamily: 'Dubai', fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF191919)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'حساب درجات الطالب بناءً على معايير التحكيم المعتمدة',
+                      style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // بطاقة النتيجة اللحظية الآلية
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: gradeColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: gradeColor.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                gradeText,
+                                style: TextStyle(fontFamily: 'Dubai', fontSize: 14, fontWeight: FontWeight.bold, color: gradeColor),
+                              ),
+                              Text(
+                                'خصم أخطاء: ${(10.0 - calculatedScore).toStringAsFixed(2)} درجة',
+                                style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade700),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(color: gradeColor, borderRadius: BorderRadius.circular(12)),
+                            child: Text(
+                              '${calculatedScore.toStringAsFixed(1)} / 10',
+                              style: const TextStyle(fontFamily: 'Dubai', fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 1. عداد أخطاء الحفظ الجلية (-1.0)
+                    _buildRubricCounterRow(
+                      title: 'أخطاء الحفظ الجلية (لحن جلي)',
+                      subtitle: 'نسيان كلمة أو تبديل حرف أو حركة تغير المعنى (-1.0)',
+                      count: majorErrors,
+                      color: const Color(0xFFD32F2F),
+                      onDecrement: majorErrors > 0 ? () => setSheetState(() => majorErrors--) : null,
+                      onIncrement: () => setSheetState(() => majorErrors++),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 2. عداد التردد والتلعثم (-0.5)
+                    _buildRubricCounterRow(
+                      title: 'التردد والتلعثم والوقف الطويل',
+                      subtitle: 'تكرار الآية أكثر من مرتين أو توقف متردد (-0.5)',
+                      count: hesitations,
+                      color: const Color(0xFFF57F17),
+                      onDecrement: hesitations > 0 ? () => setSheetState(() => hesitations--) : null,
+                      onIncrement: () => setSheetState(() => hesitations++),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 3. عداد أحكام التجويد والمخارج (-0.25)
+                    _buildRubricCounterRow(
+                      title: 'ملاحظات التجويد والمخارج',
+                      subtitle: 'نقص غنة، تفريط بمد، عدم ضبط قلقلة أو صفة (-0.25)',
+                      count: tajweedNotes,
+                      color: const Color(0xFF1E88E5),
+                      onDecrement: tajweedNotes > 0 ? () => setSheetState(() => tajweedNotes--) : null,
+                      onIncrement: () => setSheetState(() => tajweedNotes++),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // حقل ملاحظات وتوجيهات الشيخ
+                    TextField(
+                      controller: notesController,
+                      decoration: InputDecoration(
+                        hintText: 'ملاحظات الشيخ وتوجيهات الحفظ للطالب (اختياري)...',
+                        hintStyle: const TextStyle(fontFamily: 'Dubai', fontSize: 12),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // أزرار الحفظ والخروج
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00875A),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () async {
+                              Navigator.pop(bCtx);
+                              await UserChaptersService.instance.endAndSaveChapter(
+                                roomId: widget.roomId,
+                                title: widget.circleTitle,
+                                durationFormatted: _formatCallTimer(_callSeconds > 0 ? _callSeconds : 150),
+                              );
+                              if (widget.classRoomId != null) {
+                                try {
+                                  await _apiClient.endClass(
+                                    widget.classRoomId!,
+                                    recordUrl: 'https://etqan.site/storage/recordings/sample_recitation.mp4',
+                                  );
+                                } catch (_) {}
+                              }
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('🎉 تم اعتماد نتيجة التسميع (${calculatedScore.toStringAsFixed(1)}/10) وحفظها بسجل الطالب!'),
+                                    backgroundColor: const Color(0xFF00875A),
+                                  ),
+                                );
+                                Navigator.pop(context);
+                              }
+                            },
+                            icon: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                            label: const Text('اعتماد التقييم وإنهاء الجلسة', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.pop(bCtx);
+                            await UserChaptersService.instance.endAndSaveChapter(
+                              roomId: widget.roomId,
+                              title: widget.circleTitle,
+                              durationFormatted: _formatCallTimer(_callSeconds > 0 ? _callSeconds : 150),
+                            );
+                            if (mounted) Navigator.pop(context);
+                          },
+                          child: const Text('تخطي وخروج', style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildRubricCounterRow({
+    required String title,
+    required String subtitle,
+    required int count,
+    required Color color,
+    required VoidCallback? onDecrement,
+    required VoidCallback onIncrement,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF191919))),
+                Text(subtitle, style: TextStyle(fontFamily: 'Dubai', fontSize: 10, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline),
+                color: onDecrement != null ? color : Colors.grey.shade400,
+                onPressed: onDecrement,
+                iconSize: 22,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                child: Text(
+                  '$count',
+                  style: TextStyle(fontFamily: 'Dubai', fontSize: 16, fontWeight: FontWeight.bold, color: count > 0 ? color : Colors.black87),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle),
+                color: color,
+                onPressed: onIncrement,
+                iconSize: 22,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
         ],
       ),

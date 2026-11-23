@@ -15,7 +15,7 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
 
   final List<Map<String, dynamic>> _onlineCompetitions = [
     {
-      'id': 'comp_on_1',
+      'id': 101,
       'title': 'مسابقة إتقان الكبرى لحفظ القرآن الكريم وتجويده (أونلاين)',
       'type': 'قرآن كريم',
       'mode': 'أونلاين',
@@ -27,7 +27,7 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
       'icon': '📖',
     },
     {
-      'id': 'comp_on_2',
+      'id': 102,
       'title': 'مسابقة حفظ الأربعين النووية والمتون الحديثية (أونلاين)',
       'type': 'سنة نبوية',
       'mode': 'أونلاين',
@@ -39,7 +39,7 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
       'icon': '📜',
     },
     {
-      'id': 'comp_on_3',
+      'id': 103,
       'title': 'مسابقة مزامير إتقان لحسن الصوت والتلاوة (تصفيات صوتية)',
       'type': 'قرآن كريم',
       'mode': 'أونلاين',
@@ -55,32 +55,92 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
   final List<Map<String, dynamic>> _offlineCompetitions = [
     {
       'id': 'comp_off_1',
-      'title': 'مسابقة الملك سلمان المحلية لحفظ القرآن (حضوري - الرياض ومكة)',
+      'title': 'المسابقة الميدانية لحفظ القرآن كاملاً بمكة المكرمة',
       'type': 'قرآن كريم',
-      'mode': 'أوفلاين حضوري',
-      'prize': '150,000 ريال وجوائز كبرى',
-      'location': 'مركز الملك عبد العزيز للمؤتمرات',
-      'deadline': 'التسجيل متاح حتى نهاية الشهر',
-      'badge': 'حضوري - قرآن',
-      'icon': '🏛️',
+      'location': 'جامع الراجحي - مكة المكرمة',
+      'prize': '100,000 ريال جوائز',
+      'date': '15 شعبان 1447هـ',
+      'badge': 'مسابقة ميدانية',
     },
     {
       'id': 'comp_off_2',
-      'title': 'المسابقة الدولية لحفظ وقراءة صحيح البخاري (حضوري)',
+      'title': 'الملتقى التنافسي لحفاظ الحديث الشريف بالمدينة النبوية',
       'type': 'سنة نبوية',
-      'mode': 'أوفلاين حضوري',
-      'prize': '80,000 ريال',
-      'location': 'جامع الإمام البخاري - القاهرة',
-      'deadline': 'التسجيل مفتوح',
-      'badge': 'حضوري - سنة',
-      'icon': '🕌',
+      'location': 'قاعة المؤتمرات بالجامعة الإسلامية',
+      'prize': '60,000 ريال جوائز',
+      'date': '20 شعبان 1447هـ',
+      'badge': 'سنة نبوية',
+    },
+  ];
+
+  // لوحة المتصدرين الرسمية (Leaderboard) للمتسابقين الأوائل
+  final List<Map<String, dynamic>> _leaderboard = [
+    {
+      'rank': 1,
+      'name': 'عبد الرحمن بن خالد العتيبي',
+      'avatar': '👑',
+      'score': '99.5%',
+      'points': 2480,
+      'badge': 'المركز الأول 🥇',
+      'color': const Color(0xFFD4AF37),
+      'branch': 'القرآن كاملاً',
+    },
+    {
+      'rank': 2,
+      'name': 'فاطمة الزهراء الشناوي',
+      'avatar': '🥈',
+      'score': '98.75%',
+      'points': 2390,
+      'badge': 'المركز الثاني 🥈',
+      'color': const Color(0xFF9E9E9E),
+      'branch': 'عشرون جزءاً',
+    },
+    {
+      'rank': 3,
+      'name': 'عمر بن عبد العزيز الهلالي',
+      'avatar': '🥉',
+      'score': '98.25%',
+      'points': 2310,
+      'badge': 'المركز الثالث 🥉',
+      'color': const Color(0xFFCD7F32),
+      'branch': 'القرآن كاملاً',
+    },
+    {
+      'rank': 4,
+      'name': 'إبراهيم صلاح (أنت)',
+      'avatar': '⭐',
+      'score': '97.5%',
+      'points': 2240,
+      'badge': 'المستوى الممتاز',
+      'color': const Color(0xFF00875A),
+      'branch': 'الأربعين النووية',
+    },
+    {
+      'rank': 5,
+      'name': 'أنس بن مالك الكردي',
+      'avatar': '👤',
+      'score': '96.0%',
+      'points': 2180,
+      'badge': 'مرتبة الشرف',
+      'color': const Color(0xFF1E88E5),
+      'branch': 'عشرة أجزاء',
+    },
+    {
+      'rank': 6,
+      'name': 'مريم أحمد عبد الله',
+      'avatar': '👤',
+      'score': '95.5%',
+      'points': 2110,
+      'badge': 'مرتبة الشرف',
+      'color': const Color(0xFF00875A),
+      'branch': 'مزامير إتقان',
     },
   ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -104,7 +164,7 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
                 children: [
                   const Icon(Icons.location_on_rounded, color: Color(0xFF00875A)),
                   const SizedBox(width: 8),
-                  Text('التسجيل بالمسابقة الحضورية', style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text('التسجيل بالمسابقة الميدانية', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
               const Divider(height: 20),
@@ -126,12 +186,12 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('تم تسجيلك بنجاح! تم إصدار بطاقة المتسابق ورقم الجلوس في قسم الشهادات.'),
+                        content: Text('🎉 تم تسجيلك بنجاح! صدرت بطاقة المتسابق ورقم الجلوس في قسم الشهادات.'),
                         backgroundColor: Color(0xFF00875A),
                       ),
                     );
                   },
-                  child: const Text('تأكيد التسجيل وإصدار رقم الجلوس', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text('تأكيد التسجيل وإصدار بطاقة المتسابق', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
@@ -147,7 +207,7 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text(
-          'المسابقات الدينية (قرآن وسنة)',
+          'المسابقات الدينية ولوحة الشرف',
           style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
@@ -160,10 +220,11 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          labelStyle: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
+          labelStyle: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
           tabs: const [
-            Tab(text: 'مسابقات أونلاين (قرآن/سنة)'),
-            Tab(text: 'مسابقات أوفلاين حضورية'),
+            Tab(text: 'مسابقات أونلاين 🌐'),
+            Tab(text: 'لوحة المتصدرين 🏆'),
+            Tab(text: 'مسابقات ميدانية 🏛️'),
           ],
         ),
       ),
@@ -171,6 +232,7 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
         controller: _tabController,
         children: [
           _buildOnlineList(),
+          _buildLeaderboardView(),
           _buildOfflineList(),
         ],
       ),
@@ -220,7 +282,7 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
                   const Icon(Icons.people_outline, size: 14, color: Colors.grey),
                   const SizedBox(width: 4),
                   Text(c['participants'], style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600)),
-                  const Spacer(),
+                  const SizedBox(width: 14),
                   const Icon(Icons.timer_outlined, size: 14, color: Colors.grey),
                   const SizedBox(width: 4),
                   Text(c['deadline'], style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600)),
@@ -241,9 +303,18 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (_) => CompetitionExamSheet(
-                        competitionId: c['id'] ?? 1,
+                        competitionId: c['id'] as int,
                         studentId: 1,
-                        studentName: 'الطالب المتسابق',
+                        studentName: 'إبراهيم صلاح',
+                        onEvaluationSubmitted: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('🎉 تم احتساب نتيجتك وإضافتها لرصيد نقاطك ولوحة المتصدرين!'),
+                              backgroundColor: Color(0xFF00875A),
+                            ),
+                          );
+                          _tabController.animateTo(1);
+                        },
                       ),
                     );
                   },
@@ -255,6 +326,170 @@ class _CompetitionsExpandedScreenState extends State<CompetitionsExpandedScreen>
           ),
         );
       },
+    );
+  }
+
+  // تبويب لوحة الشرف والمتصدرين
+  Widget _buildLeaderboardView() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Top 3 Podium
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0F5B46), Color(0xFF00875A)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: const Color(0xFF00875A).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            children: [
+              const Text(
+                '🏆 متصدرو مسابقات إتقان لهذا الأسبوع',
+                style: TextStyle(fontFamily: 'Dubai', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // 2nd Place
+                  _buildPodiumItem(rank: '2', name: 'فاطمة الزهراء', points: '2,390', medal: '🥈', height: 80, color: const Color(0xFFB0BEC5)),
+                  // 1st Place
+                  _buildPodiumItem(rank: '1', name: 'عبد الرحمن خالد', points: '2,480', medal: '👑', height: 110, color: const Color(0xFFFFD700)),
+                  // 3rd Place
+                  _buildPodiumItem(rank: '3', name: 'عمر عبد العزيز', points: '2,310', medal: '🥉', height: 65, color: const Color(0xFFCD7F32)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Leaderboard Ranking List
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 6.0),
+          child: Text(
+            'قائمة ترتيب المتسابقين الكلية',
+            style: TextStyle(fontFamily: 'Dubai', fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF191919)),
+          ),
+        ),
+        ..._leaderboard.map((item) {
+          final isUser = item['name'].toString().contains('أنت');
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isUser ? const Color(0xFFE8F5E9) : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: isUser ? const Color(0xFF00875A) : const Color(0xFFE8E8DC), width: isUser ? 1.5 : 1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isUser ? const Color(0xFF00875A) : Colors.grey.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${item['rank']}',
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: isUser ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            item['name'],
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: isUser ? const Color(0xFF00875A) : const Color(0xFF191919),
+                            ),
+                          ),
+                          if (isUser) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.stars_rounded, color: Color(0xFF00875A), size: 16),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        '${item['branch']} • الدرجة: ${item['score']}',
+                        style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${item['points']} نقطة',
+                      style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF00875A)),
+                    ),
+                    Text(
+                      item['badge'],
+                      style: const TextStyle(fontFamily: 'Dubai', fontSize: 10, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildPodiumItem({
+    required String rank,
+    required String name,
+    required String points,
+    required String medal,
+    required double height,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Text(medal, style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 4),
+        Text(name, style: const TextStyle(fontFamily: 'Dubai', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text('$points نقطة', style: const TextStyle(fontFamily: 'Dubai', fontSize: 10, color: Colors.white70)),
+        const SizedBox(height: 6),
+        Container(
+          width: 70,
+          height: height,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.3),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+            border: Border.all(color: color, width: 2),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            rank,
+            style: TextStyle(fontFamily: 'Dubai', fontSize: 22, fontWeight: FontWeight.bold, color: color),
+          ),
+        ),
+      ],
     );
   }
 
