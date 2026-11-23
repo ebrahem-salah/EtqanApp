@@ -342,20 +342,14 @@ class _SectionsHubScreenState extends State<SectionsHubScreen> {
                           child: Row(
                             children: [
                               Container(
-                                width: 44,
+                                width: 4,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: col.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    section['icon'] ?? '📖',
-                                    style: const TextStyle(fontSize: 22),
-                                  ),
+                                  color: col,
+                                  borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,

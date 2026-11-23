@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/network/api_client.dart';
@@ -343,7 +345,17 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                   reel['isLive'] == true
                       ? _buildLiveStreamReelItem(reel)
                       : (reel['isYouTube'] == true
-                          ? _buildYouTubeReelItem(reel)
+                          ? YouTubeReelPlayerItem(
+                              youtubeId: reel['youtubeId']?.toString() ?? '',
+                              thumbnail: reel['thumbnail']?.toString(),
+                              isCurrent: isCurrent,
+                              isActive: widget.isActive,
+                              onTap: () {
+                                setState(() {
+                                  _isOverlayVisible = !_isOverlayVisible;
+                                });
+                              },
+                            )
                           : ReelVideoPlayerItem(
                               index: index,
                               videoPath: reel['video_path'],
@@ -1630,9 +1642,13 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   Future<void> _initVideo() async {
     try {
       _controller = await ReelsPreloadManager.instance.getControllerForIndex(widget.index);
-      if (widget.isCurrent && widget.isActive && mounted) {
+      final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+      if (widget.isCurrent && widget.isActive && isCurrentRoute && mounted) {
         await _controller!.setVolume(1.0);
         await _controller!.play();
+      } else {
+        await _controller!.setVolume(0.0);
+        await _controller!.pause();
       }
       if (mounted) {
         setState(() {
@@ -1641,15 +1657,23 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
       }
     } catch (_) {
       try {
-        if (widget.videoPath.startsWith('http://') || widget.videoPath.startsWith('https://')) {
-          _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoPath));
+        final path = widget.videoPath;
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          _controller = VideoPlayerController.networkUrl(Uri.parse(path));
+        } else if (File(path).existsSync() || path.startsWith('/') || path.contains('\\')) {
+          _controller = VideoPlayerController.file(File(path));
         } else {
-          _controller = VideoPlayerController.asset(widget.videoPath);
+          _controller = VideoPlayerController.asset(path);
         }
         await _controller!.initialize();
         _controller!.setLooping(true);
-        if (widget.isCurrent && widget.isActive && mounted) {
-          _controller!.play();
+        final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+        if (widget.isCurrent && widget.isActive && isCurrentRoute && mounted) {
+          await _controller!.setVolume(1.0);
+          await _controller!.play();
+        } else {
+          await _controller!.setVolume(0.0);
+          await _controller!.pause();
         }
         if (mounted) {
           setState(() {
@@ -1670,12 +1694,14 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   void didUpdateWidget(covariant ReelVideoPlayerItem oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_controller != null && _isInitialized) {
-      final shouldPlay = widget.isCurrent && widget.isActive;
+      final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+      final shouldPlay = widget.isCurrent && widget.isActive && isCurrentRoute;
       final wasPlaying = oldWidget.isCurrent && oldWidget.isActive;
       if (shouldPlay && !wasPlaying) {
         _controller!.setVolume(1.0);
         _controller!.play();
       } else if (!shouldPlay && wasPlaying) {
+        _controller!.setVolume(0.0);
         _controller!.pause();
       }
     }
@@ -1684,6 +1710,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   @override
   void deactivate() {
     try {
+      _controller?.setVolume(0.0);
       _controller?.pause();
     } catch (_) {}
     super.deactivate();
@@ -1692,7 +1719,9 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   @override
   void dispose() {
     try {
+      _controller?.setVolume(0.0);
       _controller?.pause();
+      _controller?.dispose();
     } catch (_) {}
     super.dispose();
   }
@@ -1777,6 +1806,189 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// مشغل تفاعلي حقيقي لفيديوهات اليوتيوب داخل الريلز (يدعم التشغيل والتحكم التلقائي بالصوت)
+class YouTubeReelPlayerItem extends StatefulWidget {
+  final String youtubeId;
+  final String? thumbnail;
+  final bool isCurrent;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const YouTubeReelPlayerItem({
+    super.key,
+    required this.youtubeId,
+    this.thumbnail,
+    required this.isCurrent,
+    this.isActive = true,
+    required this.onTap,
+  });
+
+  @override
+  State<YouTubeReelPlayerItem> createState() => _YouTubeReelPlayerItemState();
+}
+
+class _YouTubeReelPlayerItemState extends State<YouTubeReelPlayerItem> {
+  YoutubePlayerController? _ytController;
+  bool _isPlayerReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initYouTube();
+  }
+
+  void _initYouTube() {
+    if (widget.youtubeId.isEmpty) return;
+    _ytController = YoutubePlayerController(
+      initialVideoId: widget.youtubeId,
+      flags: YoutubePlayerFlags(
+        autoPlay: widget.isCurrent && widget.isActive,
+        mute: false,
+        loop: true,
+        hideControls: true,
+        disableDragSeek: true,
+        showLiveFullscreenButton: false,
+      ),
+    )..addListener(_onPlayerStateChange);
+  }
+
+  void _onPlayerStateChange() {
+    if (mounted && _ytController != null) {
+      if (_ytController!.value.isReady && !_isPlayerReady) {
+        setState(() => _isPlayerReady = true);
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant YouTubeReelPlayerItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_ytController != null) {
+      final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+      final shouldPlay = widget.isCurrent && widget.isActive && isCurrentRoute;
+      final wasPlaying = oldWidget.isCurrent && oldWidget.isActive;
+      if (shouldPlay && !wasPlaying) {
+        _ytController!.unMute();
+        _ytController!.play();
+      } else if (!shouldPlay && wasPlaying) {
+        _ytController!.mute();
+        _ytController!.pause();
+      }
+    }
+  }
+
+  @override
+  void deactivate() {
+    try {
+      _ytController?.mute();
+      _ytController?.pause();
+    } catch (_) {}
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    try {
+      _ytController?.mute();
+      _ytController?.pause();
+      _ytController?.dispose();
+    } catch (_) {}
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final thumb = widget.thumbnail ??
+        (widget.youtubeId.isNotEmpty
+            ? 'https://img.youtube.com/vi/${widget.youtubeId}/hqdefault.jpg'
+            : '');
+
+    if (_ytController == null || widget.youtubeId.isEmpty) {
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: Icon(Icons.video_library_rounded, size: 64, color: Colors.white38),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        widget.onTap();
+        if (_ytController != null) {
+          if (_ytController!.value.isPlaying) {
+            _ytController!.pause();
+          } else {
+            _ytController!.play();
+          }
+          setState(() {});
+        }
+      },
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // مشغل اليوتيوب الحقيقي في كامل مساحة الشاشة
+            Center(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  child: YoutubePlayer(
+                    controller: _ytController!,
+                    showVideoProgressIndicator: true,
+                    progressIndicatorColor: const Color(0xFF00875A),
+                    progressColors: const ProgressBarColors(
+                      playedColor: Color(0xFF00875A),
+                      handleColor: Color(0xFF00875A),
+                    ),
+                    onReady: () {
+                      if (mounted) setState(() => _isPlayerReady = true);
+                    },
+                  ),
+                ),
+              ),
+            ),
+
+            // شاشة تحميل وغلاف احتياطي قبل بدء بث الفيديو
+            if (!_isPlayerReady && thumb.isNotEmpty)
+              Positioned.fill(
+                child: CachedNetworkImage(
+                  imageUrl: thumb,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF00875A)),
+                  ),
+                ),
+              ),
+
+            // أيقونة إيقاف مؤقت عند الضغط
+            if (_ytController != null && !_ytController!.value.isPlaying && _isPlayerReady)
+              Center(
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 44,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

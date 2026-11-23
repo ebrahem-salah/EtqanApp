@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -75,6 +76,8 @@ class ReelsPreloadManager {
   VideoPlayerController _createController(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return VideoPlayerController.networkUrl(Uri.parse(path));
+    } else if (File(path).existsSync() || path.startsWith('/') || path.contains('\\')) {
+      return VideoPlayerController.file(File(path));
     } else {
       return VideoPlayerController.asset(path);
     }
@@ -91,6 +94,7 @@ class ReelsPreloadManager {
     final urlsToRemove = _controllerCache.keys.where((url) => !keepUrls.contains(url)).toList();
 
     for (final url in urlsToRemove) {
+      _controllerCache[url]?.pause();
       _controllerCache[url]?.dispose();
       _controllerCache.remove(url);
       debugPrint('تم تحرير كاش الفيديو البعيد لتوفير الذاكرة: $url');
@@ -101,6 +105,7 @@ class ReelsPreloadManager {
   void pauseAll() {
     for (final controller in _controllerCache.values) {
       try {
+        controller.setVolume(0.0);
         if (controller.value.isPlaying) {
           controller.pause();
         }

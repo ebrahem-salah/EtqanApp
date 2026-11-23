@@ -362,25 +362,20 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                             ]
                           : null,
                     ),
-                    child: Row(
-                      children: [
-                        Text(sec['icon'], style: const TextStyle(fontSize: 15)),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            sec['title'],
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : const Color(0xFF333333),
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              fontFamily: 'Dubai',
-                              height: 1.25,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                    child: Center(
+                      child: Text(
+                        sec['title'],
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : const Color(0xFF222222),
+                          fontSize: 11.5,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          fontFamily: 'Dubai',
+                          height: 1.3,
                         ),
-                      ],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 );
@@ -443,15 +438,14 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                 child: Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF00875A),
-                        shape: BoxShape.circle,
+                      width: 4,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00875A),
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      child: const Icon(Icons.mic, color: Colors.white, size: 20),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,20 +546,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
               ),
               child: Row(
                 children: [
-                  // الأيقونة الرمزية التعبيرية للفرع
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F8F5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(subIcon, style: const TextStyle(fontSize: 18)),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // عنوان القسم الفرعي ووصفه في صف مستقل
+                  // عنوان القسم الفرعي ووصفه في صف مستقل بكامل العرض وبدون أي صور أو أيقونات مشتتة
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
