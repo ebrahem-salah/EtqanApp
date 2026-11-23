@@ -304,37 +304,33 @@ class _SectionsHubScreenState extends State<SectionsHubScreen> {
             ),
           ),
 
-          // Grid of 16 Sections
+          // List of 16 Sections in Single Clean Rows (بدون صور مشتتة وكل قسم في صف مستقل)
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.95,
-              ),
+            sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   final section = filtered[index];
                   final Color col = section['color'] as Color;
 
                   return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE8E8DC)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(14),
                         onTap: () {
                           final builder = section['screenBuilder'] as Widget Function(BuildContext);
                           Navigator.of(context).push(
@@ -342,84 +338,75 @@ class _SectionsHubScreenState extends State<SectionsHubScreen> {
                           );
                         },
                         child: Padding(
-                          padding: const EdgeInsets.all(14.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                          child: Row(
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: col.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        section['icon'] ?? '📖',
-                                        style: const TextStyle(fontSize: 24),
-                                      ),
-                                    ),
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: col.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    section['icon'] ?? '📖',
+                                    style: const TextStyle(fontSize: 22),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: col.withOpacity(0.08),
-                                      borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            section['title'],
+                                            style: const TextStyle(
+                                              fontFamily: 'Dubai',
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF191919),
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: col.withOpacity(0.08),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            section['subCount'],
+                                            style: TextStyle(
+                                              fontFamily: 'Dubai',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: col,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    child: Text(
-                                      section['subCount'],
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      (section['subs'] as List).join(' • '),
                                       style: TextStyle(
                                         fontFamily: 'Dubai',
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: col,
+                                        fontSize: 11,
+                                        color: Colors.grey.shade600,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              Text(
-                                section['title'],
-                                style: const TextStyle(
-                                  fontFamily: 'Dubai',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF191919),
+                                  ],
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                (section['subs'] as List).take(2).join(' • '),
-                                style: TextStyle(
-                                  fontFamily: 'Dubai',
-                                  fontSize: 10,
-                                  color: Colors.grey.shade600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Text(
-                                    'استعراض',
-                                    style: TextStyle(
-                                      fontFamily: 'Dubai',
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: col,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Icon(Icons.arrow_forward_ios_rounded, size: 10, color: col),
-                                ],
-                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: col),
                             ],
                           ),
                         ),
