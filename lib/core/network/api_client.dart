@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/app_config.dart';
 
 /// Etqan Production API Client
-/// Connects to Laravel 12.5 Backend on https://www.etqan.site/api/v1
+/// Connects to Laravel 12.5 Backend on VPS / Domain
 class ApiClient {
-  static const String baseUrl = 'https://www.etqan.site/api/v1';
-  static const String serverStorageUrl = 'https://www.etqan.site/storage';
+  static String get baseUrl => AppConfig.apiBaseUrl;
+  static String get serverStorageUrl => AppConfig.storageBaseUrl;
   
   late final Dio dio;
 

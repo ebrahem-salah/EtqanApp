@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_config.dart';
 
 class CertificatesHubScreen extends StatefulWidget {
   const CertificatesHubScreen({super.key});
@@ -82,7 +83,7 @@ class _CertificatesHubScreenState extends State<CertificatesHubScreen> with Sing
   }
 
   void _showCertificateViewer(BuildContext context, Map<String, dynamic> cert) {
-    final verifyUrl = 'https://etqan.site/verify/cert/${cert['certNumber']}';
+    final verifyUrl = AppConfig.verifyCertUrl(cert['certNumber']);
 
     showDialog(
       context: context,
