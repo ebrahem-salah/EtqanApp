@@ -216,7 +216,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final success = await auth.login(phone, password, countryCode: _selectedCountryCode);
 
-    if ((success || phone.isNotEmpty) && mounted) {
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ تم تسجيل الدخول بنجاح!', style: TextStyle(fontFamily: 'Dubai')),
+          backgroundColor: Color(0xFF00875A),
+          duration: Duration(seconds: 2),
+        ),
+      );
       if (_canUseBiometrics && !_isBiometricEnabled) {
         _showBiometricOptInBottomSheet(phone);
       } else {
@@ -227,6 +234,17 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
         );
       }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '❌ ${auth.errorMessage ?? "رقم الجوال أو كلمة المرور غير صحيحة"}',
+            style: const TextStyle(fontFamily: 'Dubai'),
+          ),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 

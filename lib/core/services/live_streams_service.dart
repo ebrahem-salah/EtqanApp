@@ -32,65 +32,10 @@ class LiveStreamsService extends ChangeNotifier {
   factory LiveStreamsService() => _instance;
   static LiveStreamsService get instance => _instance;
 
-  LiveStreamsService._internal() {
-    _initializeDefaultStreams();
-  }
+  LiveStreamsService._internal();
 
   final List<LiveStreamItem> _activeStreams = [];
   List<LiveStreamItem> get activeStreams => List.unmodifiable(_activeStreams);
-
-  void _initializeDefaultStreams() {
-    _activeStreams.addAll([
-      LiveStreamItem(
-        id: 'live_1',
-        title: 'مقرأة تصحيح تلاوة سورة النساء برواية حفص',
-        sheikhName: 'فضيلة الشيخ أحمد عبد المنعم',
-        sheikhAvatar: 'assets/images/profile.png',
-        sectionName: 'القرآن الكريم',
-        subSectionName: 'المقرأة',
-        viewerCount: 148,
-        roomId: 'room_quran_maqraa_101',
-        isVideo: true,
-        startedAt: DateTime.now().subtract(const Duration(minutes: 18)),
-      ),
-      LiveStreamItem(
-        id: 'live_2',
-        title: 'جلسة رقية شرعية عامة ومباشرة للتحصين والشفاء',
-        sheikhName: 'الراقي د. محمد كمال بو حسين',
-        sheikhAvatar: 'assets/images/profile.png',
-        sectionName: 'الرقية الشرعية',
-        subSectionName: 'رقية مباشرة',
-        viewerCount: 230,
-        roomId: 'room_ruqyah_direct_202',
-        isVideo: true,
-        startedAt: DateTime.now().subtract(const Duration(minutes: 35)),
-      ),
-      LiveStreamItem(
-        id: 'live_3',
-        title: 'مجلس الإجابة المباشرة عن فتاوى المعاملات والأسرة',
-        sheikhName: 'فضيلة الشيخ د. سعد الشثري',
-        sheikhAvatar: 'assets/images/profile.png',
-        sectionName: 'الفتاوى',
-        subSectionName: 'فتاوى مباشرة',
-        viewerCount: 95,
-        roomId: 'room_fatwa_live_303',
-        isVideo: true,
-        startedAt: DateTime.now().subtract(const Duration(minutes: 12)),
-      ),
-      LiveStreamItem(
-        id: 'live_4',
-        title: 'مقرأة إهداء الثواب لوالدي وأموات المسلمين (سورة يس والواقعة)',
-        sheikhName: 'القارئ الشيخ عبد الله المصلح',
-        sheikhAvatar: 'assets/images/profile.png',
-        sectionName: 'مقرأة إهداء الثواب',
-        subSectionName: 'إهداء الثواب',
-        viewerCount: 78,
-        roomId: 'room_ihdaa_thawab_404',
-        isVideo: true,
-        startedAt: DateTime.now().subtract(const Duration(minutes: 42)),
-      ),
-    ]);
-  }
 
   void addLiveStream(LiveStreamItem item) {
     _activeStreams.removeWhere((s) => s.id == item.id);

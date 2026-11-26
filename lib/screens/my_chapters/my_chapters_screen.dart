@@ -72,12 +72,18 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
         }
       }
 
-      final List allServerItems = [
-        ...(resMy.statusCode == 200 && resMy.data != null ? (resMy.data['data'] ?? []) : []),
-        ...(resJoined != null && resJoined.statusCode == 200 && resJoined.data != null ? (resJoined.data['data'] ?? []) : []),
+      final List<Map<String, dynamic>> taggedServerItems = [
+        ...(resMy.statusCode == 200 && resMy.data != null
+            ? (resMy.data['data'] as List? ?? []).map((e) => {'item': e, 'isCreator': true})
+            : <Map<String, dynamic>>[]),
+        ...(resJoined != null && resJoined.statusCode == 200 && resJoined.data != null
+            ? (resJoined.data['data'] as List? ?? []).map((e) => {'item': e, 'isCreator': false})
+            : <Map<String, dynamic>>[]),
       ];
 
-      for (var c in allServerItems) {
+      for (var entry in taggedServerItems) {
+        final c = entry['item'];
+        final bool isCreator = entry['isCreator'] == true;
         final int? cid = c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}');
         if (cid != null && !seenIds.add(cid)) continue;
 
@@ -101,6 +107,7 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
           'subscribers': '$capacity / $studentsCount',
           'avatar': sheikhObj?['avatar_url'] ?? c['image_url'],
           'fromServer': true,
+          'isCreator': isCreator,
         };
         if (isFinished) {
           userFinished.add(mapItem);
@@ -172,6 +179,64 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
           AppFeedback.showError(context, 'حذف الحلقة من السيرفر', e);
         }
       }
+    }
+  }
+
+  Future<void> _handlePowerOffChapter(Map<String, dynamic> chapter) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final isSheikh = (auth.currentUser?.role ?? UserRole.student) != UserRole.student;
+    final bool isCreator = chapter['isCreator'] == true || isSheikh;
+    final String actionTitle = isCreator ? 'إنهاء الحلقة' : 'مغادرة الحلقة';
+    final String actionMsg = isCreator
+        ? 'هل تريد إنهاء حلقة "${chapter['title']}" وإغلاقها نهائياً؟'
+        : 'هل تريد مغادرة حلقة "${chapter['title']}"؟';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(actionTitle, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
+        content: Text(actionMsg, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'Dubai')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Dubai', color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(isCreator ? 'إنهاء' : 'مغادرة', style: const TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final int? classId = chapter['id'] is int ? chapter['id'] as int : int.tryParse('${chapter['id']}');
+    if (chapter['fromServer'] == true && classId != null) {
+      try {
+        if (isCreator) {
+          await _apiClient.endClass(classId);
+          if (mounted) AppFeedback.showSuccess(context, 'تم إنهاء الحلقة بنجاح');
+        } else {
+          await _apiClient.leaveClass(classId);
+          if (mounted) AppFeedback.showSuccess(context, 'تمت مغادرة الحلقة بنجاح');
+        }
+        await _loadMyChapters();
+      } catch (e) {
+        if (mounted) {
+          AppFeedback.showError(context, actionTitle, e);
+        }
+      }
+    } else {
+      setState(() {
+        _ongoingChapters.removeWhere((c) => c['id'] == chapter['id']);
+      });
+      AppFeedback.showSuccess(context, 'تم إنهاء الجلسة');
     }
   }
 
@@ -360,7 +425,7 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
                   children: [
                     Row(
                       children: [
-                        // Power off button
+                        // Power off button (إنهاء الحلقة للمنشئ/الشيخ أو مغادرتها للطالب)
                         Container(
                           width: 36,
                           height: 36,
@@ -371,14 +436,7 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
                           child: IconButton(
                             padding: EdgeInsets.zero,
                             icon: const Icon(Icons.power_settings_new, size: 20, color: Color(0xFF191919)),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم تسجيل الخروج من الجلسة', style: TextStyle(fontFamily: 'Dubai')),
-                                  backgroundColor: Colors.black87,
-                                ),
-                              );
-                            },
+                            onPressed: () => _handlePowerOffChapter(item),
                           ),
                         ),
                         const SizedBox(width: 8),

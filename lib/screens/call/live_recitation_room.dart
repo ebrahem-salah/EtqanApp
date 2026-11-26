@@ -93,6 +93,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   String _roomDiagnosticStatus = 'جاري تهيئة الغرفة...';
   bool _roomDiagnosticIsError = false;
   bool _msgLoadErrorShown = false;
+  bool _isDisposed = false;
 
   // Drag position for Floating Window (PiP mode)
   Offset _pipPosition = const Offset(100, 150);
@@ -143,7 +144,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     await _loadClassDetails();
     await _loadServerMessages();
     _messagesPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      _loadServerMessages();
+      _loadServerMessages(isPoll: true);
     });
   }
 
@@ -177,13 +178,14 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   }
 
   /// جلب الرسائل الحقيقية من السيرفر ومزامنتها
-  Future<void> _loadServerMessages() async {
-    if (widget.classRoomId == null) return;
+  Future<void> _loadServerMessages({bool isPoll = false}) async {
+    if (widget.classRoomId == null || !mounted || _isDisposed) return;
     try {
       final res = await _apiClient.getClassMessages(widget.classRoomId!);
+      if (!mounted || _isDisposed) return;
       if (res.statusCode == 200 && res.data != null) {
         final List items = res.data['data'] ?? [];
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           final List<Map<String, dynamic>> parsed = items.map<Map<String, dynamic>>((msg) {
             final senderObj = msg['sender'] ?? msg['user'] ?? {};
             final senderId = int.tryParse('${senderObj['id'] ?? ''}');
@@ -213,9 +215,13 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         }
       }
     } catch (e) {
-      if (!_msgLoadErrorShown && mounted) {
+      if (!isPoll && !_msgLoadErrorShown && mounted && !_isDisposed) {
         _msgLoadErrorShown = true;
         AppFeedback.showError(context, 'تحديث رسائل الشات من السيرفر', e);
+      } else if (isPoll && mounted && !_isDisposed) {
+        setState(() {
+          _roomDiagnosticStatus = '⚠️ تعذر تحديث الشات: ${AppFeedback.formatError(e)}';
+        });
       }
     }
   }
@@ -244,6 +250,8 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    ZegoExpressEngine.onRoomStateUpdate = null;
     _callTimer?.cancel();
     _recordTimer?.cancel();
     _messagesPollTimer?.cancel();
@@ -626,20 +634,25 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       await ZegoExpressEngine.createEngineWithProfile(profile);
 
       ZegoExpressEngine.onRoomStateUpdate = (roomID, state, errorCode, extendedData) {
-        if (!mounted || roomID != widget.roomId) return;
+        if (!mounted || _isDisposed || roomID != widget.roomId) return;
+        final isTransientReconnect =
+            errorCode == 1002051 ||
+            errorCode == 1002001 ||
+            state == ZegoRoomState.Connecting;
         setState(() {
           if (state == ZegoRoomState.Connected && errorCode == 0) {
             _roomDiagnosticStatus = '✅ متصل بالبث المباشر (${widget.roomId})';
             _roomDiagnosticIsError = false;
-          } else if (state == ZegoRoomState.Connecting) {
-            _roomDiagnosticStatus = 'جاري الاتصال بغرفة الصوت/الفيديو (${widget.roomId})...';
+          } else if (isTransientReconnect) {
+            _roomDiagnosticStatus =
+                '⚠️ جاري إعادة الاتصال بغرفة البث تلقائياً${errorCode != 0 ? ' ($errorCode)' : ''}...';
             _roomDiagnosticIsError = false;
           } else {
             _roomDiagnosticStatus = '❌ انقطاع الاتصال بغرفة البث (كود: $errorCode)';
             _roomDiagnosticIsError = true;
           }
         });
-        if (errorCode != 0) {
+        if (errorCode != 0 && !isTransientReconnect) {
           AppFeedback.showError(context, 'اتصال البث المباشر Zego', 'كود الخطأ: $errorCode');
         }
       };
@@ -829,6 +842,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   Future<void> _destroyZego() async {
     try {
+      ZegoExpressEngine.onRoomStateUpdate = null;
       ZegoExpressEngine.onRoomStreamUpdate = null;
       ZegoExpressEngine.onRoomUserUpdate = null;
       ZegoExpressEngine.onIMRecvBroadcastMessage = null;

@@ -3,6 +3,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
+import '../../core/utils/app_feedback.dart';
 
 class CircleReplayScreen extends StatefulWidget {
   final Map<String, dynamic> chapter;
@@ -79,7 +80,10 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
   }
 
   Future<void> _loadChatHistory() async {
-    final int classId = widget.chapter['id'] ?? 1;
+    final int? classId = widget.chapter['id'] is int
+        ? widget.chapter['id'] as int
+        : int.tryParse('${widget.chapter['id']}');
+    if (classId == null) return;
     setState(() => _isLoadingMessages = true);
     try {
       final res = await _apiClient.getClassMessages(classId);
@@ -87,43 +91,29 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
         final List list = res.data['data'] ?? [];
         if (mounted) {
           setState(() {
-            _messages = list.map<Map<String, dynamic>>((m) => {
-              'sender': m['user']?['name'] ?? 'مشارك',
-              'text': m['text'] ?? '',
-              'time': m['created_at'] != null
-                  ? m['created_at'].toString().substring(11, 16)
-                  : '09:40',
-              'isSheikh': m['user']?['role'] == 'sheikh',
+            _messages = list.map<Map<String, dynamic>>((m) {
+              final senderObj = m['sender'] ?? m['user'] ?? {};
+              final role = (senderObj['user_type'] ?? senderObj['type'] ?? senderObj['role'] ?? '')
+                  .toString()
+                  .toLowerCase();
+              final createdRaw = (m['created_at_human'] ?? m['created_at'] ?? '').toString();
+              final String timeText = createdRaw.length >= 16 && createdRaw.contains('T')
+                  ? createdRaw.substring(11, 16)
+                  : createdRaw;
+              return {
+                'sender': senderObj['name']?.toString() ?? 'مشارك',
+                'text': (m['message'] ?? m['text'] ?? '').toString(),
+                'time': timeText,
+                'isSheikh': role == 'sheikh' || role == 'teacher' || role == 'admin' || role == 'supervisor',
+              };
             }).toList();
           });
         }
       }
-    } catch (_) {}
-
-    if (_messages.isEmpty && mounted) {
-      // Fallback sample messages for archival view
-      setState(() {
-        _messages = [
-          {
-            'sender': widget.chapter['supervisor'] ?? 'الشيخ المشرف',
-            'text': 'السلام عليكم ورحمة الله وبركاته، نبدأ الجلسة بتلاوة سورة الملك.',
-            'time': '09:38',
-            'isSheikh': true,
-          },
-          {
-            'sender': 'الطالب أحمد',
-            'text': 'وعليكم السلام ورحمة الله وبركاته، حاضر يا شيخنا.',
-            'time': '09:39',
-            'isSheikh': false,
-          },
-          {
-            'sender': widget.chapter['supervisor'] ?? 'الشيخ المشرف',
-            'text': 'أحسنت في تطبيق حكم الإخفاء الحقيقي في الآية الثالثة.',
-            'time': '09:41',
-            'isSheikh': true,
-          },
-        ];
-      });
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'تحميل سجل المحادثة', e);
+      }
     }
 
     if (mounted) setState(() => _isLoadingMessages = false);
@@ -242,35 +232,24 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                 aspectRatio: 16 / 9,
                 child: Stack(
                   children: [
-                    // Video View or Recitation Graphic
+                    // Video View or Clean Audio Recitation Background
                     if (_videoController != null && _videoController!.value.isInitialized)
                       VideoPlayer(_videoController!)
                     else
                       Container(
                         color: const Color(0xFF1B2A22),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                        child: const Align(
+                          alignment: Alignment(0, 0.56),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF00875A).withOpacity(0.25),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.graphic_eq_rounded,
-                                  color: Color(0xFF00875A),
-                                  size: 32,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
+                              Icon(Icons.graphic_eq_rounded, color: Color(0xFF00C48C), size: 18),
+                              SizedBox(width: 6),
+                              Text(
                                 'تسجيل تلاوة الجلسة',
                                 style: TextStyle(
                                   fontFamily: 'Dubai',
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white70,
                                 ),
@@ -453,15 +432,20 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                           children: [
                             const Icon(Icons.access_time, size: 13, color: Colors.grey),
                             const SizedBox(width: 4),
-                            Text(
-                              'المدة: $duration | $time',
-                              style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600),
+                            Flexible(
+                              child: Text(
+                                'المدة: $duration | $time',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600),
+                              ),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -493,16 +477,19 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
             ),
             child: TabBar(
               controller: _tabController,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 6),
               indicator: BoxDecoration(
                 color: const Color(0xFF00875A),
                 borderRadius: BorderRadius.circular(10),
               ),
               labelColor: Colors.white,
               unselectedLabelColor: Colors.black87,
-              labelStyle: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+              labelStyle: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 12),
               tabs: const [
-                Tab(text: 'سجل المحادثة والمرفقات 💬'),
-                Tab(text: 'المشاركون وملاحظات الشيخ 📋'),
+                Tab(text: 'سجل المحادثة 💬'),
+                Tab(text: 'المشاركون والملاحظات 📋'),
               ],
             ),
           ),
@@ -515,7 +502,14 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                 // Tab 1: Chat History
                 _isLoadingMessages
                     ? const Center(child: CircularProgressIndicator(color: Color(0xFF00875A)))
-                    : ListView.builder(
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Text(
+                              'لا توجد رسائل مسجلة لهذه الحلقة',
+                              style: TextStyle(fontFamily: 'Dubai', fontSize: 14, color: Colors.grey.shade600),
+                            ),
+                          )
+                        : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
@@ -592,10 +586,11 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              '• تم الانتهاء من مراجعة الحزب الأول من الجزء الثلاثين مع التركيز على مخارج حروف الحلق.\n'
-                              '• يُرجى من الطلاب مراجعة أحكام الغنة وتطبيق الترتيل الهادئ قبل الجلسة القادمة.',
-                              style: TextStyle(fontFamily: 'Dubai', fontSize: 13, height: 1.6),
+                            Text(
+                              (widget.chapter['notes']?.toString().isNotEmpty == true)
+                                  ? widget.chapter['notes'].toString()
+                                  : 'لا توجد ملاحظات مسجلة من الشيخ لهذه الجلسة.',
+                              style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, height: 1.6),
                             ),
                           ],
                         ),
@@ -612,7 +607,7 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              '👥 الطلاب الحاضرون في الجلسة:',
+                              '👥 المشاركون في الجلسة:',
                               style: TextStyle(
                                 fontFamily: 'Dubai',
                                 fontWeight: FontWeight.bold,
@@ -621,9 +616,10 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                               ),
                             ),
                             const SizedBox(height: 8),
-                            _buildAttendeeTile('أحمد محمد عبد الله', 'تقييم التلاوة: ممتاز (98%)'),
-                            _buildAttendeeTile('عمر خالد الحربي', 'تقييم التلاوة: جيد جداً (89%)'),
-                            _buildAttendeeTile('يوسف إبراهيم', 'تقييم التلاوة: ممتاز (95%)'),
+                            _buildAttendeeTile(
+                              supervisor,
+                              'مشرف الحلقة (${widget.chapter['subscribers'] ?? '0'})',
+                            ),
                           ],
                         ),
                       ),

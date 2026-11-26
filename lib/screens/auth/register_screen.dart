@@ -67,7 +67,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       countryCode: _selectedCountryCode,
     );
 
-    if (mounted) {
+    if (!mounted) return;
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('✅ تم إنشاء حسابك بنجاح! مرحباً بك في إتقان',
@@ -78,6 +79,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '❌ ${auth.errorMessage ?? "فشل إنشاء الحساب، تأكد من البيانات"}',
+            style: const TextStyle(fontFamily: 'Dubai'),
+          ),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }
