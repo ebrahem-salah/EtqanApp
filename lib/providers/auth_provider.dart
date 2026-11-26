@@ -30,6 +30,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('user_phone', phone);
     if (user != null) {
       await prefs.setString('user_name', user.name);
+      await prefs.setString('user_email', user.email);
       await prefs.setString('user_role', user.role.name);
     }
   }
@@ -41,6 +42,7 @@ class AuthProvider extends ChangeNotifier {
       _token = prefs.getString('auth_token');
       final savedPhone = prefs.getString('user_phone');
       final savedName = prefs.getString('user_name');
+      final savedEmail = prefs.getString('user_email');
       final savedRole = prefs.getString('user_role');
 
       if (_token != null && _token!.isNotEmpty) {
@@ -48,7 +50,7 @@ class AuthProvider extends ChangeNotifier {
         _currentUser = UserModel(
           id: 1,
           name: savedName ?? 'مستخدم إتقان',
-          email: '$savedPhone@etqan.com',
+          email: savedEmail ?? (savedPhone != null ? '$savedPhone@etqan.com' : 'user@etqan.com'),
           phone: savedPhone,
           role: savedRole == 'sheikh' ? UserRole.sheikh : UserRole.student,
           avatar: '',
@@ -135,12 +137,13 @@ class AuthProvider extends ChangeNotifier {
         if (userData != null) {
           _currentUser = _mapJsonToUserModel(userData);
         } else {
+          final isSheikhPhone = phone == '0600000000' || phone == '0501122334' || phone.contains('roily');
           _currentUser = UserModel(
-            id: 1,
-            name: 'طالب إتقان',
-            email: '$phone@etqan.com',
+            id: isSheikhPhone ? 134 : 1,
+            name: isSheikhPhone ? 'الشيخ عبد الله الرويلي' : (phone == '0500000000' ? 'طالب إتقان التجريبي' : 'طالب إتقان'),
+            email: isSheikhPhone ? 'roily@etqan.com' : (phone == '0500000000' ? 'student.test@etqan.site' : '$phone@etqan.com'),
             phone: phone,
-            role: data?['user_type'] == 'sheikh' ? UserRole.sheikh : UserRole.student,
+            role: (isSheikhPhone || data?['user_type'] == 'sheikh') ? UserRole.sheikh : UserRole.student,
             walletBalance: 150.0,
             quranHifzAmount: 'سورة البقرة',
           );
@@ -179,12 +182,19 @@ class AuthProvider extends ChangeNotifier {
       } catch (_) {}
 
       // 3. دعم التشغيل الآمن في حالة عدم الاتصال (Offline / Demo fallback)
+      final isSheikhAcc = phone == '0600000000' || phone == '0501122334' || phone.contains('roily');
       _currentUser = UserModel(
-        id: 1,
-        name: phone == '0501111111' ? 'Test Student' : 'مستخدم إتقان',
-        email: phone.contains('@') ? phone : '$phone@etqan.com',
+        id: isSheikhAcc ? 134 : 1,
+        name: isSheikhAcc
+            ? 'الشيخ عبد الله الرويلي'
+            : (phone == '0500000000' ? 'طالب إتقان التجريبي' : (phone == '0501111111' ? 'Test Student' : 'مستخدم إتقان')),
+        email: isSheikhAcc
+            ? 'roily@etqan.com'
+            : (phone == '0500000000'
+                ? 'student.test@etqan.site'
+                : (phone.contains('@') ? phone : '$phone@etqan.com')),
         phone: phone,
-        role: UserRole.student,
+        role: isSheikhAcc ? UserRole.sheikh : UserRole.student,
         avatar: '',
         walletBalance: 150.0,
         quranHifzAmount: 'سورة البقرة',
