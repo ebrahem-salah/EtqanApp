@@ -25,6 +25,7 @@ import '../sections/15_imams/imams_hub_screen.dart';
 import '../sections/16_volunteers/volunteers_expanded_screen.dart';
 import 'section_circles_screen.dart';
 import '../../core/constants/category_mapping.dart';
+import '../../core/utils/app_feedback.dart';
 
 class ChaptersScreen extends StatefulWidget {
   final int refreshTick;
@@ -260,7 +261,11 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
           });
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'جلب الحلقات من السيرفر', e);
+      }
+    }
   }
 
   void _openRoom(String roomTitle) {

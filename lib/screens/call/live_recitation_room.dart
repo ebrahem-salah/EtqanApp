@@ -11,6 +11,7 @@ import '../../core/services/deep_link_service.dart';
 import '../../core/services/zego_cloud_service.dart';
 import '../../core/services/reels_preload_manager.dart';
 import '../../core/services/user_chapters_service.dart';
+import '../../core/utils/app_feedback.dart';
 import '../../providers/auth_provider.dart';
 import '../competitions/widgets/competition_exam_sheet.dart';
 
@@ -89,6 +90,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   int _subscribersCount = 1;
   int _capacity = 30;
   String _zegoUserId = '';
+  String _roomDiagnosticStatus = 'جاري تهيئة الغرفة...';
+  bool _roomDiagnosticIsError = false;
+  bool _msgLoadErrorShown = false;
 
   // Drag position for Floating Window (PiP mode)
   Offset _pipPosition = const Offset(100, 150);
@@ -117,11 +121,24 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   }
 
   Future<void> _joinAndLoadRoomData() async {
-    if (widget.classRoomId == null) return;
+    if (widget.classRoomId == null) {
+      if (mounted) {
+        setState(() {
+          _roomDiagnosticStatus = '⚠️ الغرفة تعمل محلياً فقط (بدون معرف سيرفر — لن تصل الرسائل عبر الخادم)';
+          _roomDiagnosticIsError = true;
+        });
+      }
+      return;
+    }
     if (!widget.isSheikh) {
       try {
         await _apiClient.joinClass(widget.classRoomId!);
-      } catch (_) {}
+      } catch (e) {
+        final errTxt = AppFeedback.formatError(e);
+        if (!errTxt.contains('منضم') && !errTxt.contains('already') && mounted) {
+          AppFeedback.showError(context, 'تسجيل الانضمام للحلقة', e);
+        }
+      }
     }
     await _loadClassDetails();
     await _loadServerMessages();
@@ -152,7 +169,11 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           });
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'جلب تفاصيل الحلقة', e);
+      }
+    }
   }
 
   /// جلب الرسائل الحقيقية من السيرفر ومزامنتها
@@ -191,7 +212,12 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (!_msgLoadErrorShown && mounted) {
+        _msgLoadErrorShown = true;
+        AppFeedback.showError(context, 'تحديث رسائل الشات من السيرفر', e);
+      }
+    }
   }
 
   void _scrollToBottom() {
@@ -576,11 +602,16 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   Future<void> _initZegoRTC() async {
     try {
-      // طلب أذونات الكاميرا والميكروفون من نظام التشغيل
-      try {
-        await Permission.camera.request();
-        await Permission.microphone.request();
-      } catch (_) {}
+      // طلب أذونات الكاميرا والميكروفون والتحقق منها صراحةً
+      final camStatus = await Permission.camera.request();
+      final micStatus = await Permission.microphone.request();
+      if ((!camStatus.isGranted || !micStatus.isGranted) && mounted) {
+        AppFeedback.showError(
+          context,
+          'صلاحيات المكالمة',
+          'يرجى منح إذن الكاميرا والمايكروفون ليعمل الصوت والفيديو',
+        );
+      }
 
       // تنظيف أي محرك قديم إن وُجد
       try {
@@ -593,6 +624,25 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         appSign: ZegoCloudConfig.appSign,
       );
       await ZegoExpressEngine.createEngineWithProfile(profile);
+
+      ZegoExpressEngine.onRoomStateUpdate = (roomID, state, errorCode, extendedData) {
+        if (!mounted || roomID != widget.roomId) return;
+        setState(() {
+          if (state == ZegoRoomState.Connected && errorCode == 0) {
+            _roomDiagnosticStatus = '✅ متصل بالبث المباشر (${widget.roomId})';
+            _roomDiagnosticIsError = false;
+          } else if (state == ZegoRoomState.Connecting) {
+            _roomDiagnosticStatus = 'جاري الاتصال بغرفة الصوت/الفيديو (${widget.roomId})...';
+            _roomDiagnosticIsError = false;
+          } else {
+            _roomDiagnosticStatus = '❌ انقطاع الاتصال بغرفة البث (كود: $errorCode)';
+            _roomDiagnosticIsError = true;
+          }
+        });
+        if (errorCode != 0) {
+          AppFeedback.showError(context, 'اتصال البث المباشر Zego', 'كود الخطأ: $errorCode');
+        }
+      };
 
       // استقبال تيارات الفيديو والصوت للمشتركين عن بُعد (الشيخ والطلاب في نفس الغرفة)
       ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) async {
@@ -672,15 +722,34 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
       final user = ZegoUser(_zegoUserId, _currentUserName);
       final roomConfig = ZegoRoomConfig.defaultConfig()..isUserStatusNotify = true;
-      await ZegoExpressEngine.instance.loginRoom(widget.roomId, user, config: roomConfig);
+      final loginRes = await ZegoExpressEngine.instance.loginRoom(widget.roomId, user, config: roomConfig);
 
       // إعداد الكاميرا المحلية مسبقاً عند فتح الفيديو لاحقاً
       await ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
       if (mounted) {
-        setState(() => _isEngineReady = true);
+        setState(() {
+          _isEngineReady = true;
+          if (loginRes.errorCode != 0) {
+            _roomDiagnosticStatus = '❌ فشل دخول غرفة البث (كود: ${loginRes.errorCode})';
+            _roomDiagnosticIsError = true;
+          } else {
+            _roomDiagnosticStatus = '✅ متصل بغرفة البث (${widget.roomId})';
+            _roomDiagnosticIsError = false;
+          }
+        });
+        if (loginRes.errorCode != 0) {
+          AppFeedback.showError(context, 'دخول غرفة Zego', 'كود الخطأ: ${loginRes.errorCode}');
+        }
       }
-    } catch (_) {
-      if (mounted) setState(() => _isEngineReady = true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isEngineReady = true;
+          _roomDiagnosticStatus = '❌ فشل تهيئة البث: ${AppFeedback.formatError(e)}';
+          _roomDiagnosticIsError = true;
+        });
+        AppFeedback.showError(context, 'تهيئة محرك الصوت والفيديو', e);
+      }
     }
   }
 
@@ -725,7 +794,17 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         await ZegoExpressEngine.instance.startPublishingStream(streamId);
         _isPublishing = true;
       }
-    } catch (_) {}
+      if (mounted) {
+        AppFeedback.showSuccess(
+          context,
+          video ? 'بدأ بث الفيديو والصوت في غرفة ${widget.roomId}' : 'بدأت المكالمة الصوتية في غرفة ${widget.roomId}',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'بدء المكالمة', e);
+      }
+    }
   }
 
   Future<void> _stopCallPublish() async {
@@ -791,15 +870,28 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
     // إرسال فوري عبر ZEGOCLOUD للطرف الآخر داخل الغرفة
     try {
-      await ZegoExpressEngine.instance.sendBroadcastMessage(widget.roomId, text);
-    } catch (_) {}
+      final bRes = await ZegoExpressEngine.instance.sendBroadcastMessage(widget.roomId, text);
+      if (bRes.errorCode != 0 && widget.classRoomId == null && mounted) {
+        AppFeedback.showError(context, 'بث الرسالة عبر Zego', 'كود الخطأ: ${bRes.errorCode}');
+      }
+    } catch (e) {
+      if (widget.classRoomId == null && mounted) {
+        AppFeedback.showError(context, 'إرسال الرسالة الفورية', e);
+      }
+    }
 
     // حفظ وإرسال الرسالة عبر السيرفر
     if (widget.classRoomId != null) {
       try {
         await _apiClient.sendClassMessage(widget.classRoomId!, text);
         await _loadServerMessages();
-      } catch (_) {}
+      } catch (e) {
+        if (mounted) {
+          AppFeedback.showError(context, 'حفظ وإرسال الرسالة للسيرفر', e);
+        }
+      }
+    } else if (mounted) {
+      AppFeedback.showError(context, 'مزامنة الرسالة', 'لا يوجد معرف حلقة على السيرفر لهذه الغرفة');
     }
   }
 
@@ -1296,53 +1388,83 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     );
   }
 
-  // ── بطاقة مدة الحلقة من الصورة 4 ──
+  // ── بطاقة مدة الحلقة + شريط التشخيص الواضح لحالة الاتصال ──
   Widget _buildDurationCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF00875A)),
-            ),
-            child: Text(
-              _formatCallTimer(_chapterMinutes * 60 + 25),
-              style: const TextStyle(
-                fontFamily: 'Dubai',
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF00875A),
-              ),
-            ),
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade300),
           ),
-          const Row(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'مدة الحلقة',
-                style: TextStyle(
-                  fontFamily: 'Dubai',
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF191919),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF00875A)),
+                ),
+                child: Text(
+                  _formatCallTimer(_chapterMinutes * 60 + 25),
+                  style: const TextStyle(
+                    fontFamily: 'Dubai',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF00875A),
+                  ),
                 ),
               ),
-              SizedBox(width: 8),
-              Icon(Icons.access_time_rounded, color: Color(0xFF191919), size: 22),
+              const Row(
+                children: [
+                  Text(
+                    'مدة الحلقة',
+                    style: TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF191919),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.access_time_rounded, color: Color(0xFF191919), size: 22),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+          child: Row(
+            children: [
+              Icon(
+                _roomDiagnosticIsError ? Icons.error_outline : Icons.wifi_tethering_rounded,
+                size: 14,
+                color: _roomDiagnosticIsError ? Colors.red.shade700 : const Color(0xFF00875A),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _roomDiagnosticStatus,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Dubai',
+                    fontSize: 11,
+                    color: _roomDiagnosticIsError ? Colors.red.shade700 : const Color(0xFF00875A),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

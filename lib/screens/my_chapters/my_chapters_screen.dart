@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
 import '../../core/services/user_chapters_service.dart';
+import '../../core/utils/app_feedback.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../call/live_recitation_room.dart';
@@ -65,7 +66,11 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
       dynamic resJoined;
       try {
         resJoined = await _apiClient.getMyJoinedClasses();
-      } catch (_) {}
+      } catch (e) {
+        if (mounted) {
+          AppFeedback.showError(context, 'جلب الحلقات المنضم إليها', e);
+        }
+      }
 
       final List allServerItems = [
         ...(resMy.statusCode == 200 && resMy.data != null ? (resMy.data['data'] ?? []) : []),
@@ -103,7 +108,11 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
           userOngoing.add(mapItem);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'جلب حلقاتك من السيرفر', e);
+      }
+    }
 
     // دمج الحلقات المحلية التي لم تُحفظ بعد على السيرفر فقط
     for (final local in UserChaptersService.instance.ongoingChapters) {
@@ -155,15 +164,13 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
 
       try {
         await _apiClient.deleteClass(chapter['id']);
-      } catch (_) {}
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم حذف الحلقة بنجاح', style: TextStyle(fontFamily: 'Dubai')),
-            backgroundColor: Color(0xFF00875A),
-          ),
-        );
+        if (mounted) {
+          AppFeedback.showSuccess(context, 'تم حذف الحلقة بنجاح');
+        }
+      } catch (e) {
+        if (mounted) {
+          AppFeedback.showError(context, 'حذف الحلقة من السيرفر', e);
+        }
       }
     }
   }

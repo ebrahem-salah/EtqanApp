@@ -1,10 +1,10 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/category_mapping.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/live_streams_service.dart';
 import '../../../core/services/user_chapters_service.dart';
+import '../../../core/utils/app_feedback.dart';
 import '../../../providers/auth_provider.dart';
 import '../../call/live_recitation_room.dart';
 
@@ -643,28 +643,17 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                             if (idVal != null) {
                               createdClassId = int.tryParse('$idVal');
                             }
-                          } on DioException catch (e) {
-                            if (e.response?.statusCode == 401) {
-                              serverError = 'انتهت جلسة الدخول — يرجى تسجيل الخروج والدخول مجدداً لنشر الحلقة للجميع';
-                            } else {
-                              serverError = e.response?.data?['message']?.toString() ??
-                                  'تعذر نشر الحلقة على الخادم، تأكد من الاتصال بالإنترنت';
-                            }
                           } catch (e) {
-                            serverError = 'تعذر الاتصال بالخادم لنشر الحلقة';
+                            serverError = AppFeedback.formatError(e);
                           }
 
                           if (createdClassId == null) {
                             if (mounted) {
                               setState(() => _isSubmitting = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    serverError ?? 'تعذر إنشاء الحلقة على الخادم',
-                                    style: const TextStyle(fontFamily: 'Dubai'),
-                                  ),
-                                  backgroundColor: Colors.redAccent,
-                                ),
+                              AppFeedback.showError(
+                                context,
+                                'إنشاء الحلقة',
+                                serverError ?? 'الخادم لم يُرجع معرف الحلقة',
                               );
                             }
                             return;

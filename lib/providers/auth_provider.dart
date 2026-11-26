@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../core/network/api_client.dart';
 import '../core/services/supabase_service.dart';
+import '../core/utils/app_feedback.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
@@ -182,63 +183,10 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
     } catch (e) {
-      if (e is DioException && e.response != null) {
-        final serverMsg = e.response?.data?['message']?.toString();
-        _errorMessage = (serverMsg != null && serverMsg.isNotEmpty)
-            ? serverMsg
-            : 'بيانات الدخول غير صحيحة أو الحساب قيد المراجعة';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-      _errorMessage = 'تعذر الاتصال بالسيرفر، تأكد من الإنترنت: ${e.toString()}';
-
-      // 2. محاولة بديلة عبر سحابة Supabase
-      try {
-        final isEmail = phone.contains('@');
-        final sbResponse = isEmail 
-            ? await _supabase.signInWithEmail(email: phone.trim(), password: password)
-            : await _supabase.signInWithPhone(phone: phone.trim(), password: password);
-
-        if (sbResponse.user != null) {
-          _currentUser = UserModel(
-            id: int.tryParse(sbResponse.user!.id) ?? 1,
-            name: sbResponse.user!.userMetadata?['full_name'] ?? 'مستخدم إتقان',
-            email: sbResponse.user!.email ?? phone,
-            phone: phone,
-            role: UserRole.student,
-            walletBalance: 150.0,
-            quranHifzAmount: '3 أجزاء',
-          );
-          await _persistSession(sbResponse.session?.accessToken ?? 'sb_token', phone, user: _currentUser);
-          _isLoading = false;
-          notifyListeners();
-          return true;
-        }
-      } catch (_) {}
-
-      // 3. دعم التشغيل الآمن في حالة عدم الاتصال (Offline / Demo fallback)
-      final isSheikhAcc = phone == '0600000000' || phone == '0501122334' || phone.contains('roily');
-      _currentUser = UserModel(
-        id: isSheikhAcc ? 134 : 1,
-        name: isSheikhAcc
-            ? 'الشيخ عبد الله الرويلي'
-            : (phone == '0500000000' ? 'طالب إتقان التجريبي' : (phone == '0501111111' ? 'Test Student' : 'مستخدم إتقان')),
-        email: isSheikhAcc
-            ? 'roily@etqan.com'
-            : (phone == '0500000000'
-                ? 'student.test@etqan.site'
-                : (phone.contains('@') ? phone : '$phone@etqan.com')),
-        phone: phone,
-        role: isSheikhAcc ? UserRole.sheikh : UserRole.student,
-        avatar: '',
-        walletBalance: 150.0,
-        quranHifzAmount: 'سورة البقرة',
-      );
-      await _persistSession('offline_session_${DateTime.now().millisecondsSinceEpoch}', phone, user: _currentUser);
+      _errorMessage = AppFeedback.formatError(e);
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     }
 
     _isLoading = false;
@@ -274,7 +222,7 @@ class AuthProvider extends ChangeNotifier {
         return await login(phone, password, countryCode: countryCode);
       }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = AppFeedback.formatError(e);
     }
 
     _isLoading = false;

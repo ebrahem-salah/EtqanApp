@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_feedback.dart';
 import '../../../models/user_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../call/live_recitation_room.dart';
@@ -142,7 +143,11 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'جلب حلقات القرآن الكريم', e);
+      }
+    }
   }
 
   @override

@@ -19,6 +19,7 @@ import '../sections/sections_hub_screen.dart';
 import '../sections/dialogs/create_section_session_dialog.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/services/user_videos_service.dart';
+import '../../core/utils/app_feedback.dart';
 import 'add_video_screen.dart';
 
 class ReelsHomeScreen extends StatefulWidget {
@@ -165,7 +166,11 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
           });
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'جلب الحلقات المباشرة', e);
+      }
+    }
 
     // 2. Fetch locally added user videos (especially YouTube links and local uploads)
     await UserVideosService.instance.init();
@@ -200,7 +205,11 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
           combined.addAll(liveReels);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'تحميل مقاطع الفيديو', e);
+      }
+    }
 
     if (mounted) {
       setState(() {
@@ -465,10 +474,14 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                                 }
                               });
                               try {
-                                if (reel['id'] != null) {
+                                if (reel['id'] != null && reel['id'] is int) {
                                   await _apiClient.toggleLikeVideo(reel['id']);
                                 }
-                              } catch (_) {}
+                              } catch (e) {
+                                if (mounted) {
+                                  AppFeedback.showError(context, 'الإعجاب بالفيديو', e);
+                                }
+                              }
                             },
                           ),
                           const SizedBox(height: 16),
@@ -1663,6 +1676,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _hasError = false;
+  String _errorReason = '';
   bool _ownsController = false;
 
   @override
@@ -1718,6 +1732,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
         if (mounted) {
           setState(() {
             _hasError = true;
+            _errorReason = e.toString();
           });
         }
       }
@@ -1778,16 +1793,27 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
     if (_hasError) {
       return Container(
         color: Colors.black,
-        child: const Center(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.play_circle_outline, color: Colors.white38, size: 64),
-              SizedBox(height: 12),
-              Text(
-                'مقطع تلاوة قرآنية مباركة',
-                style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Dubai'),
+              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 54),
+              const SizedBox(height: 12),
+              const Text(
+                'تعذر تشغيل الفيديو',
+                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'Dubai'),
               ),
+              if (_errorReason.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _errorReason,
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white60, fontSize: 11, fontFamily: 'Dubai'),
+                ),
+              ],
             ],
           ),
         ),

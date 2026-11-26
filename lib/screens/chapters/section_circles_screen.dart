@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/category_mapping.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
+import '../../core/utils/app_feedback.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../call/live_recitation_room.dart';
@@ -77,7 +78,11 @@ class _SectionCirclesScreenState extends State<SectionCirclesScreen> {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'تحميل حلقات القسم', e);
+      }
+    }
 
     if (mounted) {
       setState(() {
@@ -143,7 +148,15 @@ class _SectionCirclesScreenState extends State<SectionCirclesScreen> {
 
       try {
         await _apiClient.joinClass(classId);
-      } catch (_) {}
+        if (mounted) {
+          AppFeedback.showSuccess(context, 'تم الانضمام لحلقة "$title" بنجاح');
+        }
+      } catch (e) {
+        final msg = AppFeedback.formatError(e);
+        if (!msg.contains('منضم') && !msg.contains('already') && mounted) {
+          AppFeedback.showError(context, 'الانضمام للحلقة', e);
+        }
+      }
     }
 
     if (!mounted) return;

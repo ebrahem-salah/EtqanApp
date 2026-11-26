@@ -1,10 +1,10 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/category_mapping.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/user_chapters_service.dart';
+import '../../core/utils/app_feedback.dart';
 import '../../providers/auth_provider.dart';
 
 class AddChapterScreen extends StatefulWidget {
@@ -223,24 +223,17 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
       if (idVal != null) {
         createdClassId = int.tryParse('$idVal');
       }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        serverError = 'انتهت جلسة الدخول — يرجى تسجيل الخروج والدخول مجدداً';
-      } else {
-        serverError = e.response?.data?['message']?.toString() ?? 'تعذر نشر الحلقة على الخادم';
-      }
-    } catch (_) {
-      serverError = 'تعذر الاتصال بالخادم لنشر الحلقة';
+    } catch (e) {
+      serverError = AppFeedback.formatError(e);
     }
 
     if (createdClassId == null) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(serverError ?? 'تعذر إنشاء الحلقة على الخادم', style: const TextStyle(fontFamily: 'Dubai')),
-            backgroundColor: Colors.redAccent,
-          ),
+        AppFeedback.showError(
+          context,
+          'إنشاء الحلقة',
+          serverError ?? 'الخادم لم يُرجع معرف الحلقة',
         );
       }
       return;

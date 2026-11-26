@@ -6,6 +6,7 @@ import 'package:video_compress/video_compress.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/user_videos_service.dart';
+import '../../core/utils/app_feedback.dart';
 
 class AddVideoScreen extends StatefulWidget {
   const AddVideoScreen({super.key});
@@ -209,7 +210,7 @@ class _AddVideoScreenState extends State<AddVideoScreen>
         syncedToServer = true;
       }
     } catch (e) {
-      serverError = e.toString();
+      serverError = AppFeedback.formatError(e);
     }
 
     await UserVideosService.instance.saveVideo(
@@ -223,7 +224,7 @@ class _AddVideoScreenState extends State<AddVideoScreen>
         _showSnack('🎉 تم نشر مقطع الفيديو للجميع على السيرفر بنجاح!');
         Navigator.pop(context, true);
       } else {
-        _showSnack('⚠️ حُفظ محلياً فقط، تعذر النشر على السيرفر (تأكد من الدخول بحساب شيخ مفعل)', isError: true);
+        _showSnack('❌ فشل نشر الفيديو على السيرفر: ${serverError ?? "سبب غير معروف"} (حُفظ محلياً فقط)', isError: true);
       }
     }
   }
@@ -236,6 +237,7 @@ class _AddVideoScreenState extends State<AddVideoScreen>
 
     final fileToUpload = _compressedFile ?? _selectedFile!;
     bool syncedToServer = false;
+    String? uploadError;
 
     try {
       final res = await _apiClient.uploadVideoFile(
@@ -250,7 +252,9 @@ class _AddVideoScreenState extends State<AddVideoScreen>
       if (res.statusCode == 200 || res.statusCode == 201) {
         syncedToServer = true;
       }
-    } catch (_) {}
+    } catch (e) {
+      uploadError = AppFeedback.formatError(e);
+    }
 
     await UserVideosService.instance.saveVideo(
       description: description,
@@ -264,7 +268,7 @@ class _AddVideoScreenState extends State<AddVideoScreen>
         _showSnack('🎉 تم رفع ونشر الفيديو للجميع على السيرفر بنجاح!');
         Navigator.pop(context, true);
       } else {
-        _showSnack('⚠️ حُفظ محلياً فقط، تعذر رفعه للسيرفر (تأكد من الدخول بحساب شيخ مفعل وحجم الملف)', isError: true);
+        _showSnack('❌ فشل رفع الفيديو للسيرفر: ${uploadError ?? "سبب غير معروف"} (حُفظ محلياً فقط)', isError: true);
       }
     }
   }
