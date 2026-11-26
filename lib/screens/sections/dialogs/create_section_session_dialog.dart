@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/category_mapping.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/live_streams_service.dart';
 import '../../../core/services/user_chapters_service.dart';
@@ -603,7 +604,6 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                     }
 
                     final finalTitle = _getFinalTitle(creatorName);
-                    final roomId = 'room_${DateTime.now().millisecondsSinceEpoch}';
                     final sectionName = _selectedSection!;
                     final subSectionName = _selectedSubSection ?? 'عام';
                     final priceDouble = _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0;
@@ -622,19 +622,39 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                       supervisorName: creatorName,
                     );
 
+                    int? createdClassId;
                     try {
-                      final categoryIdx = _sectionsWithSub.keys.toList().indexOf(sectionName) + 1;
-                      await ApiClient().createClass(
+                      final resolvedCategoryId = CategoryMapping.resolveCategoryId(
+                        sectionName,
+                        subSectionName,
+                      );
+                      final nowUtc = DateTime.now().toUtc();
+                      final targetUtc = _startDateTime.difference(DateTime.now()).inMinutes.abs() <= 2
+                          ? nowUtc.subtract(const Duration(minutes: 1))
+                          : _startDateTime.toUtc();
+                      final apiStartStr =
+                          '${targetUtc.year}-${targetUtc.month.toString().padLeft(2, '0')}-${targetUtc.day.toString().padLeft(2, '0')} '
+                          '${targetUtc.hour.toString().padLeft(2, '0')}:${targetUtc.minute.toString().padLeft(2, '0')}:${targetUtc.second.toString().padLeft(2, '0')}';
+
+                      final res = await ApiClient().createClass(
                         name: finalTitle,
-                        categoryId: categoryIdx > 0 ? categoryIdx : 1,
-                        startTime: _startDateTime.toIso8601String(),
+                        categoryId: resolvedCategoryId,
+                        startTime: apiStartStr,
                         maxStudents: _maxMembers,
                         type: _isPaid ? 'paid' : 'free',
                         price: priceDouble,
                         isPrivate: _isPrivate,
                         allowRecording: _allowRecording,
                       );
+                      final idVal = res.data?['data']?['id'];
+                      if (idVal != null) {
+                        createdClassId = int.tryParse('$idVal');
+                      }
                     } catch (_) {}
+
+                    final roomId = createdClassId != null
+                        ? 'room_srv_$createdClassId'
+                        : 'room_${DateTime.now().millisecondsSinceEpoch}';
 
                     if (!_isPrivate) {
                       LiveStreamsService.instance.addLiveStream(
@@ -662,6 +682,10 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                           roomId: roomId,
                           circleTitle: finalTitle,
                           isSheikh: true,
+                          classRoomId: createdClassId,
+                          sheikhName: creatorName,
+                          subscribersCount: 1,
+                          capacity: _maxMembers,
                         ),
                       ),
                     );

@@ -24,6 +24,8 @@ import '../sections/14_muslim_woman/muslim_woman_screen.dart';
 import '../sections/15_imams/imams_hub_screen.dart';
 import '../sections/16_volunteers/volunteers_expanded_screen.dart';
 import 'add_chapter_screen.dart';
+import 'section_circles_screen.dart';
+import '../../core/constants/category_mapping.dart';
 
 class ChaptersScreen extends StatefulWidget {
   const ChaptersScreen({super.key});
@@ -265,6 +267,41 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
     );
   }
 
+  /// فتح شاشة القسم الفرعي (شاشة حلقات القسم الفرعي الحقيقية أو شاشة الأداة المتخصصة)
+  void _openSubSectionHub(Map<String, dynamic> section, String subTitle) {
+    final sectionTitle = section['title'] as String;
+    final toolSections = {
+      'المكتبة الإلكترونية',
+      'المسابقات الدينية',
+      'الشهادات والإجازات',
+      'الإذاعات الإسلامية',
+      'الأئمة والمؤذنون',
+      'المتطوعون في المنصة',
+    };
+
+    if (toolSections.contains(sectionTitle) ||
+        subTitle.contains('لوحة الحروف التفاعلية')) {
+      final hubBuilder = section['hubBuilder'];
+      if (hubBuilder != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: hubBuilder),
+        );
+        return;
+      }
+    }
+
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => SectionCirclesScreen(
+              mainSection: sectionTitle,
+              subSection: subTitle,
+            ),
+          ),
+        )
+        .then((_) => _loadLiveClasses());
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentSection = _sectionsConfig[_selectedCategoryIndex];
@@ -407,10 +444,24 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
       return (c['mainCategory'] ?? '') == sectionTitle;
     }).toList();
 
-    // Filter live server classes matching this section (or show if category name matches)
+    // Filter live server classes matching this main section or any of its subsections
+    final mainCatId = CategoryMapping.mainCategoryIds[sectionTitle];
     final serverClasses = _liveClasses.where((c) {
-      final catName = c['category']?['name']?.toString() ?? '';
-      return catName.isEmpty || catName == sectionTitle || catName.contains(sectionTitle) || sectionTitle.contains(catName);
+      final catObj = c['category'];
+      final catName = catObj?['name']?.toString() ?? '';
+      final catId = int.tryParse('${c['category_id'] ?? catObj?['id'] ?? ''}');
+      final parentId = int.tryParse('${catObj?['parent_id'] ?? ''}');
+      if (mainCatId != null && (catId == mainCatId || parentId == mainCatId)) {
+        return true;
+      }
+      if (subs.any((s) => CategoryMapping.matchesClass(
+            c,
+            mainSection: sectionTitle,
+            subSection: (s as Map<String, dynamic>)['title'] as String,
+          ))) {
+        return true;
+      }
+      return catName == sectionTitle || catName.contains(sectionTitle);
     }).toList();
 
     return RefreshIndicator(
@@ -441,8 +492,11 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
             ),
             ...serverClasses.map((cls) {
               final title = cls['name']?.toString() ?? 'حلقة تلاوة';
-              final sheikhName = cls['sheikh']?['name']?.toString() ?? cls['creator']?['name']?.toString() ?? 'الشيخ المقرئ';
-              final studentsCount = cls['students_count'] ?? 0;
+              final sheikhObj = cls['sheikh'] ?? cls['creator']?['user'] ?? cls['creator'];
+              final rawSheikh = sheikhObj?['name']?.toString() ?? '';
+              final sheikhName = (rawSheikh.isNotEmpty && !rawSheikh.contains('???')) ? rawSheikh : 'الشيخ المقرئ';
+              final studentsCount = int.tryParse('${cls['students_count'] ?? 0}') ?? 0;
+              final capacity = int.tryParse('${cls['capacity'] ?? cls['max_students'] ?? 30}') ?? 30;
               final startsAt = cls['starts_at']?.toString() ?? '';
               final classId = cls['id'] is int ? cls['id'] as int : int.tryParse('${cls['id']}');
               return GestureDetector(
@@ -454,6 +508,9 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                         circleTitle: title,
                         isSheikh: (Provider.of<AuthProvider>(context, listen: false).currentUser?.role ?? UserRole.student) != UserRole.student,
                         classRoomId: classId,
+                        sheikhName: sheikhName,
+                        subscribersCount: studentsCount,
+                        capacity: capacity,
                       ),
                     ),
                   );
@@ -592,7 +649,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
           final subDesc = subMap['desc'] as String;
 
           return GestureDetector(
-            onTap: () => _openRoom(subTitle),
+            onTap: () => _openSubSectionHub(section, subTitle),
             child: Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),

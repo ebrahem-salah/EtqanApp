@@ -29,6 +29,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('auth_token', token);
     await prefs.setString('user_phone', phone);
     if (user != null) {
+      await prefs.setInt('user_id', user.id);
       await prefs.setString('user_name', user.name);
       await prefs.setString('user_email', user.email);
       await prefs.setString('user_role', user.role.name);
@@ -40,6 +41,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _token = prefs.getString('auth_token');
+      final savedId = prefs.getInt('user_id');
       final savedPhone = prefs.getString('user_phone');
       final savedName = prefs.getString('user_name');
       final savedEmail = prefs.getString('user_email');
@@ -48,11 +50,13 @@ class AuthProvider extends ChangeNotifier {
       if (_token != null && _token!.isNotEmpty) {
         // بناء المستخدم فوراً من الكاش لسرعة الدخول الفوري بدون انتظار
         _currentUser = UserModel(
-          id: 1,
+          id: savedId ?? 1,
           name: savedName ?? 'مستخدم إتقان',
           email: savedEmail ?? (savedPhone != null ? '$savedPhone@etqan.com' : 'user@etqan.com'),
           phone: savedPhone,
-          role: savedRole == 'sheikh' ? UserRole.sheikh : UserRole.student,
+          role: savedRole == 'sheikh'
+              ? UserRole.sheikh
+              : (savedRole == 'supervisor' ? UserRole.supervisor : UserRole.student),
           avatar: '',
           walletBalance: 150.0,
           quranHifzAmount: '3 أجزاء',
@@ -65,7 +69,10 @@ class AuthProvider extends ChangeNotifier {
           if (response.statusCode == 200 && response.data != null) {
             final userData = response.data['data']?['user'] ?? response.data['data'];
             if (userData != null) {
-              _currentUser = _mapJsonToUserModel(userData);
+              _currentUser = _mapJsonToUserModel(userData, fallbackRole: _currentUser?.role);
+              await prefs.setInt('user_id', _currentUser!.id);
+              await prefs.setString('user_name', _currentUser!.name);
+              await prefs.setString('user_role', _currentUser!.role.name);
               notifyListeners();
             }
           }
@@ -135,7 +142,10 @@ class AuthProvider extends ChangeNotifier {
 
         final userData = data?['user'];
         if (userData != null) {
-          _currentUser = _mapJsonToUserModel(userData);
+          _currentUser = _mapJsonToUserModel(
+            userData,
+            fallbackType: data?['user_type']?.toString(),
+          );
         } else {
           final isSheikhPhone = phone == '0600000000' || phone == '0501122334' || phone.contains('roily');
           _currentUser = UserModel(
@@ -403,18 +413,28 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  UserModel _mapJsonToUserModel(Map<String, dynamic> json) {
-    UserRole role = UserRole.student;
-    final r = json['role']?.toString().toLowerCase();
-    if (r == 'sheikh' || json['sheikh'] != null) {
+  UserModel _mapJsonToUserModel(
+    Map<String, dynamic> json, {
+    String? fallbackType,
+    UserRole? fallbackRole,
+  }) {
+    UserRole role = fallbackRole ?? UserRole.student;
+    final t = (json['type'] ?? json['user_type'] ?? fallbackType ?? json['role'])
+        ?.toString()
+        .toLowerCase();
+    if (t == 'sheikh' || json['sheikh'] != null) {
       role = UserRole.sheikh;
-    } else if (r == 'supervisor') {
+    } else if (t == 'supervisor' || json['supervisor'] != null) {
       role = UserRole.supervisor;
+    } else if (t == 'student') {
+      role = UserRole.student;
     }
 
     double bal = 150.0;
     if (json['wallet'] != null && json['wallet']['balance'] != null) {
       bal = double.tryParse(json['wallet']['balance'].toString()) ?? 150.0;
+    } else if (json['balance'] != null) {
+      bal = double.tryParse(json['balance'].toString()) ?? 150.0;
     }
 
     return UserModel(

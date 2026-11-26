@@ -214,14 +214,18 @@ class ApiClient {
     bool allowRecording = false,
     String? imageUrl,
   }) async {
+    final targetCatId = subCategoryId ?? categoryId;
     return await dio.post('/classes', data: {
       'name': name,
-      'category_id': categoryId,
+      'category_id': targetCatId,
       if (subCategoryId != null) 'sub_category_id': subCategoryId,
       'start_time': startTime,
+      'starts_at': startTime,
+      'capacity': maxStudents,
       'max_students': maxStudents,
       'type': type,
       'price': price,
+      'is_paid': type == 'paid',
       'is_private': isPrivate,
       'allow_recording': allowRecording,
       if (imageUrl != null) 'image': imageUrl,
@@ -318,7 +322,7 @@ class ApiClient {
 
   /// Send message inside class
   Future<Response> sendClassMessage(int classId, String text) async {
-    return await dio.post('/classes/$classId/messages', data: {'text': text});
+    return await dio.post('/classes/$classId/messages', data: {'message': text});
   }
 
   /// Get recitation scoring & appreciations

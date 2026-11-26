@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
+import '../../../models/user_model.dart';
+import '../../../providers/auth_provider.dart';
 import '../../call/live_recitation_room.dart';
 import '../dialogs/create_section_session_dialog.dart';
 
@@ -90,72 +93,8 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
     },
   ];
 
-  // Dummy active circles mapped to subsections
-  final List<Map<String, dynamic>> _circles = [
-    {
-      'id': 'q_1',
-      'title': 'مقرأة ترتيل سورة النساء وتصحيح التلاوة',
-      'sub': 'المقرأة',
-      'sheikh': 'فضيلة الشيخ أحمد عبد المنعم',
-      'students': '18 / 25',
-      'isLive': true,
-      'viewers': 148,
-    },
-    {
-      'id': 'q_2',
-      'title': 'حلقة مدارسة وتدبر سورة يس والواقعة',
-      'sub': 'المدارسة',
-      'sheikh': 'د. عبد الله المصلح',
-      'students': '12 / 20',
-      'isLive': true,
-      'viewers': 89,
-    },
-    {
-      'id': 'q_3',
-      'title': 'حلقة تحفيظ جزء عم للأطفال بالرسم العثماني',
-      'sub': 'الحفظ (الصغار)',
-      'sheikh': 'المقرئ الشيخ عمر خالد',
-      'students': '15 / 15',
-      'isLive': false,
-      'viewers': 0,
-    },
-    {
-      'id': 'q_4',
-      'title': 'ختمة فمي بشوق الأسبوعية - حزب سورة يونس',
-      'sub': 'المراجعة (فمي بشوق)',
-      'sheikh': 'الشيخ محمد سعيد نور',
-      'students': '22 / 30',
-      'isLive': true,
-      'viewers': 110,
-    },
-    {
-      'id': 'q_5',
-      'title': 'مجلس إقراء برواية ورش عن نافع من طريق الأزرق',
-      'sub': 'القراءات العشر',
-      'sheikh': 'المقرئ الشيخ مصطفى الهواري',
-      'students': '8 / 10',
-      'isLive': true,
-      'viewers': 64,
-    },
-    {
-      'id': 'q_6',
-      'title': 'مجلس عرض القرآن بالسند المتصل برواية حفص',
-      'sub': 'القراءة بالإسناد',
-      'sheikh': 'فضيلة الشيخ د. أيمن سويد',
-      'students': '5 / 6',
-      'isLive': true,
-      'viewers': 220,
-    },
-    {
-      'id': 'q_7',
-      'title': 'دورة أداء مقام الرست والنهاوند في التلاوة',
-      'sub': 'المقامات الصوتية',
-      'sheikh': 'المنشد والمقرئ محمود التوني',
-      'students': '30 / 40',
-      'isLive': false,
-      'viewers': 0,
-    },
-  ];
+  // الحلقات الحقيقية القادمة من الخادم فقط (بدون حلقات وهمية)
+  final List<Map<String, dynamic>> _circles = [];
 
   final ApiClient _apiClient = ApiClient();
 
@@ -174,22 +113,31 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
         if (items.isNotEmpty) {
           final liveList = items.map<Map<String, dynamic>>((item) {
             final sheikh = item['sheikh'] ?? item['creator'] ?? {};
-            final sheikhName = sheikh['name'] ?? 'الشيخ عبد الله الرويلي';
+            final sheikhName = sheikh['name']?.toString() ?? 'الشيخ';
             final isOngoing = item['status'] == 'ongoing' || item['is_ongoing'] == true;
+            final subCategory = item['sub_category']?['name']?.toString() 
+                ?? item['category']?['name']?.toString() 
+                ?? 'الكل';
             return {
               'id': 'backend_${item['id']}',
-              'title': item['name'] ?? 'مقرأة قرآنية حية ومباشرة',
-              'sub': item['category']?['name'] ?? 'المقرأة',
+              'backendId': item['id'],
+              'title': item['name']?.toString() ?? 'مقرأة قرآنية حية ومباشرة',
+              'sub': subCategory,
               'sheikh': sheikhName,
-              'students': '${item['students_count'] ?? 1} / ${item['capacity'] ?? 30}',
+              'studentsCount': item['students_count'] ?? 0,
+              'capacity': item['capacity'] ?? 30,
+              'students': '${item['students_count'] ?? 0} / ${item['capacity'] ?? 30}',
               'isLive': isOngoing,
-              'viewers': item['views_count'] ?? 85,
+              'viewers': item['views_count'] ?? 0,
+              'description': item['description']?.toString() ?? '',
             };
           }).toList();
 
           if (mounted) {
             setState(() {
-              _circles.insertAll(0, liveList);
+              _circles
+                ..clear()
+                ..addAll(liveList);
             });
           }
         }
@@ -199,9 +147,14 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    final isSheikhOrSupervisor = (auth.currentUser?.role ?? UserRole.student) != UserRole.student;
     final filteredCircles = _circles.where((c) {
       if (_selectedSub == 'الكل') return true;
-      return c['sub'] == _selectedSub;
+      final cSub = c['sub']?.toString() ?? '';
+      return cSub == _selectedSub ||
+          _selectedSub.contains(cSub) ||
+          cSub.contains(_selectedSub);
     }).toList();
 
     return Scaffold(
@@ -216,17 +169,18 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            tooltip: 'إنشاء حلقة جديدة',
-            onPressed: () {
-              CreateSectionSessionDialog.show(
-                context,
-                initialSection: 'القرآن الكريم',
-                initialSubSection: _selectedSub,
-              );
-            },
-          ),
+          if (isSheikhOrSupervisor)
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline_rounded),
+              tooltip: 'إنشاء حلقة جديدة',
+              onPressed: () {
+                CreateSectionSessionDialog.show(
+                  context,
+                  initialSection: 'القرآن الكريم',
+                  initialSubSection: _selectedSub,
+                );
+              },
+            ),
         ],
       ),
       body: Column(
@@ -329,28 +283,30 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
                         const Icon(Icons.menu_book_outlined, size: 48, color: Colors.grey),
                         const SizedBox(height: 10),
                         Text(
-                          'لا توجد حلقات جارية حالياً في $_selectedSub',
-                          style: const TextStyle(fontFamily: 'Dubai', fontSize: 14, color: Colors.grey),
+                          'لا توجد حلقات في هذا القسم حالياً',
+                          style: const TextStyle(fontFamily: 'Dubai', fontSize: 15, color: Colors.grey),
                         ),
-                        const SizedBox(height: 14),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00875A),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        if (isSheikhOrSupervisor) ...[
+                          const SizedBox(height: 14),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00875A),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () {
+                              CreateSectionSessionDialog.show(
+                                context,
+                                initialSection: 'القرآن الكريم',
+                                initialSubSection: _selectedSub == 'الكل' ? 'المقرأة' : _selectedSub,
+                              );
+                            },
+                            icon: const Icon(Icons.add, color: Colors.white),
+                            label: const Text(
+                              'كن أول من ينشئ حلقة هنا',
+                              style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
                           ),
-                          onPressed: () {
-                            CreateSectionSessionDialog.show(
-                              context,
-                              initialSection: 'القرآن الكريم',
-                              initialSubSection: _selectedSub == 'الكل' ? 'المقرأة' : _selectedSub,
-                            );
-                          },
-                          icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text(
-                            'كن أول من ينشئ حلقة هنا',
-                            style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   )
@@ -366,22 +322,24 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF00875A),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'إنشاء حلقة / بث مباشر',
-          style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold),
-        ),
-        onPressed: () {
-          CreateSectionSessionDialog.show(
-            context,
-            initialSection: 'القرآن الكريم',
-            initialSubSection: _selectedSub == 'الكل' ? 'المقرأة' : _selectedSub,
-          );
-        },
-      ),
+      floatingActionButton: isSheikhOrSupervisor
+          ? FloatingActionButton.extended(
+              backgroundColor: const Color(0xFF00875A),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text(
+                'إنشاء حلقة / بث مباشر',
+                style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                CreateSectionSessionDialog.show(
+                  context,
+                  initialSection: 'القرآن الكريم',
+                  initialSubSection: _selectedSub == 'الكل' ? 'المقرأة' : _selectedSub,
+                );
+              },
+            )
+          : null,
     );
   }
 
@@ -501,12 +459,19 @@ class _QuranHubScreenState extends State<QuranHubScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: () {
+                  final bId = circle['backendId'] is int
+                      ? circle['backendId'] as int
+                      : int.tryParse('${circle['backendId'] ?? ''}');
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => LiveRecitationRoom(
-                        roomId: circle['id'],
+                        roomId: bId != null ? 'room_srv_$bId' : '${circle['id']}',
                         circleTitle: circle['title'],
                         isSheikh: false,
+                        classRoomId: bId,
+                        sheikhName: circle['sheikh']?.toString(),
+                        subscribersCount: circle['studentsCount'] is int ? circle['studentsCount'] as int : 1,
+                        capacity: circle['capacity'] is int ? circle['capacity'] as int : 30,
                       ),
                     ),
                   );

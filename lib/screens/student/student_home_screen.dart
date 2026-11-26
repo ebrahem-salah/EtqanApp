@@ -127,7 +127,7 @@ class _MoreScreenPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.currentUser;
-    final userName = (user != null && user.name.isNotEmpty) ? user.name : 'مشرف تجريبي 3';
+    final userName = (user != null && user.name.isNotEmpty) ? user.name : 'مستخدم إتقان';
     final userPhone = (user?.phone != null && user!.phone!.isNotEmpty) ? user.phone! : '+966966111111';
     final walletBal = user?.walletBalance.toStringAsFixed(1) ?? '0.0';
 

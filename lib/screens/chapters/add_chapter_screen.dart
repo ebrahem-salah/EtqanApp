@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/category_mapping.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/user_chapters_service.dart';
 
@@ -201,13 +202,24 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
       showInReelsAsLive: _showInReelsAsLive,
     );
 
-    // 2. محاولة الحفظ على خادم الـ API
+    // 2. محاولة الحفظ على خادم الـ API بمعرف القسم الحقيقي
     try {
-      final categoryIndex = _categoryHierarchy.keys.toList().indexOf(_selectedCategory!) + 1;
+      final resolvedCategoryId = CategoryMapping.resolveCategoryId(
+        _selectedCategory!,
+        _selectedSubCategory,
+      );
+      final targetUtc = (_selectedDateTime == null ||
+              _selectedDateTime!.difference(DateTime.now()).inMinutes.abs() <= 2)
+          ? DateTime.now().toUtc().subtract(const Duration(minutes: 1))
+          : _selectedDateTime!.toUtc();
+      final apiStartStr =
+          '${targetUtc.year}-${targetUtc.month.toString().padLeft(2, '0')}-${targetUtc.day.toString().padLeft(2, '0')} '
+          '${targetUtc.hour.toString().padLeft(2, '0')}:${targetUtc.minute.toString().padLeft(2, '0')}:${targetUtc.second.toString().padLeft(2, '0')}';
+
       await _apiClient.createClass(
         name: name,
-        categoryId: categoryIndex,
-        startTime: _selectedDateTime?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        categoryId: resolvedCategoryId,
+        startTime: apiStartStr,
         maxStudents: maxStudentsInt,
         type: _isPaid ? 'paid' : 'free',
         price: priceDouble,

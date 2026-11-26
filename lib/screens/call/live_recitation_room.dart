@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
@@ -10,6 +11,7 @@ import '../../core/services/deep_link_service.dart';
 import '../../core/services/zego_cloud_service.dart';
 import '../../core/services/reels_preload_manager.dart';
 import '../../core/services/user_chapters_service.dart';
+import '../../providers/auth_provider.dart';
 import '../competitions/widgets/competition_exam_sheet.dart';
 
 class LiveRecitationRoom extends StatefulWidget {
@@ -18,6 +20,9 @@ class LiveRecitationRoom extends StatefulWidget {
   final bool isSheikh;
   final bool isRecorded;
   final int? classRoomId;
+  final String? sheikhName;
+  final int? subscribersCount;
+  final int? capacity;
 
   const LiveRecitationRoom({
     super.key,
@@ -26,6 +31,9 @@ class LiveRecitationRoom extends StatefulWidget {
     this.isSheikh = false,
     this.isRecorded = false,
     this.classRoomId,
+    this.sheikhName,
+    this.subscribersCount,
+    this.capacity,
   });
 
   @override
@@ -61,27 +69,25 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   Widget? _localVideoWidget;
   int? _localViewID;
+  final Map<String, Widget> _remoteStreams = {};
+  final Map<String, String> _remoteUsers = {};
+  bool _isPublishing = false;
   bool _useFrontCamera = true;
   double _soundLevel = 0.0;
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
 
-  // Chat Messages matching Screenshot 4, 11, 12
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'sender': 'الشيخ عبد الله السويسي',
-      'role': 'sheikh',
-      'message': 'السلام عليكم ورحمة الله وبركاته، مرحباً بكم في حلقة اليوم لتلاوة وتسميع سورة مريم.',
-      'time': '08:55 PM',
-      'isMe': false,
-    },
-    {
-      'sender': 'أحمد محمود',
-      'role': 'student',
-      'message': 'وعليكم السلام ورحمة الله وبركاته يا شيخنا الحبيب.',
-      'time': '08:56 PM',
-      'isMe': false,
-    },
-  ];
+  // Chat Messages - تبدأ فاضية وتتملأ بالرسائل الحقيقية فقط
+  final List<Map<String, dynamic>> _messages = [];
+  Timer? _messagesPollTimer;
+
+  // بيانات المستخدم الحالي والشيخ (يتم جلبها من AuthProvider والخادم)
+  int? _currentUserId;
+  String _currentUserName = '';
+  String _displaySheikhName = '';
+  int _subscribersCount = 1;
+  int _capacity = 30;
+  String _zegoUserId = '';
 
   // Drag position for Floating Window (PiP mode)
   Offset _pipPosition = const Offset(100, 150);
@@ -90,8 +96,113 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   void initState() {
     super.initState();
     ReelsPreloadManager.instance.pauseAll();
+    _initUserName();
     _initZegoRTC();
     _startTimer();
+    _joinAndLoadRoomData();
+  }
+
+  void _initUserName() {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final user = auth.currentUser;
+    _currentUserId = user?.id;
+    _currentUserName = (user?.name != null && user!.name.isNotEmpty) ? user.name : 'مستخدم إتقان';
+    _displaySheikhName = (widget.sheikhName != null && widget.sheikhName!.isNotEmpty)
+        ? widget.sheikhName!
+        : (widget.isSheikh ? _currentUserName : 'الشيخ المقرئ');
+    _subscribersCount = widget.subscribersCount ?? 1;
+    _capacity = widget.capacity ?? 30;
+    _zegoUserId = 'u_${_currentUserId ?? DateTime.now().millisecondsSinceEpoch % 100000}_${DateTime.now().millisecondsSinceEpoch % 1000}';
+  }
+
+  Future<void> _joinAndLoadRoomData() async {
+    if (widget.classRoomId == null) return;
+    if (!widget.isSheikh) {
+      try {
+        await _apiClient.joinClass(widget.classRoomId!);
+      } catch (_) {}
+    }
+    await _loadClassDetails();
+    await _loadServerMessages();
+    _messagesPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _loadServerMessages();
+    });
+  }
+
+  Future<void> _loadClassDetails() async {
+    if (widget.classRoomId == null) return;
+    try {
+      final res = await _apiClient.getClassDetails(widget.classRoomId!);
+      if (res.statusCode == 200 && res.data != null && mounted) {
+        final data = res.data['data'];
+        if (data is Map<String, dynamic>) {
+          final sheikhObj = data['sheikh'] ?? data['creator']?['user'] ?? data['creator'];
+          final sName = sheikhObj?['name']?.toString();
+          setState(() {
+            if (sName != null && sName.isNotEmpty && !sName.contains('???')) {
+              _displaySheikhName = sName;
+            }
+            if (data['students_count'] != null) {
+              _subscribersCount = int.tryParse('${data['students_count']}') ?? _subscribersCount;
+            }
+            if (data['capacity'] != null) {
+              _capacity = int.tryParse('${data['capacity']}') ?? _capacity;
+            }
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// جلب الرسائل الحقيقية من السيرفر ومزامنتها
+  Future<void> _loadServerMessages() async {
+    if (widget.classRoomId == null) return;
+    try {
+      final res = await _apiClient.getClassMessages(widget.classRoomId!);
+      if (res.statusCode == 200 && res.data != null) {
+        final List items = res.data['data'] ?? [];
+        if (mounted) {
+          final List<Map<String, dynamic>> parsed = items.map<Map<String, dynamic>>((msg) {
+            final senderObj = msg['sender'] ?? msg['user'] ?? {};
+            final senderId = int.tryParse('${senderObj['id'] ?? ''}');
+            final senderName = senderObj['name']?.toString() ?? 'مستخدم';
+            final text = msg['message']?.toString() ?? '';
+            final time = msg['created_at_human']?.toString() ?? msg['created_at']?.toString() ?? '';
+            final isMe = (_currentUserId != null && senderId != null && senderId == _currentUserId);
+            return {
+              'id': msg['id'],
+              'sender': senderName,
+              'role': senderObj['user_type']?.toString() ?? senderObj['type']?.toString() ?? 'student',
+              'message': text,
+              'time': time,
+              'isMe': isMe,
+            };
+          }).toList();
+
+          if (parsed.length != _messages.length ||
+              (parsed.isNotEmpty && _messages.isNotEmpty && parsed.last['id'] != _messages.last['id'])) {
+            setState(() {
+              _messages
+                ..clear()
+                ..addAll(parsed);
+            });
+            _scrollToBottom();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   void _startTimer() {
@@ -108,7 +219,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   void dispose() {
     _callTimer?.cancel();
     _recordTimer?.cancel();
+    _messagesPollTimer?.cancel();
     _messageController.dispose();
+    _chatScrollController.dispose();
     _destroyZego();
     super.dispose();
   }
@@ -462,10 +575,15 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   Future<void> _initZegoRTC() async {
     try {
-      // طلب أذونات الكاميرا والميكروفون من نظام التشغيل فور دخول الغرفة
+      // طلب أذونات الكاميرا والميكروفون من نظام التشغيل
       try {
         await Permission.camera.request();
         await Permission.microphone.request();
+      } catch (_) {}
+
+      // تنظيف أي محرك قديم إن وُجد
+      try {
+        await ZegoExpressEngine.destroyEngine();
       } catch (_) {}
 
       final profile = ZegoEngineProfile(
@@ -475,40 +593,153 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       );
       await ZegoExpressEngine.createEngineWithProfile(profile);
 
-      final user = ZegoUser(
-        'user_${DateTime.now().millisecondsSinceEpoch % 10000}',
-        widget.isSheikh ? 'فضيلة الشيخ' : 'طالب إتقان',
-      );
-      await ZegoExpressEngine.instance.loginRoom(widget.roomId, user);
-
-      final streamId = 'stream_${widget.roomId}_${user.userID}';
-      await ZegoExpressEngine.instance.startPublishingStream(streamId);
-      await ZegoExpressEngine.instance.enableCamera(_isCameraOn);
-      await ZegoExpressEngine.instance.muteMicrophone(_isMicMuted);
-      await ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
-
-      // ربط نافذة معاينة الكاميرا الحقيقية عبر Zego Canvas View
-      await ZegoExpressEngine.instance.createCanvasView((viewID) {
-        _localViewID = viewID;
-        final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
-        ZegoExpressEngine.instance.startPreview(canvas: canvas);
-      }).then((widgetView) {
-        if (mounted && widgetView != null) {
-          setState(() {
-            _localVideoWidget = widgetView;
-            _isEngineReady = true;
-          });
+      // استقبال تيارات الفيديو والصوت للمشتركين عن بُعد (الشيخ والطلاب في نفس الغرفة)
+      ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) async {
+        if (!mounted || roomID != widget.roomId) return;
+        if (updateType == ZegoUpdateType.Add) {
+          for (var stream in streamList) {
+            await ZegoExpressEngine.instance.createCanvasView((viewID) {
+              final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
+              ZegoExpressEngine.instance.startPlayingStream(stream.streamID, canvas: canvas);
+            }).then((widgetView) {
+              if (mounted && widgetView != null) {
+                setState(() {
+                  _remoteStreams[stream.streamID] = widgetView;
+                });
+              }
+            });
+          }
+        } else if (updateType == ZegoUpdateType.Delete) {
+          for (var stream in streamList) {
+            try {
+              await ZegoExpressEngine.instance.stopPlayingStream(stream.streamID);
+            } catch (_) {}
+            if (mounted) {
+              setState(() {
+                _remoteStreams.remove(stream.streamID);
+              });
+            }
+          }
         }
-      });
+      };
+
+      // تحديث قائمة المتواجدين داخل الغرفة
+      ZegoExpressEngine.onRoomUserUpdate = (roomID, updateType, userList) {
+        if (!mounted || roomID != widget.roomId) return;
+        setState(() {
+          for (var u in userList) {
+            if (updateType == ZegoUpdateType.Add) {
+              _remoteUsers[u.userID] = u.userName;
+            } else {
+              _remoteUsers.remove(u.userID);
+            }
+          }
+        });
+      };
+
+      // استقبال رسائل الدردشة الفورية عبر ZEGOCLOUD كقناة سريعة إضافية
+      ZegoExpressEngine.onIMRecvBroadcastMessage = (roomID, messageList) {
+        if (!mounted || roomID != widget.roomId) return;
+        setState(() {
+          for (var msg in messageList) {
+            final senderName = msg.fromUser.userName.isNotEmpty ? msg.fromUser.userName : 'مشارك';
+            final alreadyExists = _messages.any(
+              (m) => m['sender'] == senderName && m['message'] == msg.message,
+            );
+            if (!alreadyExists) {
+              final now = TimeOfDay.now();
+              _messages.add({
+                'sender': senderName,
+                'role': 'remote',
+                'message': msg.message,
+                'time': '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+                'isMe': false,
+              });
+            }
+          }
+        });
+        _scrollToBottom();
+      };
+
+      final user = ZegoUser(_zegoUserId, _currentUserName);
+      final roomConfig = ZegoRoomConfig.defaultConfig()..isUserStatusNotify = true;
+      await ZegoExpressEngine.instance.loginRoom(widget.roomId, user, config: roomConfig);
+
+      // إعداد الكاميرا المحلية مسبقاً عند فتح الفيديو لاحقاً
+      await ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
+      if (mounted) {
+        setState(() => _isEngineReady = true);
+      }
     } catch (_) {
       if (mounted) setState(() => _isEngineReady = true);
     }
   }
 
-  Future<void> _destroyZego() async {
+  /// بدء بث الصوت أو الفيديو عند ضغط زر المكالمة الصوتية أو المرئية
+  Future<void> _startCallPublish({required bool video}) async {
+    try {
+      setState(() {
+        _isVoiceOnly = !video;
+        _isCameraOn = video;
+        _isMicMuted = false;
+        _isCallActive = true;
+        _isCallStarted = true;
+      });
+
+      await ZegoExpressEngine.instance.enableCamera(video);
+      await ZegoExpressEngine.instance.muteMicrophone(false);
+      await ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
+
+      if (video && _localVideoWidget == null) {
+        await ZegoExpressEngine.instance.createCanvasView((viewID) {
+          _localViewID = viewID;
+          final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
+          ZegoExpressEngine.instance.startPreview(canvas: canvas);
+        }).then((widgetView) {
+          if (mounted && widgetView != null) {
+            setState(() => _localVideoWidget = widgetView);
+          }
+        });
+      } else if (video && _localViewID != null) {
+        final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
+        await ZegoExpressEngine.instance.startPreview(canvas: canvas);
+      }
+
+      if (!_isPublishing) {
+        final streamId = 'stream_${widget.roomId}_$_zegoUserId';
+        await ZegoExpressEngine.instance.startPublishingStream(streamId);
+        _isPublishing = true;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _stopCallPublish() async {
     try {
       await ZegoExpressEngine.instance.stopPreview();
-      await ZegoExpressEngine.instance.stopPublishingStream();
+      if (_isPublishing) {
+        await ZegoExpressEngine.instance.stopPublishingStream();
+        _isPublishing = false;
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _isCallActive = false;
+        _isCallStarted = false;
+        _isScreenSharing = false;
+        _isPipMode = false;
+      });
+    }
+  }
+
+  Future<void> _destroyZego() async {
+    try {
+      ZegoExpressEngine.onRoomStreamUpdate = null;
+      ZegoExpressEngine.onRoomUserUpdate = null;
+      ZegoExpressEngine.onIMRecvBroadcastMessage = null;
+      await ZegoExpressEngine.instance.stopPreview();
+      if (_isPublishing) {
+        await ZegoExpressEngine.instance.stopPublishingStream();
+      }
       await ZegoExpressEngine.instance.logoutRoom(widget.roomId);
       await ZegoExpressEngine.destroyEngine();
     } catch (_) {}
@@ -520,21 +751,38 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     return '$m:$s';
   }
 
-  // إرسال رسالة في الشات
-  void _sendMessage() {
+  // إرسال رسالة في الشات (عبر السيرفر + ZEGOCLOUD فوراً)
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
+    final now = TimeOfDay.now();
+    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
     setState(() {
       _messages.add({
-        'sender': 'مشرف تجريبي 3',
+        'sender': _currentUserName,
         'role': 'me',
         'message': text,
-        'time': '${TimeOfDay.now().hour}:${TimeOfDay.now().minute.toString().padLeft(2, '0')}',
+        'time': timeStr,
         'isMe': true,
       });
       _messageController.clear();
     });
+    _scrollToBottom();
+
+    // إرسال فوري عبر ZEGOCLOUD للطرف الآخر داخل الغرفة
+    try {
+      await ZegoExpressEngine.instance.sendBroadcastMessage(widget.roomId, text);
+    } catch (_) {}
+
+    // حفظ وإرسال الرسالة عبر السيرفر
+    if (widget.classRoomId != null) {
+      try {
+        await _apiClient.sendClassMessage(widget.classRoomId!, text);
+        await _loadServerMessages();
+      } catch (_) {}
+    }
   }
 
   // اختيار ملف أو صورة في الشات (ورقة مرفقات من الصورة 10)
@@ -544,10 +792,10 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       if (res != null && res.files.isNotEmpty) {
         setState(() {
           _messages.add({
-            'sender': 'مشرف تجريبي 3',
+            'sender': _currentUserName,
             'role': 'me',
             'message': '📎 تم إرسال ملف: ${res.files.first.name}',
-            'time': '${TimeOfDay.now().hour}:${TimeOfDay.now().minute.toString().padLeft(2, '0')}',
+            'time': '${TimeOfDay.now().hour.toString().padLeft(2, '0')}:${TimeOfDay.now().minute.toString().padLeft(2, '0')}',
             'isMe': true,
           });
         });
@@ -580,9 +828,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(ctx),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.blueAccent, fontSize: 16)),
+                  child: const Text('إلغاء', style: TextStyle(color: Colors.blueAccent, fontSize: 16)),
                 ),
-                const Text('Share text', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('مشاركة النص', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 40),
               ],
             ),
@@ -601,10 +849,10 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Watch Chapter: ${widget.circleTitle}',
+                        Text('حلقة: ${widget.circleTitle}',
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                        const Text('With Sheikh: مشرف تجريبي 3',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        Text('الشيخ: $_displaySheikhName',
+                            style: const TextStyle(color: Colors.grey, fontSize: 12)),
                         Text(link, style: const TextStyle(color: Colors.blue, fontSize: 11)),
                       ],
                     ),
@@ -612,7 +860,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   IconButton(
                     icon: const Icon(Icons.copy_rounded, color: Colors.blueAccent),
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: 'Watch Chapter: ${widget.circleTitle}\n$link'));
+                      Clipboard.setData(ClipboardData(text: 'حلقة: ${widget.circleTitle}\n$link'));
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('تم نسخ الرابط بنجاح!')),
@@ -645,6 +893,53 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                 // Chapter Duration Card
                 _buildDurationCard(),
 
+                // Live Stream Banner when remote participant is broadcasting
+                if (_remoteStreams.isNotEmpty && !_isCallActive)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00875A),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.sensors_rounded, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'يوجد بث مباشر نشط الآن — اضغط للانضمام',
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () => _startCallPublish(video: true),
+                          child: const Text(
+                            'انضمام',
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              color: Color(0xFF00875A),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 const SizedBox(height: 8),
 
                 // Chat Messages Feed
@@ -652,52 +947,64 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   child: Container(
                     width: double.infinity,
                     color: Colors.white,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final msg = _messages[index];
-                        final isMe = msg['isMe'] == true;
-                        return Align(
-                          alignment: isMe ? Alignment.centerLeft : Alignment.centerRight,
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isMe ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: isMe ? const Color(0xFFC8E6C9) : Colors.grey.shade200,
+                    child: _messages.isEmpty
+                        ? Center(
+                            child: Text(
+                              'لا توجد رسائل بعد — ابدأ المحادثة مع المشاركين',
+                              style: TextStyle(
+                                fontFamily: 'Dubai',
+                                fontSize: 13,
+                                color: Colors.grey.shade500,
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  msg['sender'],
-                                  style: TextStyle(
-                                    fontFamily: 'Dubai',
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: isMe ? const Color(0xFF00875A) : Colors.black87,
+                          )
+                        : ListView.builder(
+                            controller: _chatScrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              final msg = _messages[index];
+                              final isMe = msg['isMe'] == true;
+                              return Align(
+                                alignment: isMe ? Alignment.centerLeft : Alignment.centerRight,
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: isMe ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isMe ? const Color(0xFFC8E6C9) : Colors.grey.shade200,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        msg['sender'] ?? '',
+                                        style: TextStyle(
+                                          fontFamily: 'Dubai',
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: isMe ? const Color(0xFF00875A) : Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        msg['message'] ?? '',
+                                        style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.black87),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        msg['time'] ?? '',
+                                        style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  msg['message'],
-                                  style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.black87),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  msg['time'],
-                                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ),
 
@@ -777,14 +1084,14 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                           ),
                         ),
                         // Label
-                        const Positioned(
+                        Positioned(
                           bottom: 6,
                           left: 6,
                           right: 6,
                           child: Text(
-                            'مشرف تجريبي 3',
+                            _currentUserName,
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -820,61 +1127,74 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           ),
 
           // User info
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
-                    widget.circleTitle,
-                    style: const TextStyle(
-                      fontFamily: 'Dubai',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF191919),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          widget.circleTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF191919),
+                          ),
+                        ),
+                        Text(
+                          _displaySheikhName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F8F5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFF00875A)),
+                          ),
+                          child: Text(
+                            '👤 المشتركين $_subscribersCount / $_capacity',
+                            style: const TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 11,
+                              color: Color(0xFF00875A),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Text(
-                    'مشرف تجريبي 3',
-                    style: TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F8F5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF00875A)),
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE0E0E0),
+                      shape: BoxShape.circle,
                     ),
-                    child: const Text(
-                      '👤 Subscribers 1 / 0',
-                      style: TextStyle(
-                        fontFamily: 'Dubai',
-                        fontSize: 11,
-                        color: Color(0xFF00875A),
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: const Center(
+                      child: Icon(Icons.person, color: Colors.grey, size: 26),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 10),
-              Container(
-                width: 50,
-                height: 50,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE0E0E0),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(Icons.person, color: Colors.grey, size: 30),
-                ),
-              ),
-            ],
+            ),
           ),
 
-          // Action Buttons: Share, Power, Call, Video Call (الصورة 4)
+          // Action Buttons: Share, Power, Call, Video Call
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Share button
               _buildCircularTopAction(
@@ -882,40 +1202,53 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                 color: const Color(0xFF00875A),
                 onTap: _shareChapter,
               ),
-              const SizedBox(width: 8),
-
-              // Power button (إنهاء وحفظ الحلقة)
-              _buildCircularTopAction(
-                icon: Icons.power_settings_new,
-                color: const Color(0xFF191919),
-                onTap: _endSessionPrompt,
-              ),
-              const SizedBox(width: 8),
+              if (widget.isSheikh) ...[
+                const SizedBox(width: 6),
+                // Power button (إنهاء وحفظ الحلقة للشيخ فقط)
+                _buildCircularTopAction(
+                  icon: Icons.power_settings_new,
+                  color: const Color(0xFF191919),
+                  onTap: _endSessionPrompt,
+                ),
+              ],
+              const SizedBox(width: 6),
 
               // Voice Call button
               _buildCircularTopAction(
                 icon: Icons.call_outlined,
                 color: const Color(0xFF191919),
-                onTap: () {
-                  setState(() {
-                    _isCallActive = true;
-                    _isVoiceOnly = true;
-                    _isCallStarted = true;
-                  });
-                },
+                onTap: () => _startCallPublish(video: false),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
 
               // Video Call button
               _buildCircularTopAction(
                 icon: Icons.videocam_outlined,
                 color: const Color(0xFF191919),
-                onTap: () {
+                onTap: () async {
                   setState(() {
                     _isCallActive = true;
                     _isVoiceOnly = false;
-                    _isCallStarted = false; // يفتح شاشة المعاينة وزر Start
+                    _isCameraOn = true;
+                    _isCallStarted = false;
                   });
+                  try {
+                    await ZegoExpressEngine.instance.enableCamera(true);
+                    if (_localVideoWidget == null) {
+                      await ZegoExpressEngine.instance.createCanvasView((viewID) {
+                        _localViewID = viewID;
+                        final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
+                        ZegoExpressEngine.instance.startPreview(canvas: canvas);
+                      }).then((widgetView) {
+                        if (mounted && widgetView != null) {
+                          setState(() => _localVideoWidget = widgetView);
+                        }
+                      });
+                    } else if (_localViewID != null) {
+                      final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
+                      await ZegoExpressEngine.instance.startPreview(canvas: canvas);
+                    }
+                  } catch (_) {}
                 },
               ),
             ],
@@ -980,7 +1313,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           const Row(
             children: [
               Text(
-                'Chapter Duration',
+                'مدة الحلقة',
                 style: TextStyle(
                   fontFamily: 'Dubai',
                   fontSize: 15,
@@ -1053,7 +1386,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                       controller: _messageController,
                       textAlign: TextAlign.right,
                       decoration: const InputDecoration(
-                        hintText: 'Write your message...',
+                        hintText: 'اكتب رسالتك...',
                         hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 10),
@@ -1112,7 +1445,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 GestureDetector(
-                  onTap: () => setState(() => _isCallActive = false),
+                  onTap: _stopCallPublish,
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
@@ -1162,10 +1495,10 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                       elevation: 4,
                     ),
                     onPressed: () {
-                      setState(() => _isCallStarted = true);
+                      _startCallPublish(video: true);
                     },
                     child: const Text(
-                      'Start',
+                      'بدء',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
@@ -1177,9 +1510,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Text(
-                    'مشرف تجريبي 3',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  child: Text(
+                    _currentUserName,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
               ],
@@ -1210,7 +1543,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text(
-                            'You are sharing screen',
+                            'أنت تشارك الشاشة الآن',
                             style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 16),
@@ -1224,7 +1557,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                               setState(() => _isScreenSharing = false);
                             },
                             child: const Text(
-                              'Stop sharing',
+                              'إيقاف المشاركة',
                               style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -1233,31 +1566,51 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                     ),
                   )
                 else if (_isVoiceOnly)
-                  // مكالمة صوتية فقط من الصورة 14
+                  // مكالمة صوتية مع عرض اسم الطرف المتصل
                   Center(
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFD0D5DD),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'م',
-                          style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.black87),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF00875A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              _currentUserName.isNotEmpty ? String.fromCharCode(_currentUserName.runes.first) : 'إ',
+                              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _remoteUsers.isNotEmpty
+                              ? 'متصل صوتياً مع: ${_remoteUsers.values.join("، ")}'
+                              : 'المكالمة الصوتية نشطة — في انتظار الطرف الآخر...',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Dubai'),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   )
                 else
-                  // Video Stream View with Real Local/Remote Camera
+                  // Video Stream View: Remote video primary + Local camera preview PiP
                   Container(
                     color: const Color(0xFF1B1D21),
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        if (_isCameraOn && _localVideoWidget != null)
+                        if (_remoteStreams.isNotEmpty)
+                          _remoteStreams.length == 1
+                              ? _remoteStreams.values.first
+                              : GridView.count(
+                                  crossAxisCount: 2,
+                                  children: _remoteStreams.values.toList(),
+                                )
+                        else if (_isCameraOn && _localVideoWidget != null)
                           _localVideoWidget!
                         else
                           Center(
@@ -1282,6 +1635,24 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                                 const SizedBox(height: 4),
                                 const Text('الكاميرا مغلقة (البث الصوتي نشط)', style: TextStyle(color: Colors.white38, fontSize: 12, fontFamily: 'Dubai')),
                               ],
+                            ),
+                          ),
+
+                        // Local Camera Preview thumbnail when viewing Remote Video
+                        if (_remoteStreams.isNotEmpty && _isCameraOn && _localVideoWidget != null)
+                          Positioned(
+                            top: 66,
+                            right: 16,
+                            child: Container(
+                              width: 100,
+                              height: 140,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white, width: 2),
+                                boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8)],
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: _localVideoWidget!,
                             ),
                           ),
                         // Live Audio Voice Wave Indicator
@@ -1373,11 +1744,11 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Text('1', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                                SizedBox(width: 4),
-                                Icon(Icons.person, color: Colors.white, size: 14),
+                                Text('${1 + _remoteUsers.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.person, color: Colors.white, size: 14),
                               ],
                             ),
                           ),
@@ -1385,13 +1756,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
                           // End Call X Button
                           GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isCallActive = false;
-                                _isCallStarted = false;
-                                _isScreenSharing = false;
-                              });
-                            },
+                            onTap: _stopCallPublish,
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: const BoxDecoration(
@@ -1417,7 +1782,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Text('مشرف تجريبي 3', style: TextStyle(color: Colors.white, fontSize: 11)),
+                    child: Text(_currentUserName, style: const TextStyle(color: Colors.white, fontSize: 11)),
                   ),
                 ),
               ],

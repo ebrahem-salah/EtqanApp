@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/share_service.dart';
 import '../../core/services/user_chapters_service.dart';
+import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
 import '../call/live_recitation_room.dart';
 import '../chapters/circle_replay_screen.dart';
 
@@ -21,45 +24,6 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
   List<Map<String, dynamic>> _ongoingChapters = [];
   List<Map<String, dynamic>> _finishedChapters = [];
 
-  final List<Map<String, dynamic>> _fallbackOngoing = [
-    {
-      'id': 101,
-      'title': 'تيست',
-      'supervisor': 'مشرف تجريبي 3',
-      'time': '07:32PM - 17/11/2026',
-      'subscribers': '0 / 1',
-      'avatar': null,
-    },
-    {
-      'id': 102,
-      'title': 'ت 1',
-      'supervisor': 'مشرف تجريبي 3',
-      'time': '04:02PM - 16/11/2026',
-      'subscribers': '0 / 1',
-      'avatar': null,
-    },
-    {
-      'id': 103,
-      'title': 'new',
-      'supervisor': 'مشرف تجريبي 3',
-      'time': '09:38AM - 16/11/2026',
-      'subscribers': '0 / 1',
-      'avatar': null,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _fallbackFinished = [
-    {
-      'id': 201,
-      'title': 'newwww',
-      'supervisor': 'مشرف تجريبي 3',
-      'time': '09:38AM - 16/11/2026',
-      'duration': '00:03:00',
-      'subscribers': '0 / 1',
-      'avatar': null,
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -70,41 +34,69 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
     setState(() => _isLoading = true);
     await UserChaptersService.instance.init();
 
-    final List<Map<String, dynamic>> userOngoing = List.from(UserChaptersService.instance.ongoingChapters);
-    final List<Map<String, dynamic>> userFinished = List.from(UserChaptersService.instance.finishedChapters);
+    final List<Map<String, dynamic>> userOngoing = [];
+    final List<Map<String, dynamic>> userFinished = [];
+    final Set<int> seenIds = {};
 
     try {
-      final res = await _apiClient.getMyClasses();
-      if (res.statusCode == 200 && res.data != null) {
-        final List items = res.data['data'] ?? [];
-        final List<Map<String, dynamic>> apiOngoing = [];
-        final List<Map<String, dynamic>> apiFinished = [];
+      // 1. الحلقات التي أنشأها الشيخ / المستخدم
+      final resMy = await _apiClient.getMyClasses();
+      // 2. الحلقات التي انضم إليها الطالب
+      dynamic resJoined;
+      try {
+        resJoined = await _apiClient.getMyJoinedClasses();
+      } catch (_) {}
 
-        for (var c in items) {
-          final isFinished = c['is_finished'] == true || c['status'] == 'completed';
-          final mapItem = {
-            'id': c['id'] ?? 1,
-            'title': c['name'] ?? 'حلقة تلاوة',
-            'supervisor': c['sheikh']?['name'] ?? c['supervisor']?['name'] ?? 'مشرف تجريبي 3',
-            'time': c['starts_at'] ?? '16/11/2026',
-            'duration': c['duration_formatted'] ?? '00:03:00',
-            'subscribers': '${c['students_count'] ?? 0} / ${c['capacity'] ?? 1}',
-            'avatar': c['image_url'],
-          };
-          if (isFinished) {
-            apiFinished.add(mapItem);
-          } else {
-            apiOngoing.add(mapItem);
-          }
+      final List allServerItems = [
+        ...(resMy.statusCode == 200 && resMy.data != null ? (resMy.data['data'] ?? []) : []),
+        ...(resJoined != null && resJoined.statusCode == 200 && resJoined.data != null ? (resJoined.data['data'] ?? []) : []),
+      ];
+
+      for (var c in allServerItems) {
+        final int? cid = c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}');
+        if (cid != null && !seenIds.add(cid)) continue;
+
+        final isFinished = c['is_finished'] == true || c['status'] == 'completed';
+        final sheikhObj = c['sheikh'] ?? c['creator']?['user'] ?? c['creator'];
+        final rawSupervisor = sheikhObj?['name']?.toString() ?? c['supervisor']?['name']?.toString() ?? '';
+        final supervisorName = (rawSupervisor.isNotEmpty && !rawSupervisor.contains('???'))
+            ? rawSupervisor
+            : 'الشيخ المقرئ';
+        final studentsCount = int.tryParse('${c['students_count'] ?? 0}') ?? 0;
+        final capacity = int.tryParse('${c['capacity'] ?? c['max_students'] ?? 30}') ?? 30;
+
+        final mapItem = {
+          'id': cid ?? 1,
+          'title': c['name'] ?? 'حلقة تلاوة',
+          'supervisor': supervisorName,
+          'time': c['starts_at'] ?? '',
+          'duration': c['duration_formatted'] ?? '00:00:00',
+          'studentsCount': studentsCount,
+          'capacity': capacity,
+          'subscribers': '$capacity / $studentsCount',
+          'avatar': sheikhObj?['avatar_url'] ?? c['image_url'],
+          'fromServer': true,
+        };
+        if (isFinished) {
+          userFinished.add(mapItem);
+        } else {
+          userOngoing.add(mapItem);
         }
-
-        userOngoing.addAll(apiOngoing);
-        userFinished.addAll(apiFinished);
       }
     } catch (_) {}
 
-    _ongoingChapters = userOngoing.isNotEmpty ? userOngoing : List.from(_fallbackOngoing);
-    _finishedChapters = userFinished.isNotEmpty ? userFinished : List.from(_fallbackFinished);
+    // دمج الحلقات المحلية التي لم تُحفظ بعد على السيرفر فقط
+    for (final local in UserChaptersService.instance.ongoingChapters) {
+      final exists = userOngoing.any((s) => s['title'] == local['title']);
+      if (!exists) userOngoing.add(local);
+    }
+    for (final local in UserChaptersService.instance.finishedChapters) {
+      final exists = userFinished.any((s) => s['title'] == local['title']);
+      if (!exists) userFinished.add(local);
+    }
+
+    _ongoingChapters = userOngoing;
+    _finishedChapters = userFinished;
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -297,11 +289,19 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
         final item = _ongoingChapters[index];
         return GestureDetector(
           onTap: () {
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            final isSheikh = (auth.currentUser?.role ?? UserRole.student) != UserRole.student;
+            final int? classId = item['id'] is int ? item['id'] as int : int.tryParse('${item['id']}');
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => LiveRecitationRoom(
-                  roomId: 'room_${item['id']}',
+                  roomId: classId != null ? 'room_srv_$classId' : 'room_${item['id']}',
                   circleTitle: item['title'],
+                  isSheikh: isSheikh,
+                  classRoomId: classId,
+                  sheikhName: item['supervisor']?.toString(),
+                  subscribersCount: item['studentsCount'] is int ? item['studentsCount'] as int : 1,
+                  capacity: item['capacity'] is int ? item['capacity'] as int : 30,
                 ),
               ),
             );

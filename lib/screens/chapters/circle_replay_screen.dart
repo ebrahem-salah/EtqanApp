@@ -171,7 +171,7 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
   @override
   Widget build(BuildContext context) {
     final title = widget.chapter['title'] ?? 'تسجيل الحلقة';
-    final supervisor = widget.chapter['supervisor'] ?? 'مشرف تجريبي';
+    final supervisor = widget.chapter['supervisor'] ?? 'الشيخ المقرئ';
     final time = widget.chapter['time'] ?? '16/11/2026';
     final duration = widget.chapter['duration'] ?? '00:03:00';
 
