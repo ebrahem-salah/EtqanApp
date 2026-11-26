@@ -584,47 +584,6 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
           const Divider(height: 20),
         ],
 
-        // زر فتح الشاشة المتخصصة للقسم
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: InkWell(
-            onTap: () {
-              final builder = section['hubBuilder'] as Widget Function(BuildContext);
-              Navigator.of(context).push(MaterialPageRoute(builder: (c) => builder(c)));
-            },
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF00875A), width: 0.8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xFF00875A)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'استعراض تفاصيل وتلاوات $sectionTitle',
-                        style: const TextStyle(
-                          fontFamily: 'Dubai',
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF00875A),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFF00875A)),
-                ],
-              ),
-            ),
-          ),
-        ),
-
         // قائمة الفروع الفرعية (كل قسم فرعي في صف كامل لوحده بدون صور وبدون كلمة دخول)
         ...subs.map((sub) {
           final subMap = sub as Map<String, dynamic>;

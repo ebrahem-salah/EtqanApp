@@ -705,18 +705,15 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                             Container(
                               width: 32,
                               height: 32,
-                              padding: const EdgeInsets.all(4),
                               decoration: const BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
-                              child: Image.asset(
-                                'assets/images/badg_gold.png',
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Icon(
+                              child: const Center(
+                                child: Icon(
                                   Icons.emoji_events_rounded,
                                   color: Color(0xFFD4AF37),
-                                  size: 18,
+                                  size: 20,
                                 ),
                               ),
                             ),
