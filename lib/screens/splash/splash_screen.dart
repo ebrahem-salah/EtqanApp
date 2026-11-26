@@ -90,15 +90,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Arch and Stars (Image 5 from User)
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/splash_arch_bg.png',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-            ),
-          ),
-
           // Center Original Etqan Logo with Zoom-In & Fade Effect (Image 3 from User)
           Center(
             child: FadeTransition(

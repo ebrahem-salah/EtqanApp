@@ -524,20 +524,24 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                                     children: [
                                       Row(
                                         children: [
-                                          Text(
-                                            reel['userName'],
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Dubai',
-                                              shadows: [
-                                                Shadow(color: Colors.black, blurRadius: 4),
-                                              ],
+                                          Flexible(
+                                            child: Text(
+                                              reel['userName'] ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Dubai',
+                                                shadows: [
+                                                  Shadow(color: Colors.black, blurRadius: 4),
+                                                ],
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
-                                          if (reel['isVolunteer'])
+                                          if (reel['isVolunteer'] == true)
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                               decoration: BoxDecoration(
@@ -554,14 +558,19 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                                               ),
                                             ),
                                           const SizedBox(width: 6),
-                                          Text(
-                                            reel['userRole'],
-                                            style: TextStyle(
-                                              color: Colors.white.withOpacity(0.85),
-                                              fontSize: 11,
-                                              shadows: const [
-                                                Shadow(color: Colors.black, blurRadius: 3),
-                                              ],
+                                          Flexible(
+                                            child: Text(
+                                              reel['userRole'] ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.85),
+                                                fontSize: 11,
+                                                fontFamily: 'Dubai',
+                                                shadows: const [
+                                                  Shadow(color: Colors.black, blurRadius: 3),
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -602,7 +611,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
             },
           ),
 
-          // 5. Top Header Bar (Matching Image 1 & 2 Exactly)
+          // 5. Top Header Bar (Clean Layout Matching Image 6)
           if (_isOverlayVisible)
             SafeArea(
               child: Padding(
@@ -610,7 +619,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left: Header Action Buttons (Bell, Search, 16 Sections, Start Live, Add Video)
+                    // Left: Header Action Buttons (Bell, Search, Add Video)
                     Row(
                       children: [
                         // 1. Notification Bell
@@ -620,7 +629,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                             _navigateTo(const NotificationsScreen());
                           },
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         // 2. Search
                         _buildHeaderCircleBtn(
                           icon: Icons.search_rounded,
@@ -628,137 +637,98 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                             _showSearchScreen(context);
                           },
                         ),
-                        const SizedBox(width: 8),
-                        // 3. الأقسام الـ 16 كاملة
-                        _buildHeaderCircleBtn(
-                          icon: Icons.grid_view_rounded,
-                          onTap: () {
-                            _navigateTo(const SectionsHubScreen());
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        // 4. Start Live Stream (Broadcast to Reels)
-                        _buildHeaderCircleBtn(
-                          icon: Icons.sensors_rounded,
-                          onTap: () {
-                            CreateSectionSessionDialog.show(context);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        // 5. Add Video
+                        const SizedBox(width: 10),
+                        // 3. Add Video (Black circle with white border and green + matching Image 6)
                         GestureDetector(
                           onTap: () {
                             _navigateTo(const AddVideoScreen());
                           },
                           child: Container(
-                            width: 38,
-                            height: 38,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFF00875A),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF00875A).withOpacity(0.4),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              color: Colors.black.withOpacity(0.75),
+                              border: Border.all(color: Colors.white, width: 1.5),
                             ),
-                            child: const Center(
-                              child: Icon(Icons.add, color: Colors.white, size: 22),
+                            child: Center(
+                              child: Container(
+                                width: 26,
+                                height: 26,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFF00875A),
+                                ),
+                                child: const Icon(Icons.add, color: Colors.white, size: 18),
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
 
-                    // Right: 16 Sections Hub Button & Competitions Button
-                    Row(
-                      children: [
-                        // 16 Sections Hub button
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const SectionsHubScreen()),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00875A),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF00875A).withOpacity(0.4),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.grid_view_rounded, color: Colors.white, size: 13),
-                                SizedBox(width: 4),
-                                Text(
-                                  'الأقسام (16)',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Dubai',
-                                  ),
-                                ),
-                              ],
-                            ),
+                    // Right: Clear Gold Competitions Button (Matching Image 6)
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const CompetitionsScreen()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.only(left: 14, right: 4, top: 4, bottom: 4),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFD4AF37), Color(0xFFB5892E)],
                           ),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        // Gold Competitions Button
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const CompetitionsScreen()),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
                               ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.amber.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                              child: Image.asset(
+                                'assets/images/badg_gold.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.emoji_events_rounded,
+                                  color: Color(0xFFD4AF37),
+                                  size: 18,
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Image.asset(
-                                  'assets/images/badg_gold.png',
-                                  height: 15,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events, color: Colors.white, size: 13),
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  '< المسابقات',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Dubai',
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(width: 8),
+                            const Text(
+                              'المسابقات',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Dubai',
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -795,7 +765,7 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
           // Live Broadcast Content Card
           Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.fromLTRB(74.0, 0, 24.0, 40.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

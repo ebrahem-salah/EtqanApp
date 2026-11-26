@@ -22,8 +22,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  String _selectedCountryCode = '+966';
-  String _selectedCountryFlag = '🇸🇦';
+  String _selectedCountryCode = '+20';
+  String _selectedCountryFlag = '🇪🇬';
 
   bool _agreeToTerms = true;
   bool _obscurePassword = true;

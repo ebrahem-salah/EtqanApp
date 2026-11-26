@@ -42,17 +42,19 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo/etqan_logo_original.png"
+  image_path: "assets/logo/etqan_launcher_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/logo/etqan_launcher_icon.png"
   min_sdk_android: 21
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: "assets/logo/etqan_logo_original.png"
-  color_dark: "#0F5B46"
-  image_dark: "assets/logo/etqan_logo_original.png"
+  image: "assets/logo/etqan_splash_square.png"
+  color_dark: "#FFFFFF"
+  image_dark: "assets/logo/etqan_splash_square.png"
   android_12:
     color: "#FFFFFF"
-    image: "assets/logo/etqan_logo_original.png"
+    image: "assets/logo/etqan_splash_square.png"
   ios: true
 
 flutter:

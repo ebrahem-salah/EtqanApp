@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/services/live_streams_service.dart';
+import '../../../core/services/user_chapters_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../call/live_recitation_room.dart';
 
@@ -34,17 +34,31 @@ class CreateSectionSessionDialog extends StatefulWidget {
 }
 
 class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog> {
-  late String _selectedSection;
-  late String _selectedSubSection;
+  String? _selectedSection;
+  String? _selectedSubSection;
   final TextEditingController _customTitleController = TextEditingController();
-  
-  // Naming choice: true = Named after creator, false = Custom name
+  final TextEditingController _priceController = TextEditingController(text: '35');
+
   bool _useCreatorName = false;
-  bool _startLiveStreamImmediately = true; // Automatically broadcasts to Reels
-  bool _isFree = true;
+  DateTime _startDateTime = DateTime.now();
   int _maxMembers = 25;
+  bool _isPaid = false;
+  bool _allowRecording = false;
+  bool _isPrivate = false;
 
   final Map<String, List<String>> _sectionsWithSub = {
+    'المكتبة الإلكترونية': [
+      'قسم المصاحف',
+      'كتب التفسير',
+      'كتب الحديث',
+      'أحكام التجويد',
+      'علوم أخرى',
+    ],
+    'تعليم الحروف والقاعدة النورانية': [
+      'المستوى الأول (الحروف المفردة)',
+      'المستوى الثاني (المركبة والمدود)',
+      'المستوى الثالث (أحكام التجويد)',
+    ],
     'القرآن الكريم': [
       'المقرأة',
       'المدارسة',
@@ -73,6 +87,16 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
       'الإقراء لكتب السنة',
       'القراءة بالإسناد',
     ],
+    'الدورات العلمية': [
+      'الدورات العلمية العامة',
+      'الدورات العلمية الخاصة',
+    ],
+    'علوم أخرى': [
+      'الفقه',
+      'السيرة النبوية',
+      'العقيدة',
+      'الرقائق',
+    ],
     'الفتاوى': [
       'فتاوى مباشرة',
       'فتاوى دار الإفتاء الإلكترونية',
@@ -84,51 +108,64 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
       'الراقي د. أحمد عبد المنعم',
       'جلسة رقية خاصة',
     ],
-    'تعليم الحروف والقاعدة النورانية': [
-      'المستوى الأول (الحروف المفردة)',
-      'المستوى الثاني (المركبة والمدود)',
-      'المستوى الثالث (أحكام التجويد)',
-    ],
-    'الدورات العلمية': [
-      'الدورات العلمية العامة',
-      'الدورات العلمية الخاصة',
-    ],
-    'علوم أخرى': [
-      'الفقه',
-      'السيرة النبوية',
-      'العقيدة',
-      'الرقائق',
-    ],
   };
 
   @override
   void initState() {
     super.initState();
-    _selectedSection = widget.initialSection ?? 'القرآن الكريم';
-    if (!_sectionsWithSub.containsKey(_selectedSection)) {
-      _selectedSection = 'القرآن الكريم';
+    if (widget.initialSection != null && _sectionsWithSub.containsKey(widget.initialSection)) {
+      _selectedSection = widget.initialSection;
+      final subs = _sectionsWithSub[_selectedSection]!;
+      _selectedSubSection = (widget.initialSubSection != null && subs.contains(widget.initialSubSection))
+          ? widget.initialSubSection
+          : subs.first;
     }
-    final subs = _sectionsWithSub[_selectedSection]!;
-    _selectedSubSection = (widget.initialSubSection != null && subs.contains(widget.initialSubSection))
-        ? widget.initialSubSection!
-        : subs.first;
   }
 
   @override
   void dispose() {
     _customTitleController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
   String _getFinalTitle(String creatorName) {
+    final sec = _selectedSection ?? 'القرآن الكريم';
+    final sub = _selectedSubSection ?? 'المقرأة';
     if (_useCreatorName) {
-      return '$_selectedSubSection - فضيلة $creatorName';
-    } else {
-      if (_customTitleController.text.trim().isNotEmpty) {
-        return _customTitleController.text.trim();
-      }
-      return '$_selectedSection: $_selectedSubSection';
+      return '$sub - فضيلة $creatorName';
+    } else if (_customTitleController.text.trim().isNotEmpty) {
+      return _customTitleController.text.trim();
     }
+    return '$sec: $sub';
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _startDateTime,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_startDateTime),
+    );
+    if (time == null || !mounted) return;
+
+    setState(() {
+      _startDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '${dt.year}/$m/$d  -  $hh:$mm';
   }
 
   @override
@@ -140,12 +177,12 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.88,
+          maxHeight: MediaQuery.of(context).size.height * 0.90,
         ),
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,14 +200,14 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                           color: const Color(0xFF00875A).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.video_call_rounded, color: Color(0xFF00875A), size: 24),
+                        child: const Icon(Icons.video_call_rounded, color: Color(0xFF00875A), size: 22),
                       ),
                       const SizedBox(width: 10),
                       const Text(
                         'إنشاء حلقة / جلسة بث',
                         style: TextStyle(
                           fontFamily: 'Dubai',
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF191919),
                         ),
@@ -183,10 +220,98 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                   ),
                 ],
               ),
-              const Divider(height: 20),
+              const Divider(height: 18),
 
-              // Section Selector
-              const Text('القسم الرئيسي', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
+              // 1. اسم الحلقة
+              const Text(
+                'اسم الحلقة',
+                style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _useCreatorName = false),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: !_useCreatorName ? const Color(0xFF00875A) : const Color(0xFFF8F9FA),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: !_useCreatorName ? const Color(0xFF00875A) : Colors.grey.shade300),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'اسم مخصص للحلقة',
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: !_useCreatorName ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _useCreatorName = true),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: _useCreatorName ? const Color(0xFF00875A) : const Color(0xFFF8F9FA),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: _useCreatorName ? const Color(0xFF00875A) : Colors.grey.shade300),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'باسمي ($creatorName)',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _useCreatorName ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!_useCreatorName) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _customTitleController,
+                  decoration: InputDecoration(
+                    hintText: 'اكتب اسم الحلقة (مثال: مقرأة تدبر وتصحيح التلاوة)',
+                    hintStyle: TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey.shade500),
+                    filled: true,
+                    fillColor: const Color(0xFFF8F9FA),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+
+              // 2. القسم الرئيسي
+              const Text(
+                'القسم الرئيسي',
+                style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -199,7 +324,16 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: _selectedSection,
-                    items: _sectionsWithSub.keys.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontFamily: 'Dubai', fontSize: 14)))).toList(),
+                    hint: const Text(
+                      'اختر القسم الرئيسي',
+                      style: TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.grey),
+                    ),
+                    items: _sectionsWithSub.keys
+                        .map((s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s, style: const TextStyle(fontFamily: 'Dubai', fontSize: 13)),
+                            ))
+                        .toList(),
                     onChanged: (val) {
                       if (val != null) {
                         setState(() {
@@ -211,214 +345,239 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                   ),
                 ),
               ),
+
+              // 3. القسم الفرعي (يظهر فقط عند اختيار القسم الرئيسي)
+              if (_selectedSection != null) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  'القسم الفرعي',
+                  style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedSubSection,
+                      items: _sectionsWithSub[_selectedSection]!
+                          .map((sub) => DropdownMenuItem(
+                                value: sub,
+                                child: Text(sub, style: const TextStyle(fontFamily: 'Dubai', fontSize: 13)),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedSubSection = val);
+                      },
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
 
-              // Sub-section Selector
-              const Text('التصنيف والفرع', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
+              // 4. تاريخ ووقت البدء
+              const Text(
+                'تاريخ ووقت البدء',
+                style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
               const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickDateTime,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDateTime(_startDateTime),
+                        style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const Icon(Icons.calendar_month_rounded, color: Color(0xFF00875A), size: 20),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // 5. عدد المشتركين
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8F9FA),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _selectedSubSection,
-                    items: _sectionsWithSub[_selectedSection]!.map((sub) => DropdownMenuItem(value: sub, child: Text(sub, style: const TextStyle(fontFamily: 'Dubai', fontSize: 14)))).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedSubSection = val);
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Naming Option (الملاحظة الهامة من المستخدم)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F8E9),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF00875A).withOpacity(0.3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.edit_note_rounded, color: Color(0xFF00875A), size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'تسمية الحلقة أو الجلسة:',
-                          style: TextStyle(
-                            fontFamily: 'Dubai',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Color(0xFF00875A),
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'عدد المشتركين',
+                      style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
                     ),
-                    const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _useCreatorName = true),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: _useCreatorName ? const Color(0xFF00875A) : Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: _useCreatorName ? const Color(0xFF00875A) : Colors.grey.shade300),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'تسمية باسمي ($creatorName)',
-                                  style: TextStyle(
-                                    fontFamily: 'Dubai',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: _useCreatorName ? Colors.white : Colors.black87,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                          ),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF00875A)),
+                          onPressed: () {
+                            if (_maxMembers > 2) setState(() => _maxMembers -= 2);
+                          },
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _useCreatorName = false),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: !_useCreatorName ? const Color(0xFF00875A) : Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: !_useCreatorName ? const Color(0xFF00875A) : Colors.grey.shade300),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'اسم مخصص للحلقة',
-                                  style: TextStyle(
-                                    fontFamily: 'Dubai',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: !_useCreatorName ? Colors.white : Colors.black87,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                          ),
+                        Text(
+                          '$_maxMembers مشارك',
+                          style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, color: Color(0xFF00875A)),
+                          onPressed: () {
+                            if (_maxMembers < 100) setState(() => _maxMembers += 5);
+                          },
                         ),
                       ],
                     ),
-                    if (!_useCreatorName) ...[
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _customTitleController,
-                        decoration: InputDecoration(
-                          hintText: 'اكتب اسم الحلقة (مثال: مقرأة تدبر وتصحيح جزء عم / إهداء الثواب لوالدي)',
-                          hintStyle: TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey.shade500),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Live Broadcast To Reels Option (الشرط الثاني للمستخدم)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFE53935).withOpacity(0.08),
-                      const Color(0xFFFF8A80).withOpacity(0.04),
-                    ],
+              // 6. نوع الحلقة (مجانية / مدفوعة)
+              const Text(
+                'نوع الحلقة',
+                style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _isPaid = false),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: !_isPaid ? const Color(0xFF00875A) : const Color(0xFFF8F9FA),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: !_isPaid ? const Color(0xFF00875A) : Colors.grey.shade300),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'مجانية',
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: !_isPaid ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE53935).withOpacity(0.3)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _isPaid = true),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _isPaid ? const Color(0xFF00875A) : const Color(0xFFF8F9FA),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: _isPaid ? const Color(0xFF00875A) : Colors.grey.shade300),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'مدفوعة',
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: _isPaid ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_isPaid) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'سعر الاشتراك (ج.م / ر.س)',
+                    labelStyle: const TextStyle(fontFamily: 'Dubai', fontSize: 12),
+                    filled: true,
+                    fillColor: const Color(0xFFF8F9FA),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+
+              // 7. تسجيل الفيديو
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  value: _startLiveStreamImmediately,
-                  onChanged: (val) => setState(() => _startLiveStreamImmediately = val),
-                  activeColor: const Color(0xFFE53935),
-                  title: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE53935),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.circle, color: Colors.white, size: 8),
-                            SizedBox(width: 4),
-                            Text(
-                              'بث مباشر',
-                              style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'إظهار البث في مقاطع الريلز فوراً',
-                          style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ),
-                    ],
+                  value: _allowRecording,
+                  onChanged: (val) => setState(() => _allowRecording = val),
+                  activeColor: const Color(0xFF00875A),
+                  title: const Text(
+                    'تسجيل الفيديو',
+                    style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   subtitle: const Text(
-                    'سيظهر البث المباشر لجميع مستخدمي التطبيق في شريط الريلز ليتمكنوا من الانضمام بضغطة واحدة.',
+                    'حفظ تسجيل الحلقة وإتاحتها للمشتركين في الأرشيف',
                     style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.black54),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
 
-              // Max students count & Free/Paid
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('الحد الأقصى للطلاب:', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF00875A)),
-                        onPressed: () {
-                          if (_maxMembers > 2) setState(() => _maxMembers -= 2);
-                        },
-                      ),
-                      Text('$_maxMembers مشارك', style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13)),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF00875A)),
-                        onPressed: () {
-                          if (_maxMembers < 100) setState(() => _maxMembers += 5);
-                        },
-                      ),
-                    ],
+              // 8. تحت خالص: حلقة خاصة
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _isPrivate,
+                  onChanged: (val) => setState(() => _isPrivate = val),
+                  activeColor: const Color(0xFF00875A),
+                  title: const Text(
+                    'حلقة خاصة',
+                    style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
                   ),
-                ],
+                  subtitle: const Text(
+                    'لا تظهر للعامة، الدخول عبر الدعوة فقط',
+                    style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.black54),
+                  ),
+                ),
               ),
               const SizedBox(height: 18),
 
@@ -431,20 +590,46 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                     backgroundColor: const Color(0xFF00875A),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
+                    if (_selectedSection == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('يرجى اختيار القسم الرئيسي أولاً', style: TextStyle(fontFamily: 'Dubai')),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      return;
+                    }
+
                     final finalTitle = _getFinalTitle(creatorName);
                     final roomId = 'room_${DateTime.now().millisecondsSinceEpoch}';
+                    final sectionName = _selectedSection!;
+                    final subSectionName = _selectedSubSection ?? 'عام';
+                    final priceDouble = _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0;
 
-                    // If live broadcast is enabled, add it to LiveStreamsService so it appears in Reels!
-                    if (_startLiveStreamImmediately) {
+                    await UserChaptersService.instance.createChapter(
+                      name: finalTitle,
+                      mainCategory: sectionName,
+                      subCategory: subSectionName,
+                      startTime: _formatDateTime(_startDateTime),
+                      maxStudents: _maxMembers,
+                      isPaid: _isPaid,
+                      price: priceDouble,
+                      isPrivate: _isPrivate,
+                      allowRecording: _allowRecording,
+                      showInReelsAsLive: !_isPrivate,
+                      supervisorName: creatorName,
+                    );
+
+                    if (!_isPrivate) {
                       LiveStreamsService.instance.addLiveStream(
                         LiveStreamItem(
                           id: roomId,
                           title: finalTitle,
                           sheikhName: creatorName,
                           sheikhAvatar: 'assets/images/profile.png',
-                          sectionName: _selectedSection,
-                          subSectionName: _selectedSubSection,
+                          sectionName: sectionName,
+                          subSectionName: subSectionName,
                           viewerCount: 1,
                           roomId: roomId,
                           isVideo: true,
@@ -453,9 +638,9 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                       );
                     }
 
+                    if (!mounted) return;
                     Navigator.of(context).pop();
 
-                    // Open Live Recitation Room
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => LiveRecitationRoom(
@@ -467,21 +652,19 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                     );
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
+                      const SnackBar(
                         content: Text(
-                          _startLiveStreamImmediately
-                              ? 'تم إنشاء الحلقة وبدء البث المباشر بنجاح! يظهر الآن في الريلز.'
-                              : 'تم جدولة الحلقة بنجاح!',
-                          style: const TextStyle(fontFamily: 'Dubai'),
+                          'تم إنشاء الحلقة بنجاح وبدء البث المباشر!',
+                          style: TextStyle(fontFamily: 'Dubai'),
                         ),
-                        backgroundColor: const Color(0xFF00875A),
+                        backgroundColor: Color(0xFF00875A),
                       ),
                     );
                   },
                   icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.white),
-                  label: Text(
-                    _startLiveStreamImmediately ? 'بدء البث المباشر ونشره في الريلز' : 'إنشاء وحفظ الحلقة',
-                    style: const TextStyle(fontFamily: 'Dubai', fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                  label: const Text(
+                    'إنشاء وبدء الحلقة',
+                    style: TextStyle(fontFamily: 'Dubai', fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
               ),

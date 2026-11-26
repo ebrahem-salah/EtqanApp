@@ -71,7 +71,7 @@ class CountryCodes {
     }).toList();
   }
 
-  static CountryCodeItem get defaultCountry => all.first; // السعودية (+966)
+  static CountryCodeItem get defaultCountry => all[1]; // جمهورية مصر العربية (+20)
 
   /// استرجاع الدولة عبر رمز الأيزو (ISO-2 Code: SA, EG, AE...)
   static CountryCodeItem getByIsoCode(String? isoCode) {
@@ -85,12 +85,18 @@ class CountryCodes {
     );
   }
 
-  /// الكشف الذكي عن دولة جهاز المستخدم تلقائياً
+  /// الكشف الذكي عن دولة جهاز المستخدم تلقائياً (الافتراضي مصر +20)
   static CountryCodeItem detectDeviceCountry() {
     try {
-      final locale = DateTime.now(); // trigger runtime
+      final tzHours = DateTime.now().timeZoneOffset.inHours;
+      if (tzHours == 2) {
+        return all[1]; // مصر (+20)
+      }
       final platformCountry = WidgetsBinding.instance.platformDispatcher.locale.countryCode;
-      if (platformCountry != null && platformCountry.isNotEmpty) {
+      if (platformCountry != null &&
+          platformCountry.isNotEmpty &&
+          platformCountry.toUpperCase() != 'US' &&
+          platformCountry.toUpperCase() != 'GB') {
         return getByIsoCode(platformCountry);
       }
     } catch (_) {}

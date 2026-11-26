@@ -24,8 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _rememberMe = true;
   bool _obscurePassword = true;
-  String _selectedCountryCode = '+966';
-  String _selectedCountryFlag = '🇸🇦';
+  String _selectedCountryCode = '+20';
+  String _selectedCountryFlag = '🇪🇬';
 
   bool _canUseBiometrics = false;
   bool _isBiometricEnabled = false;
