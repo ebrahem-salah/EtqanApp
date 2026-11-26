@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/services/live_streams_service.dart';
 import '../../../core/services/user_chapters_service.dart';
 import '../../../providers/auth_provider.dart';
@@ -620,6 +621,20 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                       showInReelsAsLive: !_isPrivate,
                       supervisorName: creatorName,
                     );
+
+                    try {
+                      final categoryIdx = _sectionsWithSub.keys.toList().indexOf(sectionName) + 1;
+                      await ApiClient().createClass(
+                        name: finalTitle,
+                        categoryId: categoryIdx > 0 ? categoryIdx : 1,
+                        startTime: _startDateTime.toIso8601String(),
+                        maxStudents: _maxMembers,
+                        type: _isPaid ? 'paid' : 'free',
+                        price: priceDouble,
+                        isPrivate: _isPrivate,
+                        allowRecording: _allowRecording,
+                      );
+                    } catch (_) {}
 
                     if (!_isPrivate) {
                       LiveStreamsService.instance.addLiveStream(

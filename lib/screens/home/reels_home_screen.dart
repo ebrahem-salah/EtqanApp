@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/network/api_client.dart';
+import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../core/services/share_service.dart';
 import '../../core/services/reels_preload_manager.dart';
 import '../../core/services/live_streams_service.dart';
@@ -198,6 +201,9 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
+    final userRole = Provider.of<AuthProvider>(context).currentUser?.role ?? UserRole.student;
+    final canUploadVideo = userRole != UserRole.student;
+
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Colors.black,
@@ -234,13 +240,15 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                           icon: Icons.search_rounded,
                           onTap: () => _showSearchScreen(context),
                         ),
-                        const SizedBox(width: 8),
-                        _buildHeaderCircleBtn(
-                          icon: Icons.video_call_rounded,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const AddVideoScreen()),
-                          ).then((_) => _loadLiveVideos()),
-                        ),
+                        if (canUploadVideo) ...[
+                          const SizedBox(width: 8),
+                          _buildHeaderCircleBtn(
+                            icon: Icons.video_call_rounded,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const AddVideoScreen()),
+                            ).then((_) => _loadLiveVideos()),
+                          ),
+                        ],
                       ],
                     ),
                     const Text(
@@ -637,33 +645,35 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                             _showSearchScreen(context);
                           },
                         ),
-                        const SizedBox(width: 10),
-                        // 3. Add Video (Black circle with white border and green + matching Image 6)
-                        GestureDetector(
-                          onTap: () {
-                            _navigateTo(const AddVideoScreen());
-                          },
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.black.withOpacity(0.75),
-                              border: Border.all(color: Colors.white, width: 1.5),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 26,
-                                height: 26,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Color(0xFF00875A),
+                        if (canUploadVideo) ...[
+                          const SizedBox(width: 10),
+                          // 3. Add Video (Black circle with white border and green + matching Image 6)
+                          GestureDetector(
+                            onTap: () {
+                              _navigateTo(const AddVideoScreen());
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withOpacity(0.75),
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF00875A),
+                                  ),
+                                  child: const Icon(Icons.add, color: Colors.white, size: 18),
                                 ),
-                                child: const Icon(Icons.add, color: Colors.white, size: 18),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
 

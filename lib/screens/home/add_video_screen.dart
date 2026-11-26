@@ -201,17 +201,30 @@ class _AddVideoScreenState extends State<AddVideoScreen>
 
   Future<void> _uploadByUrl(String url, String description) async {
     setState(() => _isUploading = true);
+    bool syncedToServer = false;
+    String? serverError;
+    try {
+      final res = await _apiClient.createVideo(description: description, videoUrl: url);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        syncedToServer = true;
+      }
+    } catch (e) {
+      serverError = e.toString();
+    }
+
     await UserVideosService.instance.saveVideo(
       description: description,
       videoUrl: url,
     );
-    try {
-      await _apiClient.createVideo(description: description, videoUrl: url);
-    } catch (_) {}
+
     if (mounted) {
       setState(() => _isUploading = false);
-      _showSnack('🎉 تم نشر وحفظ مقطع الفيديو بنجاح!');
-      Navigator.pop(context, true);
+      if (syncedToServer) {
+        _showSnack('🎉 تم نشر مقطع الفيديو للجميع على السيرفر بنجاح!');
+        Navigator.pop(context, true);
+      } else {
+        _showSnack('⚠️ حُفظ محلياً فقط، تعذر النشر على السيرفر (تأكد من الدخول بحساب شيخ مفعل)', isError: true);
+      }
     }
   }
 
@@ -222,28 +235,37 @@ class _AddVideoScreenState extends State<AddVideoScreen>
     });
 
     final fileToUpload = _compressedFile ?? _selectedFile!;
+    bool syncedToServer = false;
+
+    try {
+      final res = await _apiClient.uploadVideoFile(
+        file: fileToUpload,
+        description: description,
+        onProgress: (sent, total) {
+          if (mounted && total > 0) {
+            setState(() => _uploadProgress = sent / total);
+          }
+        },
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        syncedToServer = true;
+      }
+    } catch (_) {}
+
     await UserVideosService.instance.saveVideo(
       description: description,
       videoUrl: fileToUpload.path,
       localFilePath: fileToUpload.path,
     );
 
-    try {
-      // رفع الملف عبر API مع تتبع التقدم
-      await _apiClient.uploadVideoFile(
-        file: fileToUpload,
-        description: description,
-        onProgress: (sent, total) {
-          if (mounted) {
-            setState(() => _uploadProgress = sent / total);
-          }
-        },
-      );
-    } catch (_) {}
     if (mounted) {
       setState(() => _isUploading = false);
-      _showSnack('🎉 تم حفظ ونشر الفيديو بنجاح!');
-      Navigator.pop(context, true);
+      if (syncedToServer) {
+        _showSnack('🎉 تم رفع ونشر الفيديو للجميع على السيرفر بنجاح!');
+        Navigator.pop(context, true);
+      } else {
+        _showSnack('⚠️ حُفظ محلياً فقط، تعذر رفعه للسيرفر (تأكد من الدخول بحساب شيخ مفعل وحجم الملف)', isError: true);
+      }
     }
   }
 

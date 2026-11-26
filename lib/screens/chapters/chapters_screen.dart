@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/user_chapters_service.dart';
+import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
 import '../call/live_recitation_room.dart';
 import '../sections/sections_hub_screen.dart';
 import '../sections/01_library/library_hub_screen.dart';
@@ -306,18 +309,21 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
           ),
         ],
       ),
-      // زر واحد فقط وأساسي لإنشاء حلقة جديدة في أسفل الشاشة
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF00875A),
-        foregroundColor: Colors.white,
-        elevation: 4,
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AddChapterScreen()),
-          );
-        },
-        child: const Icon(Icons.add, size: 28),
-      ),
+      // زر واحد فقط وأساسي لإنشاء حلقة جديدة (متاح للشيوخ والمشرفين فقط)
+      floatingActionButton: (Provider.of<AuthProvider>(context).currentUser?.role ?? UserRole.student) != UserRole.student
+          ? FloatingActionButton(
+              backgroundColor: const Color(0xFF00875A),
+              foregroundColor: Colors.white,
+              elevation: 4,
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AddChapterScreen()),
+                );
+                _loadLiveClasses();
+              },
+              child: const Icon(Icons.add, size: 28),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: Row(
         children: [
@@ -401,9 +407,108 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
       return (c['mainCategory'] ?? '') == sectionTitle;
     }).toList();
 
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      children: [
+    // Filter live server classes matching this section (or show if category name matches)
+    final serverClasses = _liveClasses.where((c) {
+      final catName = c['category']?['name']?.toString() ?? '';
+      return catName.isEmpty || catName == sectionTitle || catName.contains(sectionTitle) || sectionTitle.contains(catName);
+    }).toList();
+
+    return RefreshIndicator(
+      color: const Color(0xFF00875A),
+      onRefresh: _loadLiveClasses,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        children: [
+          // الحلقات المباشرة والمنشأة على السيرفر (تظهر للطلاب وجميع المستخدمين)
+          if (serverClasses.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                children: [
+                  const Icon(Icons.live_tv_rounded, color: Color(0xFF00875A), size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    'الحلقات المتاحة في هذا القسم (${serverClasses.length})',
+                    style: const TextStyle(
+                      fontFamily: 'Dubai',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF00875A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...serverClasses.map((cls) {
+              final title = cls['name']?.toString() ?? 'حلقة تلاوة';
+              final sheikhName = cls['sheikh']?['name']?.toString() ?? cls['creator']?['name']?.toString() ?? 'الشيخ المقرئ';
+              final studentsCount = cls['students_count'] ?? 0;
+              final startsAt = cls['starts_at']?.toString() ?? '';
+              final classId = cls['id'] is int ? cls['id'] as int : int.tryParse('${cls['id']}');
+              return GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => LiveRecitationRoom(
+                        roomId: 'room_srv_${cls['id']}',
+                        circleTitle: title,
+                        isSheikh: (Provider.of<AuthProvider>(context, listen: false).currentUser?.role ?? UserRole.student) != UserRole.student,
+                        classRoomId: classId,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF00875A), width: 1.2),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00875A),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontFamily: 'Dubai',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Color(0xFF1E2822),
+                              ),
+                            ),
+                            Text(
+                              'الشيخ: $sheikhName • المشاركون: $studentsCount${startsAt.isNotEmpty ? ' • $startsAt' : ''}',
+                              style: TextStyle(
+                                fontFamily: 'Dubai',
+                                fontSize: 11,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00875A), size: 14),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const Divider(height: 20),
+          ],
         // إذا كان هناك حلقات منشأة من قبل المستخدم في هذا القسم تظهر كبطاقات مباشرة
         if (userChapters.isNotEmpty) ...[
           Padding(
@@ -589,6 +694,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
           );
         }),
       ],
+      ),
     );
   }
 }
