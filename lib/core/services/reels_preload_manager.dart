@@ -18,26 +18,28 @@ class ReelsPreloadManager {
     _videoUrls = urls;
   }
 
+  /// الحصول على مشغل فيديو جاهز أو تهيئته فوراً عبر المسار
+  Future<VideoPlayerController> getControllerForPath(String path) async {
+    if (path.isEmpty) {
+      throw Exception('Empty video path');
+    }
+    if (_controllerCache.containsKey(path) && _controllerCache[path]!.value.isInitialized) {
+      return _controllerCache[path]!;
+    }
+    final controller = _createController(path);
+    await controller.initialize();
+    controller.setLooping(true);
+    _controllerCache[path] = controller;
+    return controller;
+  }
+
   /// الحصول على مشغل فيديو جاهز أو تهيئته فوراً
   Future<VideoPlayerController> getControllerForIndex(int index) async {
     if (index < 0 || index >= _videoUrls.length) {
       throw Exception('Index out of range');
     }
-
     final path = _videoUrls[index];
-
-    // 1. إذا كان المشغل مهيأ مسبقاً في الكاش، نرجعه مباشرة (تشغيل فوري 0ms)
-    if (_controllerCache.containsKey(path) && _controllerCache[path]!.value.isInitialized) {
-      return _controllerCache[path]!;
-    }
-
-    // 2. إذا لم يكن مهيأ، نقوم بتهيئته وتخزينه
-    final controller = _createController(path);
-    await controller.initialize();
-    controller.setLooping(true);
-    _controllerCache[path] = controller;
-
-    return controller;
+    return getControllerForPath(path);
   }
 
   /// التحميل المسبق للفيديو التالي والسابق لضمان سرعة التمرير
@@ -58,7 +60,7 @@ class ReelsPreloadManager {
 
   Future<void> _preloadIndex(int index) async {
     final path = _videoUrls[index];
-    if (_controllerCache.containsKey(path)) return;
+    if (path.isEmpty || _controllerCache.containsKey(path)) return;
 
     try {
       final controller = _createController(path);
@@ -87,7 +89,7 @@ class ReelsPreloadManager {
   void _cleanDistantControllers(int currentIndex) {
     final keepIndices = {currentIndex - 1, currentIndex, currentIndex + 1};
     final keepUrls = keepIndices
-        .where((i) => i >= 0 && i < _videoUrls.length)
+        .where((i) => i >= 0 && i < _videoUrls.length && _videoUrls[i].isNotEmpty)
         .map((i) => _videoUrls[i])
         .toSet();
 
@@ -113,11 +115,12 @@ class ReelsPreloadManager {
     }
   }
 
-  /// استئناف تشغيل فيديو محدد
+  /// استئناف تشغيل فيديو محدد فقط إذا كان عنصر فيديو فعلاً
   void resumeIndex(int index) {
+    pauseAll();
     if (index >= 0 && index < _videoUrls.length) {
       final path = _videoUrls[index];
-      if (_controllerCache.containsKey(path)) {
+      if (path.isNotEmpty && _controllerCache.containsKey(path)) {
         try {
           _controllerCache[path]?.setVolume(1.0);
           _controllerCache[path]?.play();

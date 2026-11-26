@@ -39,17 +39,19 @@ class StudentHomeScreen extends StatefulWidget {
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _selectedTabIndex = 0;
+  int _tabRefreshTick = 0;
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final isSheikh = auth.currentUser?.role == UserRole.sheikh;
+    final canCreateCircle = auth.currentUser?.role == UserRole.sheikh ||
+        auth.currentUser?.role == UserRole.supervisor;
 
     final List<Widget> screens = [
       ReelsHomeScreen(isActive: _selectedTabIndex == 0),
-      const ChaptersScreen(),
+      ChaptersScreen(refreshTick: _tabRefreshTick),
       const SheikhsScreen(),
-      const MyChaptersScreen(),
+      MyChaptersScreen(refreshTick: _tabRefreshTick),
       const _MoreScreenPlaceholder(),
     ];
 
@@ -58,17 +60,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         index: _selectedTabIndex,
         children: screens,
       ),
-      floatingActionButton: isSheikh
+      floatingActionButton: (canCreateCircle && _selectedTabIndex != 0)
           ? FloatingActionButton.extended(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add),
               label: const Text('إضافة حلقة'),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => const AddChapterDialog(),
-                );
+              onPressed: () async {
+                await AddChapterDialog.show(context);
+                if (mounted) {
+                  setState(() => _tabRefreshTick++);
+                }
               },
             )
           : null,
@@ -86,6 +88,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           }
           setState(() {
             _selectedTabIndex = index;
+            if (index == 1 || index == 3) {
+              _tabRefreshTick++;
+            }
           });
         },
         items: [

@@ -70,6 +70,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   Widget? _localVideoWidget;
   int? _localViewID;
   final Map<String, Widget> _remoteStreams = {};
+  final Map<String, bool> _remoteCameraOn = {};
   final Map<String, String> _remoteUsers = {};
   bool _isPublishing = false;
   bool _useFrontCamera = true;
@@ -661,6 +662,14 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         _scrollToBottom();
       };
 
+      // متابعة حالة كاميرا الطرف الآخر (لعدم عرض شاشة سوداء إذا كان الاتصال صوتياً فقط)
+      ZegoExpressEngine.onRemoteCameraStateUpdate = (streamID, state) {
+        if (!mounted) return;
+        setState(() {
+          _remoteCameraOn[streamID] = state == ZegoRemoteDeviceState.Open;
+        });
+      };
+
       final user = ZegoUser(_zegoUserId, _currentUserName);
       final roomConfig = ZegoRoomConfig.defaultConfig()..isUserStatusNotify = true;
       await ZegoExpressEngine.instance.loginRoom(widget.roomId, user, config: roomConfig);
@@ -678,6 +687,15 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   /// بدء بث الصوت أو الفيديو عند ضغط زر المكالمة الصوتية أو المرئية
   Future<void> _startCallPublish({required bool video}) async {
     try {
+      // إيقاف المعاينة المؤقتة وإعادة إنشاء Canvas جديد لشاشة المكالمة النشطة
+      if (video && !_isCallStarted) {
+        try {
+          await ZegoExpressEngine.instance.stopPreview();
+        } catch (_) {}
+        _localVideoWidget = null;
+        _localViewID = null;
+      }
+
       setState(() {
         _isVoiceOnly = !video;
         _isCameraOn = video;
@@ -690,7 +708,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       await ZegoExpressEngine.instance.muteMicrophone(false);
       await ZegoExpressEngine.instance.setAudioRouteToSpeaker(_isSpeakerOn);
 
-      if (video && _localVideoWidget == null) {
+      if (video) {
         await ZegoExpressEngine.instance.createCanvasView((viewID) {
           _localViewID = viewID;
           final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
@@ -700,9 +718,6 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
             setState(() => _localVideoWidget = widgetView);
           }
         });
-      } else if (video && _localViewID != null) {
-        final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
-        await ZegoExpressEngine.instance.startPreview(canvas: canvas);
       }
 
       if (!_isPublishing) {
@@ -723,6 +738,8 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     } catch (_) {}
     if (mounted) {
       setState(() {
+        _localVideoWidget = null;
+        _localViewID = null;
         _isCallActive = false;
         _isCallStarted = false;
         _isScreenSharing = false;
@@ -736,6 +753,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       ZegoExpressEngine.onRoomStreamUpdate = null;
       ZegoExpressEngine.onRoomUserUpdate = null;
       ZegoExpressEngine.onIMRecvBroadcastMessage = null;
+      ZegoExpressEngine.onRemoteCameraStateUpdate = null;
       await ZegoExpressEngine.instance.stopPreview();
       if (_isPublishing) {
         await ZegoExpressEngine.instance.stopPublishingStream();
@@ -1105,151 +1123,149 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     );
   }
 
-  // ── Header من الصورة 4 ──
+  // ── Header منظم في سطرين: اسم الحلقة بالعرض الكامل فوق، ثم الرموز والمشتركين تحت ──
   Widget _buildChapterHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 8.0),
+      child: Column(
         children: [
-          // Back button
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
+          // السطر الأول: زر الرجوع + اسم الحلقة والشيخ بالعرض الكامل + الصورة
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00875A), size: 18),
+                ),
               ),
-              child: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00875A), size: 18),
-            ),
-          ),
-
-          // User info
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          widget.circleTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Dubai',
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF191919),
-                          ),
-                        ),
-                        Text(
-                          _displaySheikhName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F8F5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF00875A)),
-                          ),
-                          child: Text(
-                            '👤 المشتركين $_subscribersCount / $_capacity',
-                            style: const TextStyle(
-                              fontFamily: 'Dubai',
-                              fontSize: 11,
-                              color: Color(0xFF00875A),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.circleTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF191919),
+                        height: 1.25,
+                      ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _displaySheikhName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE0E0E0),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(Icons.person, color: Colors.grey, size: 26),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // السطر الثاني: شارة المشتركين + أزرار المشاركة والاتصال
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F8F5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF00875A)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.person_outline, color: Color(0xFF00875A), size: 15),
+                    const SizedBox(width: 4),
+                    Text(
+                      'المشتركين $_subscribersCount / $_capacity',
+                      softWrap: false,
+                      style: const TextStyle(
+                        fontFamily: 'Dubai',
+                        fontSize: 12,
+                        color: Color(0xFF00875A),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildCircularTopAction(
+                    icon: Icons.share_outlined,
+                    color: const Color(0xFF00875A),
+                    onTap: _shareChapter,
+                  ),
+                  if (widget.isSheikh) ...[
+                    const SizedBox(width: 8),
+                    _buildCircularTopAction(
+                      icon: Icons.power_settings_new,
+                      color: const Color(0xFF191919),
+                      onTap: _endSessionPrompt,
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  _buildCircularTopAction(
+                    icon: Icons.call_outlined,
+                    color: const Color(0xFF191919),
+                    onTap: () => _startCallPublish(video: false),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE0E0E0),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.person, color: Colors.grey, size: 26),
-                    ),
+                  _buildCircularTopAction(
+                    icon: Icons.videocam_outlined,
+                    color: const Color(0xFF191919),
+                    onTap: () async {
+                      setState(() {
+                        _isCallActive = true;
+                        _isVoiceOnly = false;
+                        _isCameraOn = true;
+                        _isCallStarted = false;
+                        _localVideoWidget = null;
+                        _localViewID = null;
+                      });
+                      try {
+                        await ZegoExpressEngine.instance.enableCamera(true);
+                        await ZegoExpressEngine.instance.createCanvasView((viewID) {
+                          _localViewID = viewID;
+                          final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
+                          ZegoExpressEngine.instance.startPreview(canvas: canvas);
+                        }).then((widgetView) {
+                          if (mounted && widgetView != null) {
+                            setState(() => _localVideoWidget = widgetView);
+                          }
+                        });
+                      } catch (_) {}
+                    },
                   ),
                 ],
-              ),
-            ),
-          ),
-
-          // Action Buttons: Share, Power, Call, Video Call
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Share button
-              _buildCircularTopAction(
-                icon: Icons.share_outlined,
-                color: const Color(0xFF00875A),
-                onTap: _shareChapter,
-              ),
-              if (widget.isSheikh) ...[
-                const SizedBox(width: 6),
-                // Power button (إنهاء وحفظ الحلقة للشيخ فقط)
-                _buildCircularTopAction(
-                  icon: Icons.power_settings_new,
-                  color: const Color(0xFF191919),
-                  onTap: _endSessionPrompt,
-                ),
-              ],
-              const SizedBox(width: 6),
-
-              // Voice Call button
-              _buildCircularTopAction(
-                icon: Icons.call_outlined,
-                color: const Color(0xFF191919),
-                onTap: () => _startCallPublish(video: false),
-              ),
-              const SizedBox(width: 6),
-
-              // Video Call button
-              _buildCircularTopAction(
-                icon: Icons.videocam_outlined,
-                color: const Color(0xFF191919),
-                onTap: () async {
-                  setState(() {
-                    _isCallActive = true;
-                    _isVoiceOnly = false;
-                    _isCameraOn = true;
-                    _isCallStarted = false;
-                  });
-                  try {
-                    await ZegoExpressEngine.instance.enableCamera(true);
-                    if (_localVideoWidget == null) {
-                      await ZegoExpressEngine.instance.createCanvasView((viewID) {
-                        _localViewID = viewID;
-                        final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
-                        ZegoExpressEngine.instance.startPreview(canvas: canvas);
-                      }).then((widgetView) {
-                        if (mounted && widgetView != null) {
-                          setState(() => _localVideoWidget = widgetView);
-                        }
-                      });
-                    } else if (_localViewID != null) {
-                      final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
-                      await ZegoExpressEngine.instance.startPreview(canvas: canvas);
-                    }
-                  } catch (_) {}
-                },
               ),
             ],
           ),
@@ -1385,10 +1401,17 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                     child: TextField(
                       controller: _messageController,
                       textAlign: TextAlign.right,
+                      style: const TextStyle(fontFamily: 'Dubai', fontSize: 13),
                       decoration: const InputDecoration(
                         hintText: 'اكتب رسالتك...',
-                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13, fontFamily: 'Dubai'),
+                        filled: false,
+                        isDense: true,
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 10),
                       ),
                       onSubmitted: (_) => _sendMessage(),
@@ -1598,89 +1621,97 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   )
                 else
                   // Video Stream View: Remote video primary + Local camera preview PiP
-                  Container(
-                    color: const Color(0xFF1B1D21),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (_remoteStreams.isNotEmpty)
-                          _remoteStreams.length == 1
-                              ? _remoteStreams.values.first
-                              : GridView.count(
-                                  crossAxisCount: 2,
-                                  children: _remoteStreams.values.toList(),
-                                )
-                        else if (_isCameraOn && _localVideoWidget != null)
-                          _localVideoWidget!
-                        else
-                          Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircleAvatar(
-                                  radius: 46,
-                                  backgroundColor: const Color(0xFF00875A).withOpacity(0.2),
-                                  child: Icon(
-                                    widget.isSheikh ? Icons.school_rounded : Icons.person_rounded,
-                                    size: 48,
-                                    color: const Color(0xFF00875A),
-                                  ),
+                  Builder(
+                    builder: (_) {
+                      final activeRemoteVideos = _remoteStreams.entries
+                          .where((e) => _remoteCameraOn[e.key] != false)
+                          .map((e) => e.value)
+                          .toList();
+                      return Container(
+                        color: const Color(0xFF1B1D21),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            if (activeRemoteVideos.isNotEmpty)
+                              activeRemoteVideos.length == 1
+                                  ? activeRemoteVideos.first
+                                  : GridView.count(
+                                      crossAxisCount: 2,
+                                      children: activeRemoteVideos,
+                                    )
+                            else if (_isCameraOn && _localVideoWidget != null)
+                              _localVideoWidget!
+                            else
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 46,
+                                      backgroundColor: const Color(0xFF00875A).withOpacity(0.2),
+                                      child: Icon(
+                                        widget.isSheikh ? Icons.school_rounded : Icons.person_rounded,
+                                        size: 48,
+                                        color: const Color(0xFF00875A),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      widget.circleTitle,
+                                      style: const TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Dubai', fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text('الكاميرا مغلقة (البث الصوتي نشط)', style: TextStyle(color: Colors.white38, fontSize: 12, fontFamily: 'Dubai')),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  widget.circleTitle,
-                                  style: const TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Dubai', fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 4),
-                                const Text('الكاميرا مغلقة (البث الصوتي نشط)', style: TextStyle(color: Colors.white38, fontSize: 12, fontFamily: 'Dubai')),
-                              ],
-                            ),
-                          ),
+                              ),
 
-                        // Local Camera Preview thumbnail when viewing Remote Video
-                        if (_remoteStreams.isNotEmpty && _isCameraOn && _localVideoWidget != null)
-                          Positioned(
-                            top: 66,
-                            right: 16,
-                            child: Container(
-                              width: 100,
-                              height: 140,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.white, width: 2),
-                                boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8)],
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: _localVideoWidget!,
-                            ),
-                          ),
-                        // Live Audio Voice Wave Indicator
-                        if (!_isMicMuted && _soundLevel > 3)
-                          Positioned(
-                            bottom: 16,
-                            right: 16,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF00875A).withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 16),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'الصوت متصل 🎙️',
-                                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Dubai'),
+                            // Local Camera Preview thumbnail when viewing Remote Video
+                            if (activeRemoteVideos.isNotEmpty && _isCameraOn && _localVideoWidget != null)
+                              Positioned(
+                                top: 66,
+                                right: 16,
+                                child: Container(
+                                  width: 100,
+                                  height: 140,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.white, width: 2),
+                                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8)],
                                   ),
-                                ],
+                                  clipBehavior: Clip.antiAlias,
+                                  child: _localVideoWidget!,
+                                ),
                               ),
-                            ),
-                          ),
-                      ],
-                    ),
+                            // Live Audio Voice Wave Indicator
+                            if (!_isMicMuted && _soundLevel > 3)
+                              Positioned(
+                                bottom: 16,
+                                right: 16,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00875A).withOpacity(0.9),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 16),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'الصوت متصل 🎙️',
+                                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Dubai'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
 
                 // Top Controls Overlay (من الصورة 6)
@@ -1829,9 +1860,21 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                     });
                     try {
                       await ZegoExpressEngine.instance.enableCamera(_isCameraOn);
-                      if (_isCameraOn && _localViewID != null) {
-                        final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
-                        await ZegoExpressEngine.instance.startPreview(canvas: canvas);
+                      if (_isCameraOn) {
+                        if (_localVideoWidget == null) {
+                          await ZegoExpressEngine.instance.createCanvasView((viewID) {
+                            _localViewID = viewID;
+                            final canvas = ZegoCanvas(viewID, viewMode: ZegoViewMode.AspectFill);
+                            ZegoExpressEngine.instance.startPreview(canvas: canvas);
+                          }).then((widgetView) {
+                            if (mounted && widgetView != null) {
+                              setState(() => _localVideoWidget = widgetView);
+                            }
+                          });
+                        } else if (_localViewID != null) {
+                          final canvas = ZegoCanvas(_localViewID!, viewMode: ZegoViewMode.AspectFill);
+                          await ZegoExpressEngine.instance.startPreview(canvas: canvas);
+                        }
                       } else {
                         await ZegoExpressEngine.instance.stopPreview();
                       }

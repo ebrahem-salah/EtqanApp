@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/category_mapping.dart';
@@ -47,6 +48,7 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
   bool _isPaid = false;
   bool _allowRecording = false;
   bool _isPrivate = false;
+  bool _isSubmitting = false;
 
   final Map<String, List<String>> _sectionsWithSub = {
     'المكتبة الإلكترونية': [
@@ -592,118 +594,154 @@ class _CreateSectionSessionDialogState extends State<CreateSectionSessionDialog>
                     backgroundColor: const Color(0xFF00875A),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  onPressed: () async {
-                    if (_selectedSection == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('يرجى اختيار القسم الرئيسي أولاً', style: TextStyle(fontFamily: 'Dubai')),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                      return;
-                    }
+                  onPressed: _isSubmitting
+                      ? null
+                      : () async {
+                          if (_selectedSection == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('يرجى اختيار القسم الرئيسي أولاً', style: TextStyle(fontFamily: 'Dubai')),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            return;
+                          }
 
-                    final finalTitle = _getFinalTitle(creatorName);
-                    final sectionName = _selectedSection!;
-                    final subSectionName = _selectedSubSection ?? 'عام';
-                    final priceDouble = _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0;
+                          setState(() => _isSubmitting = true);
 
-                    await UserChaptersService.instance.createChapter(
-                      name: finalTitle,
-                      mainCategory: sectionName,
-                      subCategory: subSectionName,
-                      startTime: _formatDateTime(_startDateTime),
-                      maxStudents: _maxMembers,
-                      isPaid: _isPaid,
-                      price: priceDouble,
-                      isPrivate: _isPrivate,
-                      allowRecording: _allowRecording,
-                      showInReelsAsLive: !_isPrivate,
-                      supervisorName: creatorName,
-                    );
+                          final finalTitle = _getFinalTitle(creatorName);
+                          final sectionName = _selectedSection!;
+                          final subSectionName = _selectedSubSection ?? 'عام';
+                          final priceDouble = _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0;
 
-                    int? createdClassId;
-                    try {
-                      final resolvedCategoryId = CategoryMapping.resolveCategoryId(
-                        sectionName,
-                        subSectionName,
-                      );
-                      final nowUtc = DateTime.now().toUtc();
-                      final targetUtc = _startDateTime.difference(DateTime.now()).inMinutes.abs() <= 2
-                          ? nowUtc.subtract(const Duration(minutes: 1))
-                          : _startDateTime.toUtc();
-                      final apiStartStr =
-                          '${targetUtc.year}-${targetUtc.month.toString().padLeft(2, '0')}-${targetUtc.day.toString().padLeft(2, '0')} '
-                          '${targetUtc.hour.toString().padLeft(2, '0')}:${targetUtc.minute.toString().padLeft(2, '0')}:${targetUtc.second.toString().padLeft(2, '0')}';
+                          int? createdClassId;
+                          String? serverError;
+                          try {
+                            final resolvedCategoryId = CategoryMapping.resolveCategoryId(
+                              sectionName,
+                              subSectionName,
+                            );
+                            final nowUtc = DateTime.now().toUtc();
+                            final targetUtc = _startDateTime.difference(DateTime.now()).inMinutes.abs() <= 2
+                                ? nowUtc.subtract(const Duration(minutes: 1))
+                                : _startDateTime.toUtc();
+                            final apiStartStr =
+                                '${targetUtc.year}-${targetUtc.month.toString().padLeft(2, '0')}-${targetUtc.day.toString().padLeft(2, '0')} '
+                                '${targetUtc.hour.toString().padLeft(2, '0')}:${targetUtc.minute.toString().padLeft(2, '0')}:${targetUtc.second.toString().padLeft(2, '0')}';
 
-                      final res = await ApiClient().createClass(
-                        name: finalTitle,
-                        categoryId: resolvedCategoryId,
-                        startTime: apiStartStr,
-                        maxStudents: _maxMembers,
-                        type: _isPaid ? 'paid' : 'free',
-                        price: priceDouble,
-                        isPrivate: _isPrivate,
-                        allowRecording: _allowRecording,
-                      );
-                      final idVal = res.data?['data']?['id'];
-                      if (idVal != null) {
-                        createdClassId = int.tryParse('$idVal');
-                      }
-                    } catch (_) {}
+                            final res = await ApiClient().createClass(
+                              name: finalTitle,
+                              categoryId: resolvedCategoryId,
+                              startTime: apiStartStr,
+                              maxStudents: _maxMembers,
+                              type: _isPaid ? 'paid' : 'free',
+                              price: priceDouble,
+                              isPrivate: _isPrivate,
+                              allowRecording: _allowRecording,
+                            );
+                            final idVal = res.data?['data']?['id'];
+                            if (idVal != null) {
+                              createdClassId = int.tryParse('$idVal');
+                            }
+                          } on DioException catch (e) {
+                            if (e.response?.statusCode == 401) {
+                              serverError = 'انتهت جلسة الدخول — يرجى تسجيل الخروج والدخول مجدداً لنشر الحلقة للجميع';
+                            } else {
+                              serverError = e.response?.data?['message']?.toString() ??
+                                  'تعذر نشر الحلقة على الخادم، تأكد من الاتصال بالإنترنت';
+                            }
+                          } catch (e) {
+                            serverError = 'تعذر الاتصال بالخادم لنشر الحلقة';
+                          }
 
-                    final roomId = createdClassId != null
-                        ? 'room_srv_$createdClassId'
-                        : 'room_${DateTime.now().millisecondsSinceEpoch}';
+                          if (createdClassId == null) {
+                            if (mounted) {
+                              setState(() => _isSubmitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    serverError ?? 'تعذر إنشاء الحلقة على الخادم',
+                                    style: const TextStyle(fontFamily: 'Dubai'),
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                            return;
+                          }
 
-                    if (!_isPrivate) {
-                      LiveStreamsService.instance.addLiveStream(
-                        LiveStreamItem(
-                          id: roomId,
-                          title: finalTitle,
-                          sheikhName: creatorName,
-                          sheikhAvatar: 'assets/images/profile.png',
-                          sectionName: sectionName,
-                          subSectionName: subSectionName,
-                          viewerCount: 1,
-                          roomId: roomId,
-                          isVideo: true,
-                          startedAt: DateTime.now(),
-                        ),
-                      );
-                    }
+                          final roomId = 'room_srv_$createdClassId';
 
-                    if (!mounted) return;
-                    Navigator.of(context).pop();
+                          await UserChaptersService.instance.createChapter(
+                            name: finalTitle,
+                            mainCategory: sectionName,
+                            subCategory: subSectionName,
+                            startTime: _formatDateTime(_startDateTime),
+                            maxStudents: _maxMembers,
+                            isPaid: _isPaid,
+                            price: priceDouble,
+                            isPrivate: _isPrivate,
+                            allowRecording: _allowRecording,
+                            showInReelsAsLive: !_isPrivate,
+                            supervisorName: creatorName,
+                            serverId: createdClassId,
+                            customRoomId: roomId,
+                          );
 
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => LiveRecitationRoom(
-                          roomId: roomId,
-                          circleTitle: finalTitle,
-                          isSheikh: true,
-                          classRoomId: createdClassId,
-                          sheikhName: creatorName,
-                          subscribersCount: 1,
-                          capacity: _maxMembers,
-                        ),
-                      ),
-                    );
+                          if (!_isPrivate) {
+                            LiveStreamsService.instance.addLiveStream(
+                              LiveStreamItem(
+                                id: roomId,
+                                title: finalTitle,
+                                sheikhName: creatorName,
+                                sheikhAvatar: 'assets/images/profile.png',
+                                sectionName: sectionName,
+                                subSectionName: subSectionName,
+                                viewerCount: 1,
+                                roomId: roomId,
+                                isVideo: true,
+                                startedAt: DateTime.now(),
+                              ),
+                            );
+                          }
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'تم إنشاء الحلقة بنجاح وبدء البث المباشر!',
-                          style: TextStyle(fontFamily: 'Dubai'),
-                        ),
-                        backgroundColor: Color(0xFF00875A),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.play_circle_fill_rounded, color: Colors.white),
-                  label: const Text(
-                    'إنشاء وبدء الحلقة',
-                    style: TextStyle(fontFamily: 'Dubai', fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                          if (!mounted) return;
+                          Navigator.of(context).pop();
+
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => LiveRecitationRoom(
+                                roomId: roomId,
+                                circleTitle: finalTitle,
+                                isSheikh: true,
+                                classRoomId: createdClassId,
+                                sheikhName: creatorName,
+                                subscribersCount: 1,
+                                capacity: _maxMembers,
+                              ),
+                            ),
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'تم إنشاء الحلقة ونشرها بنجاح للجميع!',
+                                style: TextStyle(fontFamily: 'Dubai'),
+                              ),
+                              backgroundColor: Color(0xFF00875A),
+                            ),
+                          );
+                        },
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_circle_fill_rounded, color: Colors.white),
+                  label: Text(
+                    _isSubmitting ? 'جاري النشر...' : 'إنشاء وبدء الحلقة',
+                    style: const TextStyle(fontFamily: 'Dubai', fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
               ),

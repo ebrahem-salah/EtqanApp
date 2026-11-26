@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/category_mapping.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/user_chapters_service.dart';
+import '../../providers/auth_provider.dart';
 
 class AddChapterScreen extends StatefulWidget {
   const AddChapterScreen({super.key});
@@ -187,22 +190,12 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
     final maxStudentsInt = int.tryParse(_maxStudentsController.text) ?? 20;
     final priceDouble = _isPaid ? (double.tryParse(_priceController.text) ?? 35.0) : 0.0;
     final subCat = _selectedSubCategory ?? 'عام';
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final creatorName = auth.currentUser?.name ?? 'الشيخ المقرئ';
 
-    // 1. حفظ الحلقة فوراً في الذاكرة المحلية والـ SharedPreferences لضمان ظهورها دائماً
-    await UserChaptersService.instance.createChapter(
-      name: name,
-      mainCategory: _selectedCategory!,
-      subCategory: subCat,
-      startTime: startTimeStr,
-      maxStudents: maxStudentsInt,
-      isPaid: _isPaid,
-      price: priceDouble,
-      isPrivate: _isPrivate,
-      allowRecording: _allowRecording,
-      showInReelsAsLive: _showInReelsAsLive,
-    );
-
-    // 2. محاولة الحفظ على خادم الـ API بمعرف القسم الحقيقي
+    // 1. الحفظ على خادم الـ API بمعرف القسم الحقيقي أولاً
+    int? createdClassId;
+    String? serverError;
     try {
       final resolvedCategoryId = CategoryMapping.resolveCategoryId(
         _selectedCategory!,
@@ -216,7 +209,7 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
           '${targetUtc.year}-${targetUtc.month.toString().padLeft(2, '0')}-${targetUtc.day.toString().padLeft(2, '0')} '
           '${targetUtc.hour.toString().padLeft(2, '0')}:${targetUtc.minute.toString().padLeft(2, '0')}:${targetUtc.second.toString().padLeft(2, '0')}';
 
-      await _apiClient.createClass(
+      final res = await _apiClient.createClass(
         name: name,
         categoryId: resolvedCategoryId,
         startTime: apiStartStr,
@@ -226,7 +219,49 @@ class _AddChapterScreenState extends State<AddChapterScreen> {
         isPrivate: _isPrivate,
         allowRecording: _allowRecording,
       );
-    } catch (_) {}
+      final idVal = res.data?['data']?['id'];
+      if (idVal != null) {
+        createdClassId = int.tryParse('$idVal');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        serverError = 'انتهت جلسة الدخول — يرجى تسجيل الخروج والدخول مجدداً';
+      } else {
+        serverError = e.response?.data?['message']?.toString() ?? 'تعذر نشر الحلقة على الخادم';
+      }
+    } catch (_) {
+      serverError = 'تعذر الاتصال بالخادم لنشر الحلقة';
+    }
+
+    if (createdClassId == null) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(serverError ?? 'تعذر إنشاء الحلقة على الخادم', style: const TextStyle(fontFamily: 'Dubai')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. حفظ الحلقة في الذاكرة المحلية بنفس معرف السيرفر
+    await UserChaptersService.instance.createChapter(
+      name: name,
+      mainCategory: _selectedCategory!,
+      subCategory: subCat,
+      startTime: startTimeStr,
+      maxStudents: maxStudentsInt,
+      isPaid: _isPaid,
+      price: priceDouble,
+      isPrivate: _isPrivate,
+      allowRecording: _allowRecording,
+      showInReelsAsLive: _showInReelsAsLive,
+      supervisorName: creatorName,
+      serverId: createdClassId,
+      customRoomId: 'room_srv_$createdClassId',
+    );
 
     if (mounted) {
       setState(() => _isSubmitting = false);

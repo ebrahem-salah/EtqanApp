@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_assets.dart';
+import '../../core/network/api_client.dart';
 import '../auth/login_screen.dart';
 import '../student/student_home_screen.dart';
 import '../onboarding/onboarding_screen.dart';
@@ -62,7 +64,24 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     Future.delayed(const Duration(milliseconds: 3200), () async {
       if (!mounted) return;
       final prefs = await SharedPreferences.getInstance();
-      final hasToken = prefs.getString('auth_token') != null && prefs.getString('auth_token')!.isNotEmpty;
+      final savedToken = prefs.getString('auth_token');
+      bool hasToken = savedToken != null &&
+          savedToken.isNotEmpty &&
+          !savedToken.startsWith('offline_session_') &&
+          !savedToken.startsWith('otp_session_') &&
+          !savedToken.startsWith('google_token_') &&
+          !savedToken.startsWith('apple_token_');
+
+      if (hasToken) {
+        try {
+          await ApiClient().getProfile();
+        } on DioException catch (e) {
+          if (e.response?.statusCode == 401) {
+            await prefs.remove('auth_token');
+            hasToken = false;
+          }
+        } catch (_) {}
+      }
 
       if (!mounted) return;
       Navigator.of(context).pushReplacement(

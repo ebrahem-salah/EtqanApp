@@ -10,7 +10,8 @@ import '../call/live_recitation_room.dart';
 import '../chapters/circle_replay_screen.dart';
 
 class MyChaptersScreen extends StatefulWidget {
-  const MyChaptersScreen({super.key});
+  final int refreshTick;
+  const MyChaptersScreen({super.key, this.refreshTick = 0});
 
   @override
   State<MyChaptersScreen> createState() => _MyChaptersScreenState();
@@ -27,7 +28,26 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
   @override
   void initState() {
     super.initState();
+    UserChaptersService.instance.changeNotifier.addListener(_onLocalChaptersChanged);
     _loadMyChapters();
+  }
+
+  @override
+  void didUpdateWidget(covariant MyChaptersScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refreshTick != oldWidget.refreshTick) {
+      _loadMyChapters();
+    }
+  }
+
+  @override
+  void dispose() {
+    UserChaptersService.instance.changeNotifier.removeListener(_onLocalChaptersChanged);
+    super.dispose();
+  }
+
+  void _onLocalChaptersChanged() {
+    if (mounted) _loadMyChapters();
   }
 
   Future<void> _loadMyChapters() async {
@@ -261,9 +281,13 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : _selectedTab == 0
-                      ? _buildOngoingList()
-                      : _buildFinishedList(),
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: _loadMyChapters,
+                      child: _selectedTab == 0
+                          ? _buildOngoingList()
+                          : _buildFinishedList(),
+                    ),
             ),
           ],
         ),
@@ -271,18 +295,25 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
     );
   }
 
-  // Ongoing Chapters List (media_1795163173913_74f64438.jpg)
+  // Ongoing Chapters List
   Widget _buildOngoingList() {
     if (_ongoingChapters.isEmpty) {
-      return const Center(
-        child: Text(
-          'لا توجد حلقات جارية حالياً',
-          style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 15),
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.28),
+          const Center(
+            child: Text(
+              'لا توجد حلقات جارية حالياً',
+              style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 15),
+            ),
+          ),
+        ],
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       itemCount: _ongoingChapters.length,
       itemBuilder: (context, index) {
@@ -488,18 +519,25 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
     );
   }
 
-  // Finished Chapters List (media_1795163235290_e7d27c64.png)
+  // Finished Chapters List
   Widget _buildFinishedList() {
     if (_finishedChapters.isEmpty) {
-      return const Center(
-        child: Text(
-          'لا توجد حلقات منتهية حالياً',
-          style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 15),
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.28),
+          const Center(
+            child: Text(
+              'لا توجد حلقات منتهية حالياً',
+              style: TextStyle(fontFamily: 'Dubai', color: Colors.grey, fontSize: 15),
+            ),
+          ),
+        ],
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       itemCount: _finishedChapters.length,
       itemBuilder: (context, index) {

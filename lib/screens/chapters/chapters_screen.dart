@@ -23,12 +23,12 @@ import '../sections/13_muslim_child/muslim_child_screen.dart';
 import '../sections/14_muslim_woman/muslim_woman_screen.dart';
 import '../sections/15_imams/imams_hub_screen.dart';
 import '../sections/16_volunteers/volunteers_expanded_screen.dart';
-import 'add_chapter_screen.dart';
 import 'section_circles_screen.dart';
 import '../../core/constants/category_mapping.dart';
 
 class ChaptersScreen extends StatefulWidget {
-  const ChaptersScreen({super.key});
+  final int refreshTick;
+  const ChaptersScreen({super.key, this.refreshTick = 0});
 
   @override
   State<ChaptersScreen> createState() => _ChaptersScreenState();
@@ -231,6 +231,14 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant ChaptersScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refreshTick != oldWidget.refreshTick) {
+      _loadLiveClasses();
+    }
+  }
+
+  @override
   void dispose() {
     UserChaptersService.instance.changeNotifier.removeListener(_onChaptersChanged);
     super.dispose();
@@ -346,22 +354,6 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
           ),
         ],
       ),
-      // زر واحد فقط وأساسي لإنشاء حلقة جديدة (متاح للشيوخ والمشرفين فقط)
-      floatingActionButton: (Provider.of<AuthProvider>(context).currentUser?.role ?? UserRole.student) != UserRole.student
-          ? FloatingActionButton(
-              backgroundColor: const Color(0xFF00875A),
-              foregroundColor: Colors.white,
-              elevation: 4,
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AddChapterScreen()),
-                );
-                _loadLiveClasses();
-              },
-              child: const Icon(Icons.add, size: 28),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: Row(
         children: [
           // 1. Right Side: Categories Rail (16 Main Sections)

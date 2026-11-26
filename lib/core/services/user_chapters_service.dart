@@ -52,10 +52,12 @@ class UserChaptersService {
     required bool allowRecording,
     required bool showInReelsAsLive,
     String? supervisorName,
+    int? serverId,
+    String? customRoomId,
   }) async {
     await init();
-    final newId = DateTime.now().millisecondsSinceEpoch;
-    final roomId = 'room_custom_$newId';
+    final newId = serverId ?? DateTime.now().millisecondsSinceEpoch;
+    final roomId = customRoomId ?? (serverId != null ? 'room_srv_$serverId' : 'room_custom_$newId');
     final supervisor = supervisorName ?? 'فضيلة الشيخ (منشئ الحلقة)';
 
     final chapterMap = {

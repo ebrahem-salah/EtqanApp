@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
@@ -47,7 +48,12 @@ class AuthProvider extends ChangeNotifier {
       final savedEmail = prefs.getString('user_email');
       final savedRole = prefs.getString('user_role');
 
-      if (_token != null && _token!.isNotEmpty) {
+      if (_token != null &&
+          _token!.isNotEmpty &&
+          !_token!.startsWith('offline_session_') &&
+          !_token!.startsWith('otp_session_') &&
+          !_token!.startsWith('google_token_') &&
+          !_token!.startsWith('apple_token_')) {
         // بناء المستخدم فوراً من الكاش لسرعة الدخول الفوري بدون انتظار
         _currentUser = UserModel(
           id: savedId ?? 1,
@@ -63,7 +69,7 @@ class AuthProvider extends ChangeNotifier {
         );
         notifyListeners();
 
-        // فحص البروفايل في الخلفية لتحديث البيانات من سيرفر لارافيل
+        // فحص البروفايل في الخلفية لتحديث البيانات والتحقق من صلاحية الجلسة على السيرفر
         try {
           final response = await _apiClient.getProfile();
           if (response.statusCode == 200 && response.data != null) {
@@ -76,8 +82,19 @@ class AuthProvider extends ChangeNotifier {
               notifyListeners();
             }
           }
+        } on DioException catch (e) {
+          if (e.response?.statusCode == 401) {
+            await prefs.remove('auth_token');
+            _token = null;
+            _currentUser = null;
+            notifyListeners();
+          }
         } catch (_) {}
         return;
+      } else if (_token != null && _token!.isNotEmpty) {
+        // حذف التوكن الوهمي القديم لإجبار تسجيل دخول حقيقي على السيرفر
+        await prefs.remove('auth_token');
+        _token = null;
       }
 
       // فحص بديل من Supabase
@@ -165,7 +182,16 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
     } catch (e) {
-      _errorMessage = 'ملاحظة الاتصال بالسيرفر: ${e.toString()}';
+      if (e is DioException && e.response != null) {
+        final serverMsg = e.response?.data?['message']?.toString();
+        _errorMessage = (serverMsg != null && serverMsg.isNotEmpty)
+            ? serverMsg
+            : 'بيانات الدخول غير صحيحة أو الحساب قيد المراجعة';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      _errorMessage = 'تعذر الاتصال بالسيرفر، تأكد من الإنترنت: ${e.toString()}';
 
       // 2. محاولة بديلة عبر سحابة Supabase
       try {

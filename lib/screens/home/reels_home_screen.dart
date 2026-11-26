@@ -96,9 +96,11 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
     setState(() => _isLoading = true);
     final List<Map<String, dynamic>> combined = [];
 
-    // 1. Fetch all active live broadcasts across the 16 sections (Quran, Ruqyah, Fatwa, Sunnah...)
+    // 1. Fetch live broadcasts from local service AND ongoing classes from server
+    final Set<String> seenLiveRooms = {};
     final liveStreams = LiveStreamsService.instance.activeStreams;
     for (final stream in liveStreams) {
+      seenLiveRooms.add(stream.roomId);
       combined.add({
         'id': stream.id,
         'isLive': true,
@@ -119,6 +121,51 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
         'viewerCount': stream.viewerCount,
       });
     }
+
+    // Fetch ongoing live classes from server so broadcasts appear to ALL users
+    try {
+      final clsRes = await _apiClient.getClasses();
+      if (clsRes.statusCode == 200 && clsRes.data != null) {
+        final List items = clsRes.data['data'] ?? [];
+        for (final cls in items) {
+          final isOngoing = cls['is_ongoing'] == true || cls['status'] == 'ongoing';
+          final isPrivate = cls['is_private'] == true;
+          if (!isOngoing || isPrivate) continue;
+          final classId = cls['id'] is int ? cls['id'] as int : int.tryParse('${cls['id']}');
+          if (classId == null) continue;
+          final rId = 'room_srv_$classId';
+          if (seenLiveRooms.contains(rId)) continue;
+          seenLiveRooms.add(rId);
+
+          final sheikhObj = cls['sheikh'] ?? cls['creator']?['user'] ?? cls['creator'];
+          final rawName = sheikhObj?['name']?.toString() ?? '';
+          final sheikhName = (rawName.isNotEmpty && !rawName.contains('???')) ? rawName : 'الشيخ المقرئ';
+          final catName = cls['category']?['name']?.toString() ?? 'حلقة قرآنية';
+          final studentsCount = int.tryParse('${cls['students_count'] ?? 1}') ?? 1;
+          final capacity = int.tryParse('${cls['capacity'] ?? cls['max_students'] ?? 30}') ?? 30;
+
+          combined.add({
+            'id': 'srv_$classId',
+            'classRoomId': classId,
+            'isLive': true,
+            'roomId': rId,
+            'userName': sheikhName,
+            'userRole': 'بث مباشر • $catName',
+            'isVolunteer': false,
+            'timeAgo': 'مباشر الآن',
+            'avatar': sheikhObj?['avatar_url'] ?? 'assets/images/profile.png',
+            'caption': cls['name']?.toString() ?? 'بث مباشر مبارك',
+            'likes': studentsCount * 2,
+            'comments': studentsCount,
+            'shares': 1,
+            'isLiked': false,
+            'video_path': '',
+            'viewerCount': studentsCount,
+            'capacity': capacity,
+          });
+        }
+      }
+    } catch (_) {}
 
     // 2. Fetch locally added user videos (especially YouTube links and local uploads)
     await UserVideosService.instance.init();
@@ -162,13 +209,12 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
         _isLoading = false;
       });
       final videoPaths = _reels
-          .where((r) => r['isLive'] != true && r['isYouTube'] != true && (r['video_path'] as String).isNotEmpty)
-          .map((r) => r['video_path'] as String)
+          .map((r) => (r['isLive'] == true || r['isYouTube'] == true)
+              ? ''
+              : (r['video_path']?.toString() ?? ''))
           .toList();
-      if (videoPaths.isNotEmpty) {
-        ReelsPreloadManager.instance.setVideos(videoPaths);
-        ReelsPreloadManager.instance.preloadAdjacentReels(_currentIndex);
-      }
+      ReelsPreloadManager.instance.setVideos(videoPaths);
+      ReelsPreloadManager.instance.preloadAdjacentReels(_currentIndex);
     }
   }
 
@@ -895,11 +941,19 @@ class _ReelsHomeScreenState extends State<ReelsHomeScreen> with WidgetsBindingOb
                       elevation: 6,
                     ),
                     onPressed: () {
+                      final int? cId = reel['classRoomId'] is int
+                          ? reel['classRoomId'] as int
+                          : int.tryParse('${reel['classRoomId'] ?? ''}');
+                      final isSheikh = (Provider.of<AuthProvider>(context, listen: false).currentUser?.role ?? UserRole.student) != UserRole.student;
                       _navigateTo(
                         LiveRecitationRoom(
-                          roomId: reel['roomId'] ?? 'room_${reel['id']}',
+                          roomId: reel['roomId'] ?? (cId != null ? 'room_srv_$cId' : 'room_${reel['id']}'),
                           circleTitle: reel['caption'] ?? 'بث مباشر بإتقان',
-                          isSheikh: false,
+                          isSheikh: isSheikh,
+                          classRoomId: cId,
+                          sheikhName: reel['userName']?.toString(),
+                          subscribersCount: reel['viewerCount'] is int ? reel['viewerCount'] as int : 1,
+                          capacity: reel['capacity'] is int ? reel['capacity'] as int : 30,
                         ),
                       );
                     },
@@ -1609,6 +1663,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _hasError = false;
+  bool _ownsController = false;
 
   @override
   void initState() {
@@ -1618,7 +1673,8 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
 
   Future<void> _initVideo() async {
     try {
-      _controller = await ReelsPreloadManager.instance.getControllerForIndex(widget.index);
+      _controller = await ReelsPreloadManager.instance.getControllerForPath(widget.videoPath);
+      _ownsController = false;
       final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
       if (widget.isCurrent && widget.isActive && isCurrentRoute && mounted) {
         await _controller!.setVolume(1.0);
@@ -1642,6 +1698,7 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
         } else {
           _controller = VideoPlayerController.asset(path);
         }
+        _ownsController = true;
         await _controller!.initialize();
         _controller!.setLooping(true);
         final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
@@ -1698,7 +1755,9 @@ class _ReelVideoPlayerItemState extends State<ReelVideoPlayerItem> {
     try {
       _controller?.setVolume(0.0);
       _controller?.pause();
-      _controller?.dispose();
+      if (_ownsController) {
+        _controller?.dispose();
+      }
     } catch (_) {}
     super.dispose();
   }
