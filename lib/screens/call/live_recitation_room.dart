@@ -95,6 +95,17 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   bool _msgLoadErrorShown = false;
   bool _isDisposed = false;
 
+  // بيانات المشتركين وتقييم كل طالب أثناء التسميع
+  List<Map<String, dynamic>> _enrolledStudents = [];
+  final Map<int, Map<String, dynamic>> _studentEvaluations = {};
+  int? _activeEvalStudentId;
+  String? _activeEvalStudentName;
+  int _evalMajorErrors = 0;
+  int _evalHesitations = 0;
+  int _evalTajweedNotes = 0;
+  String _evalCustomNote = '';
+  bool _isSavingEval = false;
+
   // Drag position for Floating Window (PiP mode)
   Offset _pipPosition = const Offset(100, 150);
 
@@ -142,28 +153,49 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       }
     }
     await _loadClassDetails();
+    await _loadServerAppreciations();
     await _loadServerMessages();
     _messagesPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       _loadServerMessages(isPoll: true);
     });
   }
 
-  Future<void> _loadClassDetails() async {
-    if (widget.classRoomId == null) return;
+  Future<void> _loadClassDetails({bool silent = false}) async {
+    if (widget.classRoomId == null || _isDisposed) return;
     try {
       final res = await _apiClient.getClassDetails(widget.classRoomId!);
-      if (res.statusCode == 200 && res.data != null && mounted) {
+      if (res.statusCode == 200 && res.data != null && mounted && !_isDisposed) {
         final data = res.data['data'];
         if (data is Map<String, dynamic>) {
           final sheikhObj = data['sheikh'] ?? data['creator']?['user'] ?? data['creator'];
           final sName = sheikhObj?['name']?.toString();
+          final List rawStudents = data['students'] is List ? data['students'] : [];
+          final parsedStudents = rawStudents.map<Map<String, dynamic>>((s) {
+            final userObj = s['user'] is Map ? s['user'] : {};
+            final int? sid = int.tryParse('${s['id'] ?? userObj['id'] ?? ''}');
+            final int? uid = int.tryParse('${userObj['id'] ?? s['user_id'] ?? s['id'] ?? ''}');
+            final studentName = (userObj['name'] ?? s['name'] ?? 'طالب').toString();
+            return {
+              'student_id': sid,
+              'user_id': uid,
+              'name': studentName,
+              'avatar_url': userObj['avatar_url'],
+              'code': s['code']?.toString() ?? '',
+              'general_rating': s['general_rating'] ?? s['overall_rating'] ?? 0,
+              'session_rating': s['session_rating'],
+            };
+          }).where((s) => s['student_id'] != null).toList();
+
+          final int srvCount = int.tryParse('${data['students_count'] ?? parsedStudents.length}') ??
+              parsedStudents.length;
+          final int liveConnected = 1 + _remoteUsers.length;
+
           setState(() {
             if (sName != null && sName.isNotEmpty && !sName.contains('???')) {
               _displaySheikhName = sName;
             }
-            if (data['students_count'] != null) {
-              _subscribersCount = int.tryParse('${data['students_count']}') ?? _subscribersCount;
-            }
+            _enrolledStudents = parsedStudents;
+            _subscribersCount = srvCount > liveConnected ? srvCount : liveConnected;
             if (data['capacity'] != null) {
               _capacity = int.tryParse('${data['capacity']}') ?? _capacity;
             }
@@ -171,10 +203,40 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (!silent && mounted && !_isDisposed) {
         AppFeedback.showError(context, 'جلب تفاصيل الحلقة', e);
       }
     }
+  }
+
+  Future<void> _loadServerAppreciations() async {
+    if (widget.classRoomId == null || _isDisposed) return;
+    try {
+      final res = await _apiClient.getClassAppreciations(widget.classRoomId!);
+      if (res.statusCode == 200 && res.data != null && mounted && !_isDisposed) {
+        final List items = res.data['data'] ?? [];
+        setState(() {
+          for (final item in items) {
+            final int? sid = int.tryParse('${item['student_id'] ?? ''}');
+            if (sid == null) continue;
+            final String msg = item['message']?.toString() ?? '';
+            _studentEvaluations[sid] = {
+              'student_id': sid,
+              'type': item['type']?.toString() ?? 'thank',
+              'message': msg,
+              'scoreText': _extractScoreFromMessage(msg),
+              'savedOnServer': true,
+            };
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  String _extractScoreFromMessage(String msg) {
+    final match = RegExp(r'(\d+(?:\.\d+)?)\s*/\s*10').firstMatch(msg);
+    if (match != null) return '${match.group(1)}/10';
+    return 'تم التقييم';
   }
 
   /// جلب الرسائل الحقيقية من السيرفر ومزامنتها
@@ -301,15 +363,602 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     });
   }
 
+  List<Map<String, dynamic>> _getMergedParticipantsList() {
+    final List<Map<String, dynamic>> list = [];
+    final Set<int> seenUserIds = {};
+    final Set<String> seenNames = {};
+
+    bool isOnlineByIdsOrName(int? uid, String name) {
+      if (_currentUserId != null && uid == _currentUserId) return true;
+      for (final entry in _remoteUsers.entries) {
+        if (uid != null && entry.key.startsWith('u_${uid}_')) return true;
+        if (name.isNotEmpty && entry.value.trim() == name.trim()) return true;
+      }
+      return false;
+    }
+
+    for (final s in _enrolledStudents) {
+      final int? sid = s['student_id'] as int?;
+      final int? uid = s['user_id'] as int?;
+      final String name = (s['name'] ?? 'طالب').toString();
+      if (uid != null) seenUserIds.add(uid);
+      seenNames.add(name.trim());
+      list.add({
+        'student_id': sid,
+        'user_id': uid,
+        'name': name,
+        'isOnline': isOnlineByIdsOrName(uid, name),
+        'evaluation': sid != null ? _studentEvaluations[sid] : null,
+      });
+    }
+
+    // أي متصل عبر Zego لم يظهر بعد في students من السيرفر
+    for (final entry in _remoteUsers.entries) {
+      int? parsedUid;
+      final match = RegExp(r'^u_(\d+)_').firstMatch(entry.key);
+      if (match != null) parsedUid = int.tryParse(match.group(1)!);
+      final name = entry.value.isNotEmpty ? entry.value : 'مشارك';
+      if (parsedUid != null && seenUserIds.contains(parsedUid)) continue;
+      if (seenNames.contains(name.trim())) continue;
+      seenNames.add(name.trim());
+      list.add({
+        'student_id': parsedUid,
+        'user_id': parsedUid,
+        'name': name,
+        'isOnline': true,
+        'evaluation': parsedUid != null ? _studentEvaluations[parsedUid] : null,
+      });
+    }
+
+    // وضع الطالب الحالي إن لم يكن مضافاً بعد
+    if (_currentUserId != null && !seenUserIds.contains(_currentUserId)) {
+      list.insert(0, {
+        'student_id': _currentUserId,
+        'user_id': _currentUserId,
+        'name': _currentUserName,
+        'isOnline': true,
+        'evaluation': _studentEvaluations[_currentUserId],
+      });
+    }
+
+    return list;
+  }
+
+  double get _currentEvalScore {
+    final s = 10.0 - (_evalMajorErrors * 1.0) - (_evalHesitations * 0.5) - (_evalTajweedNotes * 0.25);
+    return s < 0 ? 0.0 : s;
+  }
+
+  void _startEvaluatingStudent(Map<String, dynamic> student) {
+    final int? sid = student['student_id'] as int?;
+    final String name = (student['name'] ?? 'طالب').toString();
+    if (sid == null) {
+      AppFeedback.showError(context, 'تحديد الطالب', 'لا يوجد معرف للطالب على السيرفر بعد');
+      return;
+    }
+    setState(() {
+      _activeEvalStudentId = sid;
+      _activeEvalStudentName = name;
+      final existing = _studentEvaluations[sid];
+      _evalMajorErrors = existing?['majorErrors'] as int? ?? 0;
+      _evalHesitations = existing?['hesitations'] as int? ?? 0;
+      _evalTajweedNotes = existing?['tajweedNotes'] as int? ?? 0;
+      _evalCustomNote = existing?['notes']?.toString() ?? '';
+    });
+  }
+
+  Future<void> _showEvalNoteDialog() async {
+    final ctrl = TextEditingController(text: _evalCustomNote);
+    final res = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'ملاحظة للشيخ — ${_activeEvalStudentName ?? ''}',
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 3,
+          textAlign: TextAlign.right,
+          decoration: InputDecoration(
+            hintText: 'اكتب ملاحظة الحفظ أو التجويد للطالب...',
+            hintStyle: const TextStyle(fontFamily: 'Dubai', fontSize: 13),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Dubai', color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('حفظ الملاحظة', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (res != null && mounted) {
+      setState(() => _evalCustomNote = res);
+    }
+  }
+
+  Future<void> _saveActiveStudentEvaluation() async {
+    final int? sid = _activeEvalStudentId;
+    final String studentName = _activeEvalStudentName ?? 'طالب';
+    if (sid == null || _isSavingEval) return;
+
+    final double score = _currentEvalScore;
+    final String summary =
+        'التقييم: ${score.toStringAsFixed(1)}/10 | أخطاء جلية: $_evalMajorErrors | تلعثم: $_evalHesitations | تجويد: $_evalTajweedNotes'
+        '${_evalCustomNote.isNotEmpty ? ' | ملاحظات: $_evalCustomNote' : ''}';
+
+    setState(() => _isSavingEval = true);
+    bool savedOnServer = false;
+    if (widget.classRoomId != null) {
+      try {
+        await _apiClient.sendAppreciation(widget.classRoomId!, {
+          'appreciations': [
+            {
+              'student_id': sid,
+              'type': score >= 7.0 ? 'thank' : 'warning',
+              'message': summary,
+            }
+          ],
+        });
+        savedOnServer = true;
+      } catch (e) {
+        if (mounted) {
+          AppFeedback.showError(context, 'حفظ تقييم الطالب على السيرفر', e);
+        }
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isSavingEval = false;
+      _studentEvaluations[sid] = {
+        'student_id': sid,
+        'name': studentName,
+        'score': score,
+        'scoreText': '${score.toStringAsFixed(1)}/10',
+        'majorErrors': _evalMajorErrors,
+        'hesitations': _evalHesitations,
+        'tajweedNotes': _evalTajweedNotes,
+        'notes': _evalCustomNote,
+        'message': summary,
+        'savedOnServer': savedOnServer,
+      };
+      if (savedOnServer) {
+        _activeEvalStudentId = null;
+        _activeEvalStudentName = null;
+        _evalMajorErrors = 0;
+        _evalHesitations = 0;
+        _evalTajweedNotes = 0;
+        _evalCustomNote = '';
+      }
+    });
+
+    if (savedOnServer) {
+      AppFeedback.showSuccess(
+        context,
+        'تم حفظ تقييم $studentName (${score.toStringAsFixed(1)}/10) — يمكنك اختيار الطالب التالي',
+      );
+    }
+  }
+
+  Future<void> _showParticipantsAndEvaluateSheet() async {
+    await _loadClassDetails(silent: true);
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final participants = _getMergedParticipantsList();
+            return Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.72),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(4)),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, color: Color(0xFF00875A)),
+                        onPressed: () async {
+                          await _loadClassDetails(silent: true);
+                          await _loadServerAppreciations();
+                          if (ctx.mounted) setSheetState(() {});
+                        },
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'المشتركون في الحلقة (${participants.length} / $_capacity)',
+                            style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          Text(
+                            'متصل بالبث الآن: ${1 + _remoteUsers.length} | تم تقييمهم: ${_studentEvaluations.length}',
+                            style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  if (participants.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 28),
+                      child: Text(
+                        'لا يوجد مشتركين منضمين لهذه الحلقة حتى الآن',
+                        style: TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.grey.shade600),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: participants.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (_, idx) {
+                          final student = participants[idx];
+                          final int? sid = student['student_id'] as int?;
+                          final String name = (student['name'] ?? 'طالب').toString();
+                          final bool isOnline = student['isOnline'] == true;
+                          final eval = student['evaluation'] as Map<String, dynamic>?;
+                          final bool isCurrentlyEvaluating = sid != null && sid == _activeEvalStudentId;
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isCurrentlyEvaluating
+                                  ? const Color(0xFFE8F5E9)
+                                  : const Color(0xFFFAFAFA),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isCurrentlyEvaluating ? const Color(0xFF00875A) : Colors.grey.shade200,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                if (widget.isSheikh)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isCurrentlyEvaluating
+                                          ? const Color(0xFF005F3F)
+                                          : const Color(0xFF00875A),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      minimumSize: Size.zero,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(bCtx);
+                                      _startEvaluatingStudent(student);
+                                    },
+                                    child: Text(
+                                      isCurrentlyEvaluating
+                                          ? 'يسمّع الآن'
+                                          : (eval != null ? 'إعادة تقييم' : 'بدء التقييم'),
+                                      style: const TextStyle(
+                                        fontFamily: 'Dubai',
+                                        fontSize: 12,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: 'Dubai',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          if (eval != null)
+                                            Container(
+                                              margin: const EdgeInsets.only(left: 6),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFD3EADB),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                '${eval['scoreText'] ?? 'تم التقييم'} ✓',
+                                                style: const TextStyle(
+                                                  fontFamily: 'Dubai',
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF00875A),
+                                                ),
+                                              ),
+                                            ),
+                                          Text(
+                                            isOnline ? 'متصل بالبث الآن 🟢' : 'مسجل بالحلقة',
+                                            style: TextStyle(
+                                              fontFamily: 'Dubai',
+                                              fontSize: 11,
+                                              color: isOnline ? const Color(0xFF00875A) : Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: const Color(0xFF00875A).withOpacity(0.12),
+                                  child: Text(
+                                    name.isNotEmpty ? String.fromCharCode(name.runes.first) : 'ط',
+                                    style: const TextStyle(
+                                      fontFamily: 'Dubai',
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF00875A),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLiveStudentEvaluationOverlay({bool darkTheme = true}) {
+    final score = _currentEvalScore;
+    final Color scoreColor = score >= 9.0
+        ? const Color(0xFF00C48C)
+        : (score >= 7.0 ? const Color(0xFFFFB300) : const Color(0xFFFF5252));
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: darkTheme ? const Color(0xEE181A1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: darkTheme ? const Color(0xFF00875A).withOpacity(0.75) : const Color(0xFF00875A),
+          width: 1.3,
+        ),
+        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // السطر العلوي: اسم الطالب + الدرجة اللحظية + ملاحظة + إغلاق
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => setState(() => _activeEvalStudentId = null),
+                child: Icon(Icons.close, size: 18, color: darkTheme ? Colors.white60 : Colors.grey),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _showEvalNoteDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _evalCustomNote.isNotEmpty
+                        ? const Color(0xFF00875A).withOpacity(0.25)
+                        : (darkTheme ? Colors.white12 : Colors.grey.shade100),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_note_rounded, size: 15, color: darkTheme ? Colors.white : Colors.black87),
+                      const SizedBox(width: 2),
+                      Text(
+                        'ملاحظة',
+                        style: TextStyle(fontFamily: 'Dubai', fontSize: 10, color: darkTheme ? Colors.white : Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: _showParticipantsAndEvaluateSheet,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'يسمّع الآن: ${_activeEvalStudentName ?? ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Dubai',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: darkTheme ? Colors.white : const Color(0xFF191919),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.swap_horiz_rounded, size: 16, color: scoreColor),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(color: scoreColor, borderRadius: BorderRadius.circular(10)),
+                child: Text(
+                  '${score.toStringAsFixed(1)}/10',
+                  style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // أزرار اللمس السريع الثلاثة
+          Row(
+            children: [
+              _buildQuickRubricChip(
+                label: 'خطأ (-1)',
+                count: _evalMajorErrors,
+                color: const Color(0xFFE53935),
+                darkTheme: darkTheme,
+                onTap: () => setState(() => _evalMajorErrors++),
+                onUndo: _evalMajorErrors > 0 ? () => setState(() => _evalMajorErrors--) : null,
+              ),
+              const SizedBox(width: 6),
+              _buildQuickRubricChip(
+                label: 'تلعثم (-0.5)',
+                count: _evalHesitations,
+                color: const Color(0xFFFB8C00),
+                darkTheme: darkTheme,
+                onTap: () => setState(() => _evalHesitations++),
+                onUndo: _evalHesitations > 0 ? () => setState(() => _evalHesitations--) : null,
+              ),
+              const SizedBox(width: 6),
+              _buildQuickRubricChip(
+                label: 'تجويد (-0.25)',
+                count: _evalTajweedNotes,
+                color: const Color(0xFF1E88E5),
+                darkTheme: darkTheme,
+                onTap: () => setState(() => _evalTajweedNotes++),
+                onUndo: _evalTajweedNotes > 0 ? () => setState(() => _evalTajweedNotes--) : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 36,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00875A),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _isSavingEval ? null : _saveActiveStudentEvaluation,
+              icon: _isSavingEval
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
+              label: Text(
+                _isSavingEval ? 'جاري الحفظ...' : 'اعتماد وحفظ التقييم (${score.toStringAsFixed(1)}/10)',
+                style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickRubricChip({
+    required String label,
+    required int count,
+    required Color color,
+    required bool darkTheme,
+    required VoidCallback onTap,
+    required VoidCallback? onUndo,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(darkTheme ? 0.22 : 0.10),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.75)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (onUndo != null)
+                GestureDetector(
+                  onTap: onUndo,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: darkTheme ? Colors.black38 : Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.remove, size: 12, color: darkTheme ? Colors.white : color),
+                  ),
+                )
+              else
+                const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  '$label${count > 0 ? ' ($count)' : ''}',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Dubai',
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    color: darkTheme ? Colors.white : color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _endSessionPrompt() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('إنهاء الحلقة والتسميع', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
         content: Text(
-          _isRecording
-              ? 'هل ترغب في إنهاء الحلقة، وتدوين تقييم الطالب (الأخطاء والتلعثم)، وحفظ التسجيل؟'
-              : 'هل ترغب في إنهاء جلسة التسميع وتدوين درجات الطالب؟',
+          _studentEvaluations.isNotEmpty
+              ? 'تم حفظ تقييم ${_studentEvaluations.length} طالب في هذه الحلقة.\nهل ترغب في إنهاء الحلقة الآن وحفظ التسجيل؟'
+              : (_isRecording
+                  ? 'هل ترغب في إنهاء الحلقة، وتدوين تقييم الطالب (الأخطاء والتلعثم)، وحفظ التسجيل؟'
+                  : 'هل ترغب في إنهاء جلسة التسميع أو تقييم طالب قبل الخروج؟'),
           textAlign: TextAlign.right,
           style: const TextStyle(fontFamily: 'Dubai'),
         ),
@@ -318,14 +967,43 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('إلغاء', style: TextStyle(fontFamily: 'Dubai')),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _showRecitationEvaluationSheet();
-            },
-            child: const Text('تقييم الطالب وإنهاء', style: TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
+          if (_studentEvaluations.isNotEmpty)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await UserChaptersService.instance.endAndSaveChapter(
+                  roomId: widget.roomId,
+                  title: widget.circleTitle,
+                  durationFormatted: _formatCallTimer(_callSeconds > 0 ? _callSeconds : 150),
+                );
+                if (widget.classRoomId != null) {
+                  try {
+                    await _apiClient.endClass(
+                      widget.classRoomId!,
+                      recordUrl: 'https://etqan.site/storage/recordings/sample_recitation.mp4',
+                    );
+                  } catch (_) {}
+                }
+                if (mounted) {
+                  AppFeedback.showSuccess(
+                    context,
+                    'تم إنهاء الحلقة وحفظ تقييمات (${_studentEvaluations.length}) طلاب',
+                  );
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('إنهاء الحلقة وحفظ السجل', style: TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold)),
+            )
+          else
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _showRecitationEvaluationSheet();
+              },
+              child: const Text('تقييم طالب وإنهاء', style: TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
         ],
       ),
     );
@@ -689,7 +1367,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
       // تحديث قائمة المتواجدين داخل الغرفة
       ZegoExpressEngine.onRoomUserUpdate = (roomID, updateType, userList) {
-        if (!mounted || roomID != widget.roomId) return;
+        if (!mounted || _isDisposed || roomID != widget.roomId) return;
         setState(() {
           for (var u in userList) {
             if (updateType == ZegoUpdateType.Add) {
@@ -698,7 +1376,12 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
               _remoteUsers.remove(u.userID);
             }
           }
+          final int liveConnected = 1 + _remoteUsers.length;
+          if (liveConnected > _subscribersCount) {
+            _subscribersCount = liveConnected;
+          }
         });
+        _loadClassDetails(silent: true);
       };
 
       // استقبال رسائل الدردشة الفورية عبر ZEGOCLOUD كقناة سريعة إضافية
@@ -1017,6 +1700,12 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                 // Chapter Duration Card
                 _buildDurationCard(),
 
+                if (widget.isSheikh && _activeEvalStudentId != null && (!_isCallActive || _isPipMode))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: _buildLiveStudentEvaluationOverlay(darkTheme: false),
+                  ),
+
                 // Live Stream Banner when remote participant is broadcasting
                 if (_remoteStreams.isNotEmpty && !_isCallActive)
                   Container(
@@ -1293,58 +1982,77 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           ),
           const SizedBox(height: 10),
 
-          // السطر الثاني: شارة المشتركين + أزرار المشاركة والاتصال
+          // السطر الثاني: شارة المشتركين (قابلة للضغط لعرض قائمة الطلاب) + أزرار المشاركة والتقييم والاتصال
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F8F5),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF00875A)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.person_outline, color: Color(0xFF00875A), size: 15),
-                    const SizedBox(width: 4),
-                    Text(
-                      'المشتركين $_subscribersCount / $_capacity',
-                      softWrap: false,
-                      style: const TextStyle(
-                        fontFamily: 'Dubai',
-                        fontSize: 12,
-                        color: Color(0xFF00875A),
-                        fontWeight: FontWeight.bold,
-                      ),
+              Flexible(
+                child: GestureDetector(
+                  onTap: _showParticipantsAndEvaluateSheet,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F8F5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF00875A)),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.people_alt_outlined, color: Color(0xFF00875A), size: 15),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'المشتركين $_subscribersCount / $_capacity',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 11.5,
+                              color: Color(0xFF00875A),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF00875A), size: 16),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(width: 6),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (widget.isSheikh) ...[
+                    _buildCircularTopAction(
+                      icon: Icons.fact_check_outlined,
+                      color: const Color(0xFF00875A),
+                      onTap: _showParticipantsAndEvaluateSheet,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   _buildCircularTopAction(
                     icon: Icons.share_outlined,
                     color: const Color(0xFF00875A),
                     onTap: _shareChapter,
                   ),
                   if (widget.isSheikh) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     _buildCircularTopAction(
                       icon: Icons.power_settings_new,
                       color: const Color(0xFF191919),
                       onTap: _endSessionPrompt,
                     ),
                   ],
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildCircularTopAction(
                     icon: Icons.call_outlined,
                     color: const Color(0xFF191919),
                     onTap: () => _startCallPublish(video: false),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildCircularTopAction(
                     icon: Icons.videocam_outlined,
                     color: const Color(0xFF191919),
@@ -1388,15 +2096,15 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
           border: Border.all(color: Colors.grey.shade300),
         ),
         child: Center(
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: color, size: 18),
         ),
       ),
     );
@@ -1902,21 +2610,33 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                         ],
                       ),
 
-                      // Attendees Pill + End Call X
+                      // Attendees Pill (تفتح قائمة المشتركين والتقييم) + End Call X
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                Text('${1 + _remoteUsers.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.person, color: Colors.white, size: 14),
-                              ],
+                          GestureDetector(
+                            onTap: _showParticipantsAndEvaluateSheet,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'المشتركين $_subscribersCount • متصل ${1 + _remoteUsers.length}',
+                                    style: const TextStyle(
+                                      fontFamily: 'Dubai',
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.people_alt_outlined, color: Color(0xFF00C48C), size: 14),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1939,19 +2659,53 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   ),
                 ),
 
-                // User Badge (bottom left of video)
-                Positioned(
-                  bottom: 12,
-                  left: 16,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(14),
+                // لوحة التقييم الحي فوق الفيديو (للشيخ عند اختيار طالب) أو زر اختيار الطالب للتسميع
+                if (widget.isSheikh && _activeEvalStudentId != null)
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    right: 10,
+                    child: _buildLiveStudentEvaluationOverlay(darkTheme: true),
+                  )
+                else ...[
+                  // User Badge (bottom left of video)
+                  Positioned(
+                    bottom: 12,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(_currentUserName, style: const TextStyle(color: Colors.white, fontSize: 11)),
                     ),
-                    child: Text(_currentUserName, style: const TextStyle(color: Colors.white, fontSize: 11)),
                   ),
-                ),
+                  if (widget.isSheikh)
+                    Positioned(
+                      bottom: 10,
+                      right: 14,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00875A),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: _showParticipantsAndEvaluateSheet,
+                        icon: const Icon(Icons.fact_check_outlined, size: 16, color: Colors.white),
+                        label: Text(
+                          'تقييم طالب (${_studentEvaluations.length})',
+                          style: const TextStyle(
+                            fontFamily: 'Dubai',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ],
             ),
           ),

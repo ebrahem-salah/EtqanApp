@@ -30,6 +30,9 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
   Duration _totalDuration = const Duration(minutes: 3);
 
   List<Map<String, dynamic>> _messages = [];
+  List<Map<String, dynamic>> _participants = [];
+  Map<int, List<Map<String, dynamic>>> _appreciationsByStudent = {};
+  List<Map<String, dynamic>> _allAppreciations = [];
   bool _isLoadingMessages = false;
 
   @override
@@ -115,6 +118,50 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
         AppFeedback.showError(context, 'تحميل سجل المحادثة', e);
       }
     }
+
+    try {
+      final detailsRes = await _apiClient.getClassDetails(classId);
+      if (detailsRes.statusCode == 200 && detailsRes.data != null && mounted) {
+        final d = detailsRes.data['data'];
+        if (d is Map<String, dynamic> && d['students'] is List) {
+          final List rawStudents = d['students'] as List;
+          _participants = rawStudents.map<Map<String, dynamic>>((s) {
+            final u = s['user'] is Map ? s['user'] : {};
+            return {
+              'student_id': int.tryParse('${s['id'] ?? u['id'] ?? ''}'),
+              'name': (u['name'] ?? s['name'] ?? 'طالب').toString(),
+              'session_rating': s['session_rating'],
+              'general_rating': s['general_rating'] ?? s['overall_rating'],
+            };
+          }).toList();
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final apprRes = await _apiClient.getClassAppreciations(classId);
+      if (apprRes.statusCode == 200 && apprRes.data != null && mounted) {
+        final List rawAppr = apprRes.data['data'] ?? [];
+        final Map<int, List<Map<String, dynamic>>> grouped = {};
+        final List<Map<String, dynamic>> flat = [];
+        for (final a in rawAppr) {
+          final int? sid = int.tryParse('${a['student_id'] ?? ''}');
+          final studentName = (a['student']?['user']?['name'] ?? a['student']?['name'] ?? 'طالب').toString();
+          final entry = {
+            'student_id': sid,
+            'student_name': studentName,
+            'type': a['type']?.toString() ?? 'thank',
+            'message': a['message']?.toString() ?? '',
+          };
+          flat.add(entry);
+          if (sid != null) {
+            grouped.putIfAbsent(sid, () => []).add(entry);
+          }
+        }
+        _allAppreciations = flat;
+        _appreciationsByStudent = grouped;
+      }
+    } catch (_) {}
 
     if (mounted) setState(() => _isLoadingMessages = false);
   }
@@ -586,12 +633,51 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Text(
-                              (widget.chapter['notes']?.toString().isNotEmpty == true)
-                                  ? widget.chapter['notes'].toString()
-                                  : 'لا توجد ملاحظات مسجلة من الشيخ لهذه الجلسة.',
-                              style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, height: 1.6),
-                            ),
+                            if (_allAppreciations.isEmpty)
+                              Text(
+                                (widget.chapter['notes']?.toString().isNotEmpty == true)
+                                    ? widget.chapter['notes'].toString()
+                                    : 'لا توجد تقييمات أو ملاحظات مسجلة من الشيخ لهذه الجلسة.',
+                                style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, height: 1.6),
+                              )
+                            else
+                              ..._allAppreciations.map((a) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: a['type'] == 'warning'
+                                            ? const Color(0xFFFFF8E1)
+                                            : const Color(0xFFF1F8F5),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: a['type'] == 'warning'
+                                              ? const Color(0xFFFFCA28)
+                                              : const Color(0xFF00875A).withOpacity(0.25),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            a['student_name'] ?? 'طالب',
+                                            style: const TextStyle(
+                                              fontFamily: 'Dubai',
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: Color(0xFF00875A),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            a['message'] ?? '',
+                                            style: const TextStyle(fontFamily: 'Dubai', fontSize: 12, height: 1.5),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )),
                           ],
                         ),
                       ),
@@ -606,9 +692,9 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              '👥 المشاركون في الجلسة:',
-                              style: TextStyle(
+                            Text(
+                              '👥 المشاركون في الجلسة (${_participants.length}):',
+                              style: const TextStyle(
                                 fontFamily: 'Dubai',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -618,8 +704,16 @@ class _CircleReplayScreenState extends State<CircleReplayScreen>
                             const SizedBox(height: 8),
                             _buildAttendeeTile(
                               supervisor,
-                              'مشرف الحلقة (${widget.chapter['subscribers'] ?? '0'})',
+                              'مشرف الحلقة (${widget.chapter['subscribers'] ?? _participants.length})',
                             ),
+                            ..._participants.map((p) {
+                              final int? sid = p['student_id'] as int?;
+                              final evals = sid != null ? _appreciationsByStudent[sid] : null;
+                              final String subText = (evals != null && evals.isNotEmpty)
+                                  ? evals.last['message'] ?? 'تم التقييم'
+                                  : 'حاضر في الحلقة';
+                              return _buildAttendeeTile(p['name'] ?? 'طالب', subText);
+                            }),
                           ],
                         ),
                       ),
