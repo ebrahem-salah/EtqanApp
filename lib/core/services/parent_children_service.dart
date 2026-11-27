@@ -8,6 +8,8 @@ class LinkedChildItem {
   final String name;
   final String code;
 
+  String get followCode => code;
+
   const LinkedChildItem({
     required this.studentId,
     required this.name,
