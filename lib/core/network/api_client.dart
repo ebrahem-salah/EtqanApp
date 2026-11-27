@@ -325,6 +325,21 @@ class ApiClient {
     return await dio.post('/classes/$classId/messages', data: {'message': text});
   }
 
+  /// Upload image/sheet attachment inside class chat
+  Future<Response> sendClassAttachment(
+    int classId, {
+    required String filePath,
+    String message = 'مرفق شرح',
+  }) async {
+    final fileName = filePath.split(RegExp(r'[/\\]')).last;
+    final formData = FormData.fromMap({
+      'type': 'image',
+      'message': message,
+      'image': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    return await dio.post('/classes/$classId/messages', data: formData);
+  }
+
   /// Get recitation scoring & appreciations
   Future<Response> getClassAppreciations(int classId) async {
     return await dio.get('/classes/$classId/appreciations');

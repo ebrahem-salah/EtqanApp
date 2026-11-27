@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -8,12 +9,15 @@ import 'package:zego_express_engine/zego_express_engine.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/deep_link_service.dart';
+import '../../core/services/exam_lock_service.dart';
 import '../../core/services/zego_cloud_service.dart';
 import '../../core/services/reels_preload_manager.dart';
 import '../../core/services/user_chapters_service.dart';
 import '../../core/utils/app_feedback.dart';
 import '../../providers/auth_provider.dart';
 import '../competitions/widgets/competition_exam_sheet.dart';
+import '../student/student_record_screen.dart';
+import 'widgets/room_mushaf_sheet.dart';
 
 class LiveRecitationRoom extends StatefulWidget {
   final String roomId;
@@ -41,7 +45,7 @@ class LiveRecitationRoom extends StatefulWidget {
   State<LiveRecitationRoom> createState() => _LiveRecitationRoomState();
 }
 
-class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
+class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBindingObserver {
   // RTC & Controls State
   bool _isEngineReady = false;
   bool _isMicMuted = false;
@@ -98,13 +102,32 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   // بيانات المشتركين وتقييم كل طالب أثناء التسميع
   List<Map<String, dynamic>> _enrolledStudents = [];
   final Map<int, Map<String, dynamic>> _studentEvaluations = {};
+  final Map<int, DateTime> _raisedHands = {};
+  final Map<int, int> _studentViolations = {};
   int? _activeEvalStudentId;
   String? _activeEvalStudentName;
   int _evalMajorErrors = 0;
   int _evalHesitations = 0;
   int _evalTajweedNotes = 0;
   String _evalCustomNote = '';
+  String _evalNextHomework = '';
   bool _isSavingEval = false;
+  int _studentTurnSeconds = 0;
+
+  // صلاحيات الغرفة والمصحف والكتب ومنع الغش (بيد الشيخ)
+  bool _allowStudentsMushaf = false;
+  bool _manualMushafOverride = false;
+  int _syncedMushafSurah = 19;
+  int _syncedContentTab = 0; // 0: المصحف, 1: الكتب والشروحات
+  String? _syncedBookTitle;
+  String? _syncedBookChapter;
+  String? _syncedBookText;
+  int? _syncedHighlightedLine;
+  bool _strictExamMode = false;
+  bool _isMushafSheetOpen = false;
+  DateTime? _backgroundLeftAt;
+  int _studentAppLeaveCount = 0;
+  static const String _cmdPrefix = '__ETQAN_CMD__:';
 
   // Drag position for Floating Window (PiP mode)
   Offset _pipPosition = const Offset(100, 150);
@@ -112,11 +135,82 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     ReelsPreloadManager.instance.pauseAll();
+    _applyAutoPresetForCircleText(widget.circleTitle);
     _initUserName();
     _initZegoRTC();
     _startTimer();
     _joinAndLoadRoomData();
+  }
+
+  /// الضبط التلقائي حسب نوع الحلقة (تسميع/مسابقة => مصحف مقفول | تلاوة/نورانية/كتب => مفتوح تلقائياً)
+  void _applyAutoPresetForCircleText(String titleOrCategory) {
+    if (_manualMushafOverride) return;
+    final t = titleOrCategory.toLowerCase();
+    final isExamOrMemorize = t.contains('حفظ') ||
+        t.contains('تسميع') ||
+        t.contains('مسابقة') ||
+        t.contains('اختبار') ||
+        t.contains('مراجعة');
+    final isBooksOrLesson = t.contains('كتاب') ||
+        t.contains('كتب') ||
+        t.contains('شرح') ||
+        t.contains('فقه') ||
+        t.contains('حديث') ||
+        t.contains('سنة') ||
+        t.contains('سيرة') ||
+        t.contains('جزرية') ||
+        t.contains('نورانية');
+    final isOpenReading = isBooksOrLesson ||
+        t.contains('تلاوة') ||
+        t.contains('تصحيح') ||
+        t.contains('قراءة') ||
+        t.contains('تلقين') ||
+        t.contains('تجويد') ||
+        t.contains('تفسير');
+
+    if (t.contains('مسابقة') || t.contains('اختبار')) {
+      _allowStudentsMushaf = false;
+    } else if (isOpenReading && !isExamOrMemorize) {
+      _allowStudentsMushaf = true;
+      if (isBooksOrLesson) _syncedContentTab = 1;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_isDisposed || widget.isSheikh) return;
+    final bool shouldMonitor = _strictExamMode || _isCallActive || _isStudentMicApproved;
+    if (!shouldMonitor) return;
+
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _backgroundLeftAt = DateTime.now();
+      _studentAppLeaveCount++;
+      _sendRoomCommand({
+        'cmd': 'student_left_app',
+        'user_id': _currentUserId,
+        'name': _currentUserName,
+        'count': _studentAppLeaveCount,
+      });
+    } else if (state == AppLifecycleState.resumed && _backgroundLeftAt != null) {
+      final elapsedSec = DateTime.now().difference(_backgroundLeftAt!).inSeconds;
+      _backgroundLeftAt = null;
+      if (elapsedSec >= 2 && mounted) {
+        _sendRoomCommand({
+          'cmd': 'student_returned_app',
+          'user_id': _currentUserId,
+          'name': _currentUserName,
+          'seconds': elapsedSec,
+          'count': _studentAppLeaveCount,
+        });
+        AppFeedback.showError(
+          context,
+          'تحذير المراقبة',
+          'تم رصد خروجك من التطبيق لمدة $elapsedSec ثانية وإبلاغ الشيخ بذلك (المخالفة رقم $_studentAppLeaveCount)',
+        );
+      }
+    }
   }
 
   void _initUserName() {
@@ -194,6 +288,10 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
             if (sName != null && sName.isNotEmpty && !sName.contains('???')) {
               _displaySheikhName = sName;
             }
+            final catName = data['category']?['name']?.toString() ?? '';
+            if (catName.isNotEmpty && !_manualMushafOverride) {
+              _applyAutoPresetForCircleText('${widget.circleTitle} $catName');
+            }
             _enrolledStudents = parsedStudents;
             _subscribersCount = srvCount > liveConnected ? srvCount : liveConnected;
             if (data['capacity'] != null) {
@@ -260,6 +358,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
               'sender': senderName,
               'role': senderObj['user_type']?.toString() ?? senderObj['type']?.toString() ?? 'student',
               'message': text,
+              'image_url': (msg['image_url'] ?? '').toString(),
               'time': time,
               'isMe': isMe,
             };
@@ -305,6 +404,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
       if (mounted) {
         setState(() {
           _callSeconds++;
+          if (_activeEvalStudentId != null) {
+            _studentTurnSeconds++;
+          }
         });
       }
     });
@@ -313,6 +415,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
   @override
   void dispose() {
     _isDisposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    ExamLockService.instance.setSecureScreen(false);
+    ExamLockService.instance.stopLockTask();
     ZegoExpressEngine.onRoomStateUpdate = null;
     _callTimer?.cancel();
     _recordTimer?.cancel();
@@ -388,6 +493,10 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         'user_id': uid,
         'name': name,
         'isOnline': isOnlineByIdsOrName(uid, name),
+        'handRaised': (uid != null && _raisedHands.containsKey(uid)) ||
+            (sid != null && _raisedHands.containsKey(sid)),
+        'raisedAt': _raisedHands[uid] ?? _raisedHands[sid],
+        'violations': _studentViolations[uid] ?? _studentViolations[sid] ?? 0,
         'evaluation': sid != null ? _studentEvaluations[sid] : null,
       });
     }
@@ -406,6 +515,9 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         'user_id': parsedUid,
         'name': name,
         'isOnline': true,
+        'handRaised': parsedUid != null && _raisedHands.containsKey(parsedUid),
+        'raisedAt': parsedUid != null ? _raisedHands[parsedUid] : null,
+        'violations': parsedUid != null ? (_studentViolations[parsedUid] ?? 0) : 0,
         'evaluation': parsedUid != null ? _studentEvaluations[parsedUid] : null,
       });
     }
@@ -417,11 +529,306 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         'user_id': _currentUserId,
         'name': _currentUserName,
         'isOnline': true,
+        'handRaised': _isHandRaised,
+        'raisedAt': _raisedHands[_currentUserId],
+        'violations': _studentAppLeaveCount,
         'evaluation': _studentEvaluations[_currentUserId],
       });
     }
 
+    // ترتيب القائمة: رافعو الأيدي ✋ أولاً بالترتيب الزمني ثم المتصلون ثم الباقون
+    list.sort((a, b) {
+      final bool ha = a['handRaised'] == true;
+      final bool hb = b['handRaised'] == true;
+      if (ha != hb) return ha ? -1 : 1;
+      if (ha && hb) {
+        final da = a['raisedAt'] as DateTime?;
+        final db = b['raisedAt'] as DateTime?;
+        if (da != null && db != null) return da.compareTo(db);
+      }
+      final bool oa = a['isOnline'] == true;
+      final bool ob = b['isOnline'] == true;
+      if (oa != ob) return oa ? -1 : 1;
+      return 0;
+    });
+
     return list;
+  }
+
+  Future<void> _sendRoomCommand(Map<String, dynamic> cmd) async {
+    try {
+      await ZegoExpressEngine.instance.sendBroadcastMessage(
+        widget.roomId,
+        '$_cmdPrefix${jsonEncode(cmd)}',
+      );
+    } catch (_) {}
+  }
+
+  void _handleRoomCommand(Map<String, dynamic> cmd, String senderName) {
+    if (!mounted || _isDisposed) return;
+    final String type = (cmd['cmd'] ?? '').toString();
+    switch (type) {
+      case 'hand_raise':
+        final int? uid = int.tryParse('${cmd['user_id'] ?? ''}');
+        final bool raised = cmd['raised'] == true;
+        final String name = (cmd['name'] ?? senderName).toString();
+        setState(() {
+          if (uid != null) {
+            if (raised) {
+              _raisedHands[uid] = DateTime.now();
+            } else {
+              _raisedHands.remove(uid);
+            }
+          }
+        });
+        if (widget.isSheikh && raised) {
+          AppFeedback.showSuccess(context, '✋ الطالب $name يرفع يده لطلب التسميع');
+        }
+        break;
+
+      case 'mic_permission':
+        final int? targetUid = int.tryParse('${cmd['target_user_id'] ?? ''}');
+        final bool approved = cmd['approved'] == true;
+        if (!widget.isSheikh && targetUid != null && targetUid == _currentUserId) {
+          setState(() {
+            _isStudentMicApproved = approved;
+            _isMicMuted = !approved;
+            if (approved) _isHandRaised = false;
+          });
+          try {
+            ZegoExpressEngine.instance.muteMicrophone(_isMicMuted);
+          } catch (_) {}
+          if (approved) {
+            AppFeedback.showSuccess(context, '🎙️ أذن لك الشيخ بالتسميع الآن — المايك مفتوح');
+          } else {
+            AppFeedback.showError(context, 'صلاحية الصوت', 'تم كتم المايك من قِبل الشيخ');
+          }
+        }
+        break;
+
+      case 'mute_all':
+        if (!widget.isSheikh) {
+          setState(() {
+            _isStudentMicApproved = false;
+            _isMicMuted = true;
+          });
+          try {
+            ZegoExpressEngine.instance.muteMicrophone(true);
+          } catch (_) {}
+          AppFeedback.showSuccess(context, '🔇 قام الشيخ بكتم جميع الطلاب للاستماع');
+        }
+        break;
+
+      case 'mushaf_lock':
+        final bool allowed = cmd['allowed'] == true;
+        final int surah = int.tryParse('${cmd['surah'] ?? _syncedMushafSurah}') ?? _syncedMushafSurah;
+        if (!widget.isSheikh) {
+          setState(() {
+            _allowStudentsMushaf = allowed;
+            _syncedMushafSurah = surah.clamp(1, 114);
+            if (cmd.containsKey('tab')) {
+              _syncedContentTab = int.tryParse('${cmd['tab'] ?? 0}') ?? 0;
+            }
+          });
+          if (!allowed && _isMushafSheetOpen && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+            AppFeedback.showError(context, 'قفل المحتوى', 'أغلق الشيخ المصحف والكتب عن الطلاب الآن للتسميع غيباً');
+          }
+        }
+        break;
+
+      case 'library_sync':
+        if (!widget.isSheikh) {
+          final bool allowed = cmd['allowed'] == true;
+          final int? hl = int.tryParse('${cmd['highlighted_line'] ?? ''}');
+          setState(() {
+            _allowStudentsMushaf = allowed;
+            _syncedContentTab = 1;
+            _syncedBookTitle = cmd['title']?.toString();
+            _syncedBookChapter = cmd['chapter']?.toString();
+            _syncedBookText = cmd['text']?.toString();
+            _syncedHighlightedLine = hl;
+          });
+          if (allowed && _syncedBookTitle != null && hl == null) {
+            AppFeedback.showSuccess(context, '📚 فتح الشيخ شرح: $_syncedBookTitle');
+          }
+        }
+        break;
+
+      case 'strict_mode':
+        final bool enabled = cmd['enabled'] == true;
+        if (!widget.isSheikh) {
+          setState(() {
+            _strictExamMode = enabled;
+            if (enabled) {
+              _allowStudentsMushaf = false;
+              _isPipMode = false;
+              _isScreenSharing = false;
+            }
+          });
+          ExamLockService.instance.setSecureScreen(enabled);
+          if (enabled) {
+            ExamLockService.instance.startLockTask();
+            if (_isMushafSheetOpen && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+            AppFeedback.showError(
+              context,
+              'وضع المراقبة المشدد 🔒',
+              'فعّل الشيخ وضع التسميع المشدد: يُمنع مغادرة التطبيق أو فتح المصحف',
+            );
+          } else {
+            ExamLockService.instance.stopLockTask();
+            AppFeedback.showSuccess(context, 'تم إنهاء وضع المراقبة المشدد');
+          }
+        }
+        break;
+
+      case 'student_left_app':
+        final int? uid = int.tryParse('${cmd['user_id'] ?? ''}');
+        final int cnt = int.tryParse('${cmd['count'] ?? 1}') ?? 1;
+        final String name = (cmd['name'] ?? senderName).toString();
+        if (widget.isSheikh) {
+          if (uid != null) setState(() => _studentViolations[uid] = cnt);
+          AppFeedback.showError(context, 'تنبيه مراقبة', '⚠️ الطالب $name غادر شاشة التطبيق الآن (مخالفة $cnt)');
+        }
+        break;
+
+      case 'student_returned_app':
+        final int secs = int.tryParse('${cmd['seconds'] ?? 0}') ?? 0;
+        final String name = (cmd['name'] ?? senderName).toString();
+        if (widget.isSheikh) {
+          AppFeedback.showError(context, 'عودة الطالب', '⚠️ عاد الطالب $name بعد الخروج لمدة $secs ثانية');
+        }
+        break;
+
+      case 'student_camera_off':
+        final String name = (cmd['name'] ?? senderName).toString();
+        if (widget.isSheikh) {
+          AppFeedback.showError(context, 'تنبيه الكاميرا', '📷 أغلق الطالب $name الكاميرا أثناء دوره');
+        }
+        break;
+
+      case 'student_eval_result':
+        final int? targetUid = int.tryParse('${cmd['target_user_id'] ?? ''}');
+        final String scoreText = (cmd['score'] ?? '').toString();
+        if (!widget.isSheikh && targetUid != null && targetUid == _currentUserId) {
+          AppFeedback.showSuccess(context, '🌟 اعتمد الشيخ تقييم تلاوتك: $scoreText');
+        }
+        break;
+    }
+  }
+
+  void _toggleHandRaise() {
+    setState(() => _isHandRaised = !_isHandRaised);
+    _sendRoomCommand({
+      'cmd': 'hand_raise',
+      'user_id': _currentUserId,
+      'name': _currentUserName,
+      'raised': _isHandRaised,
+    });
+    AppFeedback.showSuccess(
+      context,
+      _isHandRaised ? '✋ تم رفع يدك لطلب التسميع عند الشيخ' : 'تم خفض اليد',
+    );
+  }
+
+  void _toggleStudentsMushaf([bool? forceVal]) {
+    final next = forceVal ?? !_allowStudentsMushaf;
+    setState(() {
+      _manualMushafOverride = true;
+      _allowStudentsMushaf = next;
+    });
+    _sendRoomCommand({
+      'cmd': 'mushaf_lock',
+      'allowed': next,
+      'surah': _syncedMushafSurah,
+    });
+    AppFeedback.showSuccess(
+      context,
+      next ? '📖 تم فتح المصحف للطلاب' : '🔒 تم قفل المصحف عن الطلاب للتسميع غيباً',
+    );
+  }
+
+  void _toggleStrictMode([bool? forceVal]) {
+    final next = forceVal ?? !_strictExamMode;
+    setState(() {
+      _strictExamMode = next;
+      if (next) _allowStudentsMushaf = false;
+    });
+    _sendRoomCommand({'cmd': 'strict_mode', 'enabled': next});
+    AppFeedback.showSuccess(
+      context,
+      next ? '🔒 تم تفعيل وضع المراقبة المشدد للطلاب' : 'تم إيقاف وضع المراقبة المشدد',
+    );
+  }
+
+  void _muteAllStudents() {
+    _sendRoomCommand({'cmd': 'mute_all'});
+    AppFeedback.showSuccess(context, '🔇 تم إرسال أمر كتم جميع الطلاب');
+  }
+
+  Future<void> _openRoomMushaf() async {
+    if (!widget.isSheikh && (!_allowStudentsMushaf || _strictExamMode)) {
+      AppFeedback.showError(
+        context,
+        'المحتوى مقفول 🔒',
+        'قام الشيخ بإغلاق المصحف والكتب عن الطلاب أثناء التسميع غيباً',
+      );
+      return;
+    }
+    _isMushafSheetOpen = true;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RoomMushafSheet(
+        initialTabIndex: _syncedContentTab,
+        initialSurah: _syncedMushafSurah,
+        initialBookTitle: _syncedBookTitle,
+        initialBookChapter: _syncedBookChapter,
+        initialBookText: _syncedBookText,
+        initialHighlightedLine: _syncedHighlightedLine,
+        isSheikh: widget.isSheikh,
+        initialAllowedForStudents: _allowStudentsMushaf,
+        onSurahChanged: (surahNum) {
+          setState(() {
+            _syncedContentTab = 0;
+            _syncedMushafSurah = surahNum;
+          });
+          if (widget.isSheikh) {
+            _sendRoomCommand({
+              'cmd': 'mushaf_lock',
+              'allowed': _allowStudentsMushaf,
+              'surah': surahNum,
+              'tab': 0,
+            });
+          }
+        },
+        onLibrarySynced: (title, chapter, text, hl) {
+          setState(() {
+            _syncedContentTab = 1;
+            _syncedBookTitle = title;
+            _syncedBookChapter = chapter;
+            _syncedBookText = text;
+            _syncedHighlightedLine = hl;
+          });
+          if (widget.isSheikh) {
+            _sendRoomCommand({
+              'cmd': 'library_sync',
+              'allowed': _allowStudentsMushaf,
+              'title': title,
+              'chapter': chapter,
+              'text': text,
+              'highlighted_line': hl,
+            });
+          }
+        },
+        onShareAttachment: _pickChatAttachment,
+        onToggleAllowForStudents: (allowed) => _toggleStudentsMushaf(allowed),
+      ),
+    );
+    _isMushafSheetOpen = false;
   }
 
   double get _currentEvalScore {
@@ -431,6 +838,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   void _startEvaluatingStudent(Map<String, dynamic> student) {
     final int? sid = student['student_id'] as int?;
+    final int? uid = student['user_id'] as int? ?? sid;
     final String name = (student['name'] ?? 'طالب').toString();
     if (sid == null) {
       AppFeedback.showError(context, 'تحديد الطالب', 'لا يوجد معرف للطالب على السيرفر بعد');
@@ -439,33 +847,61 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     setState(() {
       _activeEvalStudentId = sid;
       _activeEvalStudentName = name;
+      _studentTurnSeconds = 0;
+      if (uid != null) _raisedHands.remove(uid);
+      _raisedHands.remove(sid);
       final existing = _studentEvaluations[sid];
       _evalMajorErrors = existing?['majorErrors'] as int? ?? 0;
       _evalHesitations = existing?['hesitations'] as int? ?? 0;
       _evalTajweedNotes = existing?['tajweedNotes'] as int? ?? 0;
       _evalCustomNote = existing?['notes']?.toString() ?? '';
+      _evalNextHomework = existing?['homework']?.toString() ?? '';
+    });
+    _sendRoomCommand({
+      'cmd': 'mic_permission',
+      'target_user_id': uid,
+      'approved': true,
     });
   }
 
   Future<void> _showEvalNoteDialog() async {
-    final ctrl = TextEditingController(text: _evalCustomNote);
-    final res = await showDialog<String>(
+    final noteCtrl = TextEditingController(text: _evalCustomNote);
+    final hwCtrl = TextEditingController(text: _evalNextHomework);
+    final res = await showDialog<Map<String, String>>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'ملاحظة للشيخ — ${_activeEvalStudentName ?? ''}',
+          'ملاحظات والمقرر القادم — ${_activeEvalStudentName ?? ''}',
           textAlign: TextAlign.right,
           style: const TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 15),
         ),
-        content: TextField(
-          controller: ctrl,
-          maxLines: 3,
-          textAlign: TextAlign.right,
-          decoration: InputDecoration(
-            hintText: 'اكتب ملاحظة الحفظ أو التجويد للطالب...',
-            hintStyle: const TextStyle(fontFamily: 'Dubai', fontSize: 13),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: noteCtrl,
+                maxLines: 2,
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  labelText: 'ملاحظات الشيخ والتجويد (اختياري)',
+                  hintStyle: const TextStyle(fontFamily: 'Dubai', fontSize: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: hwCtrl,
+                maxLines: 2,
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  labelText: 'المقرر القادم / الواجب (مثال: البقرة ١-٢٠)',
+                  hintStyle: const TextStyle(fontFamily: 'Dubai', fontSize: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -475,14 +911,20 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('حفظ الملاحظة', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
+            onPressed: () => Navigator.pop(ctx, {
+              'note': noteCtrl.text.trim(),
+              'homework': hwCtrl.text.trim(),
+            }),
+            child: const Text('حفظ', style: TextStyle(fontFamily: 'Dubai', color: Colors.white)),
           ),
         ],
       ),
     );
     if (res != null && mounted) {
-      setState(() => _evalCustomNote = res);
+      setState(() {
+        _evalCustomNote = res['note'] ?? '';
+        _evalNextHomework = res['homework'] ?? '';
+      });
     }
   }
 
@@ -494,7 +936,8 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     final double score = _currentEvalScore;
     final String summary =
         'التقييم: ${score.toStringAsFixed(1)}/10 | أخطاء جلية: $_evalMajorErrors | تلعثم: $_evalHesitations | تجويد: $_evalTajweedNotes'
-        '${_evalCustomNote.isNotEmpty ? ' | ملاحظات: $_evalCustomNote' : ''}';
+        '${_evalCustomNote.isNotEmpty ? ' | ملاحظات: $_evalCustomNote' : ''}'
+        '${_evalNextHomework.isNotEmpty ? ' | المقرر القادم: $_evalNextHomework' : ''}';
 
     setState(() => _isSavingEval = true);
     bool savedOnServer = false;
@@ -529,6 +972,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         'hesitations': _evalHesitations,
         'tajweedNotes': _evalTajweedNotes,
         'notes': _evalCustomNote,
+        'homework': _evalNextHomework,
         'message': summary,
         'savedOnServer': savedOnServer,
       };
@@ -539,10 +983,18 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
         _evalHesitations = 0;
         _evalTajweedNotes = 0;
         _evalCustomNote = '';
+        _evalNextHomework = '';
       }
     });
 
     if (savedOnServer) {
+      _sendRoomCommand({
+        'cmd': 'student_eval_result',
+        'target_user_id': sid,
+        'score': '${score.toStringAsFixed(1)}/10',
+        'summary': summary,
+      });
+      setState(() => _studentTurnSeconds = 0);
       AppFeedback.showSuccess(
         context,
         'تم حفظ تقييم $studentName (${score.toStringAsFixed(1)}/10) — يمكنك اختيار الطالب التالي',
@@ -605,6 +1057,56 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                     ],
                   ),
                   const Divider(),
+                  if (widget.isSheikh) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ActionChip(
+                            avatar: Icon(
+                              _allowStudentsMushaf ? Icons.menu_book_rounded : Icons.lock_outline,
+                              size: 16,
+                              color: _allowStudentsMushaf ? const Color(0xFF00875A) : Colors.deepOrange,
+                            ),
+                            label: Text(
+                              _allowStudentsMushaf ? 'المصحف مفتوح للطلاب' : 'المصحف مقفول عن الطلاب',
+                              style: const TextStyle(fontFamily: 'Dubai', fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () {
+                              _toggleStudentsMushaf();
+                              setSheetState(() {});
+                            },
+                          ),
+                          ActionChip(
+                            avatar: Icon(
+                              Icons.security_rounded,
+                              size: 16,
+                              color: _strictExamMode ? Colors.red : Colors.grey.shade700,
+                            ),
+                            label: Text(
+                              _strictExamMode ? 'وضع المراقبة: مُفعّل' : 'تفعيل المراقبة المشددة',
+                              style: const TextStyle(fontFamily: 'Dubai', fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () {
+                              _toggleStrictMode();
+                              setSheetState(() {});
+                            },
+                          ),
+                          ActionChip(
+                            avatar: const Icon(Icons.volume_off_rounded, size: 16, color: Colors.black87),
+                            label: const Text(
+                              'كتم جميع الطلاب',
+                              style: TextStyle(fontFamily: 'Dubai', fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: _muteAllStudents,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (participants.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 28),
@@ -624,6 +1126,8 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                           final int? sid = student['student_id'] as int?;
                           final String name = (student['name'] ?? 'طالب').toString();
                           final bool isOnline = student['isOnline'] == true;
+                          final bool handRaised = student['handRaised'] == true;
+                          final int violations = student['violations'] as int? ?? 0;
                           final eval = student['evaluation'] as Map<String, dynamic>?;
                           final bool isCurrentlyEvaluating = sid != null && sid == _activeEvalStudentId;
 
@@ -632,10 +1136,12 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                             decoration: BoxDecoration(
                               color: isCurrentlyEvaluating
                                   ? const Color(0xFFE8F5E9)
-                                  : const Color(0xFFFAFAFA),
+                                  : (handRaised ? const Color(0xFFFFF8E1) : const Color(0xFFFAFAFA)),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: isCurrentlyEvaluating ? const Color(0xFF00875A) : Colors.grey.shade200,
+                                color: isCurrentlyEvaluating
+                                    ? const Color(0xFF00875A)
+                                    : (handRaised ? Colors.amber.shade700 : Colors.grey.shade200),
                               ),
                             ),
                             child: Row(
@@ -657,10 +1163,10 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                                     child: Text(
                                       isCurrentlyEvaluating
                                           ? 'يسمّع الآن'
-                                          : (eval != null ? 'إعادة تقييم' : 'بدء التقييم'),
+                                          : (eval != null ? 'إعادة تقييم' : 'فتح المايك والتقييم'),
                                       style: const TextStyle(
                                         fontFamily: 'Dubai',
-                                        fontSize: 12,
+                                        fontSize: 11.5,
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -668,26 +1174,58 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                                   ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontFamily: 'Dubai',
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
+                                  child: GestureDetector(
+                                    onTap: sid == null
+                                        ? null
+                                        : () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => StudentRecordScreen(
+                                                  studentId: sid,
+                                                  studentName: name,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '${handRaised ? '✋ ' : ''}$name',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontFamily: 'Dubai',
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            decoration: TextDecoration.underline,
+                                          ),
                                         ),
-                                      ),
                                       const SizedBox(height: 2),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 2,
+                                        alignment: WrapAlignment.end,
                                         children: [
+                                          if (violations > 0)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.shade50,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                '⚠️ خروج: $violations',
+                                                style: TextStyle(
+                                                  fontFamily: 'Dubai',
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.red.shade700,
+                                                ),
+                                              ),
+                                            ),
                                           if (eval != null)
                                             Container(
-                                              margin: const EdgeInsets.only(left: 6),
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                               decoration: BoxDecoration(
                                                 color: const Color(0xFFD3EADB),
@@ -715,6 +1253,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                                       ),
                                     ],
                                   ),
+                                ),
                                 ),
                                 const SizedBox(width: 10),
                                 CircleAvatar(
@@ -804,7 +1343,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                     children: [
                       Flexible(
                         child: Text(
-                          'يسمّع الآن: ${_activeEvalStudentName ?? ''}',
+                          'يسمّع الآن: ${_activeEvalStudentName ?? ''} (${_formatCallTimer(_studentTurnSeconds)})',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1382,30 +1921,66 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           }
         });
         _loadClassDetails(silent: true);
+        if (widget.isSheikh && updateType == ZegoUpdateType.Add) {
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (!mounted || _isDisposed) return;
+            _sendRoomCommand({
+              'cmd': 'mushaf_lock',
+              'allowed': _allowStudentsMushaf,
+              'surah': _syncedMushafSurah,
+              'tab': _syncedContentTab,
+            });
+            if (_syncedContentTab == 1 && _syncedBookTitle != null) {
+              _sendRoomCommand({
+                'cmd': 'library_sync',
+                'allowed': _allowStudentsMushaf,
+                'title': _syncedBookTitle,
+                'chapter': _syncedBookChapter ?? '',
+                'text': _syncedBookText ?? '',
+                'highlighted_line': _syncedHighlightedLine,
+              });
+            }
+            if (_strictExamMode) {
+              _sendRoomCommand({'cmd': 'strict_mode', 'enabled': true});
+            }
+          });
+        }
       };
 
-      // استقبال رسائل الدردشة الفورية عبر ZEGOCLOUD كقناة سريعة إضافية
+      // استقبال رسائل الدردشة الفورية والأوامر الحية عبر ZEGOCLOUD
       ZegoExpressEngine.onIMRecvBroadcastMessage = (roomID, messageList) {
-        if (!mounted || roomID != widget.roomId) return;
-        setState(() {
-          for (var msg in messageList) {
-            final senderName = msg.fromUser.userName.isNotEmpty ? msg.fromUser.userName : 'مشارك';
-            final alreadyExists = _messages.any(
-              (m) => m['sender'] == senderName && m['message'] == msg.message,
-            );
-            if (!alreadyExists) {
-              final now = TimeOfDay.now();
+        if (!mounted || _isDisposed || roomID != widget.roomId) return;
+        bool addedChat = false;
+        for (var msg in messageList) {
+          final senderName = msg.fromUser.userName.isNotEmpty ? msg.fromUser.userName : 'مشارك';
+          final rawMsg = msg.message;
+          if (rawMsg.startsWith(_cmdPrefix)) {
+            try {
+              final decoded = jsonDecode(rawMsg.substring(_cmdPrefix.length));
+              if (decoded is Map<String, dynamic>) {
+                _handleRoomCommand(decoded, senderName);
+              }
+            } catch (_) {}
+            continue;
+          }
+          final alreadyExists = _messages.any(
+            (m) => m['sender'] == senderName && m['message'] == rawMsg,
+          );
+          if (!alreadyExists) {
+            final now = TimeOfDay.now();
+            setState(() {
               _messages.add({
                 'sender': senderName,
                 'role': 'remote',
-                'message': msg.message,
+                'message': rawMsg,
                 'time': '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
                 'isMe': false,
               });
-            }
+            });
+            addedChat = true;
           }
-        });
-        _scrollToBottom();
+        }
+        if (addedChat) _scrollToBottom();
       };
 
       // متابعة حالة كاميرا الطرف الآخر (لعدم عرض شاشة سوداء إذا كان الاتصال صوتياً فقط)
@@ -1592,22 +2167,46 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
     }
   }
 
-  // اختيار ملف أو صورة في الشات (ورقة مرفقات من الصورة 10)
+  // إرفاق صورة أو ملف شرح ورفعه للسيرفر ليظهر لكل المشاركين
   Future<void> _pickChatAttachment() async {
     try {
-      final res = await FilePicker.platform.pickFiles(type: FileType.media);
-      if (res != null && res.files.isNotEmpty) {
-        setState(() {
-          _messages.add({
-            'sender': _currentUserName,
-            'role': 'me',
-            'message': '📎 تم إرسال ملف: ${res.files.first.name}',
-            'time': '${TimeOfDay.now().hour.toString().padLeft(2, '0')}:${TimeOfDay.now().minute.toString().padLeft(2, '0')}',
-            'isMe': true,
-          });
-        });
+      final res = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['png', 'jpg', 'jpeg', 'webp', 'pdf'],
+      );
+      if (res == null || res.files.isEmpty) return;
+      final picked = res.files.first;
+      final path = picked.path;
+      final name = picked.name;
+      final isImage = RegExp(r'\.(png|jpe?g|webp)$', caseSensitive: false).hasMatch(name);
+
+      if (widget.classRoomId != null && path != null && isImage) {
+        AppFeedback.showSuccess(context, 'جاري رفع مرفق الشرح "$name"...');
+        await _apiClient.sendClassAttachment(
+          widget.classRoomId!,
+          filePath: path,
+          message: '📎 مرفق شرح: $name',
+        );
+        await _loadServerMessages();
+        if (mounted) AppFeedback.showSuccess(context, 'تم إرسال المرفق للجميع ✅');
+      } else {
+        final msgText = '📎 مرفق شرح: $name';
+        try {
+          await ZegoExpressEngine.instance.sendBroadcastMessage(widget.roomId, msgText);
+        } catch (_) {}
+        if (widget.classRoomId != null) {
+          await _apiClient.sendClassMessage(widget.classRoomId!, msgText);
+          await _loadServerMessages();
+        }
+        if (mounted && !isImage) {
+          AppFeedback.showSuccess(context, 'تم إرسال إشعار الملف في الشات (السيرفر يدعم عرض الصور مباشرة)');
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        AppFeedback.showError(context, 'إرسال المرفق', e);
+      }
+    }
   }
 
   // مشاركة رابط الحلقة (مطابق للصورة 13)
@@ -1686,9 +2285,20 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية
-      body: SafeArea(
+    return PopScope(
+      canPop: !(_strictExamMode && !widget.isSheikh),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _strictExamMode && !widget.isSheikh) {
+          AppFeedback.showError(
+            context,
+            'وضع التسميع المشدد 🔒',
+            'لا يمكن الخروج من الغرفة أثناء التسميع المشدد إلا بعد إنهاء الشيخ للوضع',
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFCFBE8), // الخلفية الكريمية الرسمية
+        body: SafeArea(
         child: Stack(
           children: [
             // 1. الواجهة الأساسية: شاشة انتظار وشات الحلقة (من الصور 4، 11، 12)
@@ -1803,6 +2413,18 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
+                                      if ((msg['image_url'] ?? '').toString().isNotEmpty) ...[
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.network(
+                                            msg['image_url'].toString(),
+                                            width: 200,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                      ],
                                       Text(
                                         msg['message'] ?? '',
                                         style: const TextStyle(fontFamily: 'Dubai', fontSize: 13, color: Colors.black87),
@@ -1832,8 +2454,8 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                 child: _isCallStarted ? _buildActiveCallView() : _buildCallPreviewView(),
               ),
 
-            // 3. النافذة العائمة Picture-in-Picture (من الصورة 9)
-            if (_isCallActive && _isPipMode)
+            // 4. النافذة العائمة (موقوفة عند تفعيل الوضع المشدد)
+            if (_isCallActive && _isPipMode && (!(_strictExamMode && !widget.isSheikh)))
               Positioned(
                 left: _pipPosition.dx,
                 top: _pipPosition.dy,
@@ -1915,6 +2537,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -2030,6 +2653,19 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                       icon: Icons.fact_check_outlined,
                       color: const Color(0xFF00875A),
                       onTap: _showParticipantsAndEvaluateSheet,
+                    ),
+                    const SizedBox(width: 6),
+                    _buildCircularTopAction(
+                      icon: Icons.menu_book_rounded,
+                      color: _allowStudentsMushaf ? const Color(0xFF00875A) : Colors.deepOrange,
+                      onTap: _openRoomMushaf,
+                    ),
+                    const SizedBox(width: 6),
+                  ] else ...[
+                    _buildCircularTopAction(
+                      icon: Icons.back_hand_rounded,
+                      color: _isHandRaised ? Colors.amber.shade800 : const Color(0xFF191919),
+                      onTap: _toggleHandRaise,
                     ),
                     const SizedBox(width: 6),
                   ],
@@ -2566,17 +3202,74 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Share icon in square
-                      GestureDetector(
-                        onTap: _shareChapter,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(8),
+                      // أزرار المشاركة والتحكم السريع (الشيخ: قفل المصحف + الوضع المشدد | الطالب: شارة المراقبة)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: _shareChapter,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.black45,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.share_outlined, color: Colors.white, size: 18),
+                            ),
                           ),
-                          child: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
-                        ),
+                          if (widget.isSheikh) ...[
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: () => _toggleStudentsMushaf(),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: _allowStudentsMushaf ? const Color(0xFF00875A) : Colors.black54,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: _allowStudentsMushaf ? Colors.white70 : Colors.orange,
+                                  ),
+                                ),
+                                child: Icon(
+                                  _allowStudentsMushaf ? Icons.menu_book_rounded : Icons.lock_outline,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: () => _toggleStrictMode(),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: _strictExamMode ? Colors.red.shade700 : Colors.black54,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white24),
+                                ),
+                                child: const Icon(Icons.security_rounded, color: Colors.white, size: 18),
+                              ),
+                            ),
+                          ] else if (_strictExamMode) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade700.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                '🔒 مراقبة مشددة',
+                                style: TextStyle(
+                                  fontFamily: 'Dubai',
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
 
                       // Timer & Recording Indicator
@@ -2710,19 +3403,26 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
             ),
           ),
 
-          // Bottom Action Controls Bar (من الصور 6 و 8 و 14)
+          // Bottom Action Controls Bar (محجّم للطالب، وكامل الصلاحيات للشيخ)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             color: const Color(0xFF131518),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                // 1. Chat toggle
+                // 1. Chat toggle (مقيد في الوضع المشدد للطالب)
                 _buildCallBottomAction(
                   icon: Icons.chat_bubble_outline_rounded,
                   isActive: false,
                   onTap: () {
-                    // تصغير إلى نافذة عائمة لعرض الشات
+                    if (_strictExamMode && !widget.isSheikh) {
+                      AppFeedback.showError(
+                        context,
+                        'الوضع المشدد 🔒',
+                        'لا يمكن تصغير الفيديو أثناء التسميع المشدد',
+                      );
+                      return;
+                    }
                     setState(() => _isPipMode = true);
                   },
                 ),
@@ -2738,7 +3438,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   },
                 ),
 
-                // 3. Camera toggle
+                // 3. Camera toggle (ينبه الشيخ إذا أغلق الطالب الكاميرا في الوضع المشدد أو أثناء دوره)
                 _buildCallBottomAction(
                   icon: _isCameraOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
                   isActive: _isCameraOn && !_isVoiceOnly,
@@ -2748,6 +3448,13 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                       _isVoiceOnly = false;
                       _isCameraOn = !_isCameraOn;
                     });
+                    if (!widget.isSheikh && !_isCameraOn && (_strictExamMode || _isStudentMicApproved)) {
+                      _sendRoomCommand({
+                        'cmd': 'student_camera_off',
+                        'user_id': _currentUserId,
+                        'name': _currentUserName,
+                      });
+                    }
                     try {
                       await ZegoExpressEngine.instance.enableCamera(_isCameraOn);
                       if (_isCameraOn) {
@@ -2772,75 +3479,54 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> {
                   },
                 ),
 
-                // 4. Quran / Mushaf Book icon
-                _buildCallBottomAction(
-                  icon: Icons.menu_book_rounded,
-                  isActive: false,
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => Container(
-                        height: MediaQuery.of(context).size.height * 0.75,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFFFDF5),
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.all(8),
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(4)),
-                            ),
-                            const Text('سورة مريم - المصحف المرتل', style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 16)),
-                            const Divider(),
-                            const Expanded(
-                              child: SingleChildScrollView(
-                                padding: EdgeInsets.all(16),
-                                child: Text(
-                                  'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ\n\n'
-                                  'كٓهيعٓصٓ ﴿١﴾ ذِكْرُ رَحْمَتِ رَبِّكَ عَبْدَهُۥ زَكَرِيَّآ ﴿٢﴾ إِذْ نَادَىٰ رَبَّهُۥ نِدَآءً خَفِيًّۭا ﴿٣﴾ قَالَ رَبِّ إِنِّى وَهَنَ ٱلْعَظْمُ مِنِّى وَٱشْتَعَلَ ٱلرَّأْسُ شَيْبًۭا وَلَمْ أَكُنۢ بِدُعَآئِكَ رَبِّ شَقِيًّۭا ﴿٤﴾ وَإِنِّى خِفْتُ ٱلْمَوَٰلِىَ مِن وَرَآءِى وَكَانَتِ ٱمْرَأَتِى عَاقِرًۭا فَهَبْ لِى مِن لَّدُنكَ وَلِيًّۭا ﴿٥﴾ يَرِثُنِى وَيَرِثُ مِنْ ءَالِ يَعْقُوبَ ۖ وَٱجْعَلْهُ رَبِّ رَضِيًّۭا ﴿٦﴾',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontFamily: 'Dubai', fontSize: 18, height: 2.2),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                // 4. Quran / Mushaf Uthmani (114 سورة - يتحكم الشيخ في فتحه وقفله للطالب)
+                if (widget.isSheikh || (_allowStudentsMushaf && !_strictExamMode))
+                  _buildCallBottomAction(
+                    icon: Icons.menu_book_rounded,
+                    isActive: widget.isSheikh && _allowStudentsMushaf,
+                    activeColor: const Color(0xFF00875A),
+                    onTap: _openRoomMushaf,
+                  )
+                else
+                  _buildCallBottomAction(
+                    icon: Icons.lock_outline_rounded,
+                    isActive: false,
+                    onTap: _openRoomMushaf,
+                  ),
 
-                // 5. Screen Share icon (من الصورة 8)
-                _buildCallBottomAction(
-                  icon: Icons.desktop_windows_outlined,
-                  isActive: _isScreenSharing,
-                  activeColor: Colors.blueAccent,
-                  onTap: () {
-                    setState(() => _isScreenSharing = !_isScreenSharing);
-                  },
-                ),
+                // 5. Hand Raise ✋ (للطالب لطلب الدور للتسميع)
+                if (!widget.isSheikh)
+                  _buildCallBottomAction(
+                    icon: Icons.back_hand_rounded,
+                    isActive: _isHandRaised,
+                    activeColor: Colors.amber.shade800,
+                    onTap: _toggleHandRaise,
+                  ),
 
-                // 6. Picture-in-Picture floating toggle (من الصورة 9)
-                _buildCallBottomAction(
-                  icon: Icons.picture_in_picture_alt_outlined,
-                  isActive: false,
-                  onTap: () {
-                    setState(() => _isPipMode = true);
-                  },
-                ),
-
-                // 7. Record Session Action (تسجيل الحلقة للأرشيف)
-                _buildCallBottomAction(
-                  icon: _isRecording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded,
-                  isActive: _isRecording,
-                  activeColor: Colors.redAccent,
-                  onTap: _toggleRecording,
-                ),
+                // 6-8. أدوات الشيخ الحصرية: مشاركة الشاشة، PiP، والتسجيل
+                if (widget.isSheikh) ...[
+                  _buildCallBottomAction(
+                    icon: Icons.desktop_windows_outlined,
+                    isActive: _isScreenSharing,
+                    activeColor: Colors.blueAccent,
+                    onTap: () {
+                      setState(() => _isScreenSharing = !_isScreenSharing);
+                    },
+                  ),
+                  _buildCallBottomAction(
+                    icon: Icons.picture_in_picture_alt_outlined,
+                    isActive: false,
+                    onTap: () {
+                      setState(() => _isPipMode = true);
+                    },
+                  ),
+                  _buildCallBottomAction(
+                    icon: _isRecording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded,
+                    isActive: _isRecording,
+                    activeColor: Colors.redAccent,
+                    onTap: _toggleRecording,
+                  ),
+                ],
               ],
             ),
           ),

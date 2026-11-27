@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import '../notifications/notifications_screen.dart';
 import '../profile/user_profile_screen.dart';
 
 class SheikhsScreen extends StatefulWidget {
@@ -172,7 +173,11 @@ class _SheikhsScreenState extends State<SheikhsScreen> {
                         ),
                         child: IconButton(
                           icon: const Icon(Icons.notifications_none, color: Color(0xFF191919), size: 22),
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -266,6 +271,7 @@ class _SheikhsScreenState extends State<SheikhsScreen> {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => UserProfileScreen(
+                                    userId: int.tryParse('${sheikh['id'] ?? ''}'),
                                     userName: sheikh['name'] ?? 'فضيلة الشيخ',
                                     episodesCount: sheikh['episodes'] ?? 0,
                                     videosCount: sheikh['videos'] ?? 0,

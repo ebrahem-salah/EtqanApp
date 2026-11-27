@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
-import '../chat/chat_conversation_screen.dart';
+import '../../core/network/api_client.dart';
+import '../../core/services/student_rating_service.dart';
 import '../call/live_recitation_room.dart';
+import '../chat/chat_conversation_screen.dart';
+import '../student/student_record_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
+  final int? userId;
   final String userName;
   final String userAvatar;
   final int episodesCount;
@@ -12,11 +15,12 @@ class UserProfileScreen extends StatefulWidget {
 
   const UserProfileScreen({
     super.key,
-    this.userName = 'Fahd saad',
+    this.userId,
+    this.userName = 'مستخدم إتقان',
     this.userAvatar = 'assets/images/profile.png',
-    this.episodesCount = 4,
-    this.videosCount = 1,
-    this.friendsCount = 5,
+    this.episodesCount = 0,
+    this.videosCount = 0,
+    this.friendsCount = 0,
   });
 
   @override
@@ -24,15 +28,47 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> with SingleTickerProviderStateMixin {
+  final ApiClient _apiClient = ApiClient();
   late TabController _tabController;
   bool _isFriend = false;
   late int _currentFriendsCount;
+  StudentRatingSummary _rating = StudentRatingSummary.empty;
+  List<Map<String, dynamic>> _videos = [];
+  List<Map<String, dynamic>> _circles = [];
+  bool _isLoadingData = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
     _currentFriendsCount = widget.friendsCount;
+    _loadProfileDetails();
+  }
+
+  Future<void> _loadProfileDetails() async {
+    if (widget.userId == null) return;
+    setState(() => _isLoadingData = true);
+    try {
+      final ratingFuture = StudentRatingService.instance.fetchStudentRating(widget.userId!);
+      final videosFuture = _apiClient.getUserVideos(widget.userId!);
+      final classesFuture = _apiClient.getClasses();
+
+      _rating = await ratingFuture;
+      final vRes = await videosFuture;
+      if (vRes.statusCode == 200 && vRes.data != null) {
+        final List rawV = vRes.data['data'] is List ? vRes.data['data'] : [];
+        _videos = rawV.map((v) => Map<String, dynamic>.from(v as Map)).toList();
+      }
+      final cRes = await classesFuture;
+      if (cRes.statusCode == 200 && cRes.data != null) {
+        final List rawC = cRes.data['data'] is List ? cRes.data['data'] : [];
+        _circles = rawC.where((c) {
+          final cid = int.tryParse('${c['creator_id'] ?? c['sheikh_id'] ?? ''}');
+          return cid == widget.userId;
+        }).map((c) => Map<String, dynamic>.from(c as Map)).toList();
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingData = false);
   }
 
   @override
@@ -207,29 +243,45 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                     ),
                     const SizedBox(height: 6),
 
-                    // Institution Badge من الصورة 20
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF81C784)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.business_rounded, size: 14, color: Color(0xFF00875A)),
-                          SizedBox(width: 6),
-                          Text(
-                            'مؤسسة التعاون',
-                            style: TextStyle(
-                              fontFamily: 'Dubai',
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF00875A),
+                    // التقييم العام التراكمي
+                    GestureDetector(
+                      onTap: widget.userId == null
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => StudentRecordScreen(
+                                    studentId: widget.userId,
+                                    studentName: widget.userName,
+                                  ),
+                                ),
+                              );
+                            },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF81C784)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.stars_rounded, size: 15, color: Color(0xFF00875A)),
+                            const SizedBox(width: 6),
+                            Text(
+                              _rating.evaluatedCount > 0
+                                  ? 'التقييم العام: ${_rating.averageOutOf10.toStringAsFixed(1)} / 10 (${_rating.percentage}%)'
+                                  : 'عضو منصة إتقان',
+                              style: const TextStyle(
+                                fontFamily: 'Dubai',
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF00875A),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -383,6 +435,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
   }
 
   Widget _buildVideosTab() {
+    if (_isLoadingData) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF00875A)));
+    }
+    if (_videos.isEmpty) {
+      return Center(
+        child: Text(
+          'لا توجد فيديوهات منشورة حالياً',
+          style: TextStyle(fontFamily: 'Dubai', fontSize: 14, color: Colors.grey.shade600),
+        ),
+      );
+    }
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -391,35 +454,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
         mainAxisSpacing: 12,
         childAspectRatio: 0.72,
       ),
-      itemCount: 1,
+      itemCount: _videos.length,
       itemBuilder: (context, index) {
+        final v = _videos[index];
         return Container(
           decoration: BoxDecoration(
-            color: Colors.black,
+            color: const Color(0xFF191919),
             borderRadius: BorderRadius.circular(12),
           ),
+          padding: const EdgeInsets.all(10),
           child: Stack(
             fit: StackFit.expand,
             children: [
               const Center(
-                child: SizedBox(
-                  width: 38,
-                  height: 38,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                ),
+                child: Icon(Icons.play_circle_outline_rounded, color: Colors.white70, size: 42),
               ),
               Positioned(
-                bottom: 10,
-                right: 12,
-                child: Row(
-                  children: const [
-                    Text('2', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                    SizedBox(width: 4),
-                    Icon(Icons.favorite, color: Colors.white, size: 14),
-                  ],
+                bottom: 8,
+                right: 8,
+                left: 8,
+                child: Text(
+                  (v['title'] ?? v['description'] ?? 'تلاوة قرآنية').toString(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontFamily: 'Dubai', color: Colors.white, fontSize: 12),
                 ),
               ),
             ],
@@ -430,30 +488,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
   }
 
   Widget _buildCirclesTab() {
-    final circles = [
-      {
-        'title': 'حلقة المواعظ',
-        'sheikh': widget.userName,
-        'time': '11:18AM - 21/09/2026',
-        'subscribers': '0 / 1',
-        'price': '20 دولار',
-        'status': 'جارية الان',
-      },
-      {
-        'title': 'حلقة الذكر',
-        'sheikh': widget.userName,
-        'time': '10:16AM - 21/09/2026',
-        'subscribers': '0 / 1',
-        'price': '60 دولار',
-        'status': 'جارية الان',
-      },
-    ];
+    if (_isLoadingData) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF00875A)));
+    }
+    if (_circles.isEmpty) {
+      return Center(
+        child: Text(
+          'لا توجد حلقات مسجلة حالياً',
+          style: TextStyle(fontFamily: 'Dubai', fontSize: 14, color: Colors.grey.shade600),
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: circles.length,
+      itemCount: _circles.length,
       itemBuilder: (context, index) {
-        final c = circles[index];
+        final c = _circles[index];
+        final int? cid = int.tryParse('${c['id'] ?? ''}');
+        final title = (c['name'] ?? c['title'] ?? 'حلقة تلاوة').toString();
+        final time = (c['starts_at'] ?? '').toString();
+        final subscribers = '${c['students_count'] ?? 0} / ${c['capacity'] ?? 30}';
+        final isFinished = c['is_finished'] == true || c['status'] == 'completed';
+
         return Container(
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.all(16),
@@ -461,117 +518,40 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: Colors.grey.shade200),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Dubai')),
+              const SizedBox(height: 4),
+              if (time.isNotEmpty)
+                Text(time, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+              const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.grey.shade200,
-                    child: const Icon(Icons.person, color: Colors.grey),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00875A),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LiveRecitationRoom(
+                            roomId: cid != null ? 'room_srv_$cid' : 'circle_${title.hashCode}',
+                            circleTitle: title,
+                            classRoomId: cid,
+                            sheikhName: widget.userName,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('دخول الحلقة', style: TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        c['time']!,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        c['title']!,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Dubai'),
-                      ),
-                      Text(
-                        c['sheikh']!,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
                   Text(
-                    'سعر الحلقة: ${c['price']}',
-                    style: const TextStyle(color: Color(0xFF00875A), fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.people_outline, size: 14, color: Color(0xFF00875A)),
-                        const SizedBox(width: 4),
-                        Text(
-                          'المشتركين ${c['subscribers']}',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF00875A), fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  // Green "دفع" button
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00875A),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => LiveRecitationRoom(
-                                roomId: 'circle_${c['title'].hashCode}',
-                                circleTitle: c['title']!,
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('دفع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // "جارية الان" status badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.check_circle_rounded, color: Color(0xFF00875A), size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          c['status']!,
-                          style: const TextStyle(color: Color(0xFF00875A), fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ],
-                    ),
+                    'المشتركين $subscribers • ${isFinished ? 'منتهية' : 'جارية الآن'}',
+                    style: const TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Color(0xFF00875A), fontWeight: FontWeight.bold),
                   ),
                 ],
               ),

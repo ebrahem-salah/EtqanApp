@@ -9,6 +9,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../call/live_recitation_room.dart';
 import '../chapters/circle_replay_screen.dart';
+import '../notifications/notifications_screen.dart';
 
 class MyChaptersScreen extends StatefulWidget {
   final int refreshTick;
@@ -269,7 +270,11 @@ class _MyChaptersScreenState extends State<MyChaptersScreen> {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.notifications_none, color: Color(0xFF191919), size: 22),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                        );
+                      },
                     ),
                   ),
                   const Text(

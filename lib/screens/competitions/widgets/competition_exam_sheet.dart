@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/exam_lock_service.dart';
+import '../../../core/utils/app_feedback.dart';
 
 class CompetitionExamSheet extends StatefulWidget {
   final int competitionId;
@@ -42,11 +44,12 @@ class CompetitionExamSheet extends StatefulWidget {
   State<CompetitionExamSheet> createState() => _CompetitionExamSheetState();
 }
 
-class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
+class _CompetitionExamSheetState extends State<CompetitionExamSheet> with WidgetsBindingObserver {
   final ApiClient _apiClient = ApiClient();
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+  int _leaveViolations = 0;
 
   int _scopeJuz = 30; // 10, 15, or 30
   int _questionCount = 10; // 5 or 10
@@ -63,11 +66,33 @@ class _CompetitionExamSheetState extends State<CompetitionExamSheet> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ExamLockService.instance.setSecureScreen(true);
+    ExamLockService.instance.startLockTask();
     _fetchExistingQuestions();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _leaveViolations++;
+    } else if (state == AppLifecycleState.resumed && _leaveViolations > 0 && mounted) {
+      AppFeedback.showError(
+        context,
+        'مراقبة المسابقة',
+        '⚠️ تم رصد مغادرة شاشة الاختبار (مخالفة رقم $_leaveViolations) — يُرجى عدم الخروج حتى إنهاء الأسئلة',
+      );
+      if (_leaveViolations >= 2 && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    ExamLockService.instance.setSecureScreen(false);
+    ExamLockService.instance.stopLockTask();
     for (var q in _questions) {
       final ctrl = q['notes_controller'] as TextEditingController?;
       ctrl?.dispose();
