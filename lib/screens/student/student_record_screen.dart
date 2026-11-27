@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/services/parent_children_service.dart';
 import '../../core/services/student_rating_service.dart';
 import '../../core/utils/app_feedback.dart';
 import '../../providers/auth_provider.dart';
@@ -191,6 +193,114 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> with SingleTi
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // سجل الحضور والغياب
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'سجل الحضور والغياب 📋',
+                          style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _rating.absentCount > 0 ? Colors.red.shade50 : const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _rating.evaluatedCount > 0
+                                ? 'الالتزام: ${_rating.attendanceRate}%'
+                                : 'لا توجد سجلات بعد',
+                            style: TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _rating.absentCount > 0 ? Colors.red.shade700 : const Color(0xFF00875A),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _buildAttendancePill('حضر وسمّع ✅', '${_rating.presentCount}', const Color(0xFF00875A)),
+                        const SizedBox(width: 8),
+                        _buildAttendancePill('لم يُسمّع ⚠️', '${_rating.notRecitedCount}', Colors.orange.shade800),
+                        const SizedBox(width: 8),
+                        _buildAttendancePill('غائب ❌', '${_rating.absentCount}', Colors.red.shade700),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            if (widget.studentId == null && _targetStudentId != null) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: const Color(0xFFFFFDF5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: const Color(0xFF00875A).withOpacity(0.35)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00875A),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () {
+                          final code = ParentChildrenService.buildFollowCode(_targetStudentId!);
+                          Clipboard.setData(ClipboardData(text: code));
+                          AppFeedback.showSuccess(context, 'تم نسخ كود متابعة ولي الأمر: $code');
+                        },
+                        icon: const Icon(Icons.copy_rounded, size: 15, color: Colors.white),
+                        label: const Text(
+                          'نسخ الكود',
+                          style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'كود متابعة ولي الأمر: ${ParentChildrenService.buildFollowCode(_targetStudentId!)}',
+                              style: const TextStyle(
+                                fontFamily: 'Dubai',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Color(0xFF00875A),
+                              ),
+                            ),
+                            Text(
+                              'أعطِ هذا الكود لولي الأمر لإضافتك في حسابه ومتابعة تقييماتك وحضورك',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(fontFamily: 'Dubai', fontSize: 11, color: Colors.grey.shade700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             Card(
@@ -201,7 +311,7 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> with SingleTi
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'آخر تقييمات الحلقات:',
+                      'آخر تقييمات وسجل الحلقات:',
                       style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     const SizedBox(height: 10),
@@ -211,16 +321,21 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> with SingleTi
                         style: TextStyle(fontFamily: 'Dubai', fontSize: 12, color: Colors.grey.shade600),
                       )
                     else
-                      ..._rating.records.take(6).map((r) {
+                      ..._rating.records.take(10).map((r) {
                         final double sc = (r['score'] as num?)?.toDouble() ?? 0;
-                        final bool isWarning = r['type'] == 'warning';
+                        final String att = (r['attendance_status'] ?? 'present').toString();
+                        final bool isWarning = r['type'] == 'warning' || att != 'present';
+                        final String badgeText = att == 'absent'
+                            ? 'غائب ❌'
+                            : (att == 'not_recited' ? 'لم يُسمّع ⚠️' : '${sc.toStringAsFixed(1)} / 10');
                         return Column(
                           children: [
                             _buildEvaluationRow(
                               r['circle_name'].toString(),
                               r['message'].toString(),
-                              '${sc.toStringAsFixed(1)} / 10',
+                              badgeText,
                               isWarning: isWarning,
+                              isAbsent: att == 'absent',
                             ),
                             const Divider(),
                           ],
@@ -270,15 +385,38 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> with SingleTi
     );
   }
 
-  Widget _buildEvaluationRow(String title, String details, String grade, {bool isWarning = false}) {
+  Widget _buildAttendancePill(String label, String count, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Column(
+          children: [
+            Text(count, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold, fontSize: 15, color: color)),
+            Text(label, style: TextStyle(fontFamily: 'Dubai', fontSize: 10.5, fontWeight: FontWeight.w600, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEvaluationRow(String title, String details, String grade, {bool isWarning = false, bool isAbsent = false}) {
+    final Color accentColor = isAbsent ? Colors.red.shade700 : (isWarning ? Colors.deepOrange : const Color(0xFF00875A));
+    final Color bgColor = isAbsent ? Colors.red.shade50 : (isWarning ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isWarning ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
-            color: isWarning ? Colors.orange : const Color(0xFF00875A),
+            isAbsent
+                ? Icons.cancel_rounded
+                : (isWarning ? Icons.warning_amber_rounded : Icons.check_circle_rounded),
+            color: accentColor,
             size: 18,
           ),
           const SizedBox(width: 8),
@@ -295,7 +433,7 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> with SingleTi
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: isWarning ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9),
+              color: bgColor,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -303,7 +441,7 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> with SingleTi
               style: TextStyle(
                 fontFamily: 'Dubai',
                 fontSize: 11,
-                color: isWarning ? Colors.deepOrange : const Color(0xFF00875A),
+                color: accentColor,
                 fontWeight: FontWeight.bold,
               ),
             ),

@@ -63,7 +63,9 @@ class AuthProvider extends ChangeNotifier {
           phone: savedPhone,
           role: savedRole == 'sheikh'
               ? UserRole.sheikh
-              : (savedRole == 'supervisor' ? UserRole.supervisor : UserRole.student),
+              : (savedRole == 'supervisor'
+                  ? UserRole.supervisor
+                  : (savedRole == 'parent' ? UserRole.parent : UserRole.student)),
           avatar: '',
           walletBalance: 150.0,
           quranHifzAmount: '3 أجزاء',
@@ -159,11 +161,28 @@ class AuthProvider extends ChangeNotifier {
         _token = data?['token']?.toString();
 
         final userData = data?['user'];
+        final prefs = await SharedPreferences.getInstance();
+        final parentPhones = prefs.getStringList('etqan_parent_phones') ?? const [];
+        final bool isMarkedParent = parentPhones.contains('$countryCode${phone.trim()}') ||
+            parentPhones.contains(phone.trim());
         if (userData != null) {
           _currentUser = _mapJsonToUserModel(
             userData,
             fallbackType: data?['user_type']?.toString(),
+            fallbackRole: isMarkedParent ? UserRole.parent : null,
           );
+          if (isMarkedParent && _currentUser!.role == UserRole.student) {
+            _currentUser = UserModel(
+              id: _currentUser!.id,
+              name: _currentUser!.name,
+              email: _currentUser!.email,
+              phone: _currentUser!.phone,
+              role: UserRole.parent,
+              avatar: _currentUser!.avatar,
+              walletBalance: _currentUser!.walletBalance,
+              quranHifzAmount: _currentUser!.quranHifzAmount,
+            );
+          }
         } else {
           final isSheikhPhone = phone == '0600000000' || phone == '0501122334' || phone.contains('roily');
           _currentUser = UserModel(
@@ -202,14 +221,17 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     String countryCode = '+966',
     String userType = 'student',
+    bool isParent = false,
+    bool wantsVolunteer = false,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      final serverType = isParent ? 'student' : userType;
       final response = await _apiClient.register(
-        userType: userType,
+        userType: serverType,
         name: name,
         countryCode: countryCode,
         phone: phone,
@@ -218,8 +240,27 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // تسجيل الدخول مباشرة بعد التسجيل
-        return await login(phone, password, countryCode: countryCode);
+        if (isParent) {
+          final prefs = await SharedPreferences.getInstance();
+          final list = prefs.getStringList('etqan_parent_phones') ?? [];
+          final fullPhone = '$countryCode${phone.trim()}';
+          if (!list.contains(fullPhone)) list.add(fullPhone);
+          if (!list.contains(phone.trim())) list.add(phone.trim());
+          await prefs.setStringList('etqan_parent_phones', list);
+        }
+        final loggedIn = await login(phone, password, countryCode: countryCode);
+        if (loggedIn && wantsVolunteer && !isParent) {
+          try {
+            await _apiClient.submitVolunteerRequest({
+              'name': name,
+              'phone': '$countryCode$phone',
+              'qualification': userType == 'sheikh' ? 'شيخ / محفّظ متطوع' : 'طالب متطوع',
+              'hours_per_week': '4',
+              'category': 'تحفيظ وتلقين الصغار',
+            });
+          } catch (_) {}
+        }
+        return loggedIn;
       }
     } catch (e) {
       _errorMessage = AppFeedback.formatError(e);
@@ -400,8 +441,10 @@ class AuthProvider extends ChangeNotifier {
       role = UserRole.sheikh;
     } else if (t == 'supervisor' || json['supervisor'] != null) {
       role = UserRole.supervisor;
+    } else if (t == 'parent') {
+      role = UserRole.parent;
     } else if (t == 'student') {
-      role = UserRole.student;
+      role = fallbackRole == UserRole.parent ? UserRole.parent : UserRole.student;
     }
 
     double bal = 150.0;

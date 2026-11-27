@@ -318,10 +318,14 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
             final int? sid = int.tryParse('${item['student_id'] ?? ''}');
             if (sid == null) continue;
             final String msg = item['message']?.toString() ?? '';
+            final String status = msg.contains('[غياب]')
+                ? 'absent'
+                : (msg.contains('[لم يُسمّع]') ? 'not_recited' : 'present');
             _studentEvaluations[sid] = {
               'student_id': sid,
               'type': item['type']?.toString() ?? 'thank',
               'message': msg,
+              'attendance_status': status,
               'scoreText': _extractScoreFromMessage(msg),
               'savedOnServer': true,
             };
@@ -332,6 +336,8 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
   }
 
   String _extractScoreFromMessage(String msg) {
+    if (msg.contains('[غياب]')) return 'غائب ❌';
+    if (msg.contains('[لم يُسمّع]')) return 'لم يُسمّع ⚠️';
     final match = RegExp(r'(\d+(?:\.\d+)?)\s*/\s*10').firstMatch(msg);
     if (match != null) return '${match.group(1)}/10';
     return 'تم التقييم';
@@ -1002,6 +1008,106 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
     }
   }
 
+  String _buildAttendanceMessage(String status) {
+    if (status == 'absent') {
+      return '[غياب] تغيّب الطالب عن حضور حلقة (${widget.circleTitle}) اليوم — يرجى متابعة ولي الأمر';
+    }
+    return '[لم يُسمّع] حضر الطالب حلقة (${widget.circleTitle}) ولم يُسمّع المقرر المطلوب — يرجى متابعة ولي الأمر';
+  }
+
+  Future<void> _markStudentAttendance(Map<String, dynamic> student, String status) async {
+    final int? sid = student['student_id'] as int?;
+    final String studentName = (student['name'] ?? 'طالب').toString();
+    if (sid == null) {
+      AppFeedback.showError(context, 'تسجيل الحضور', 'لا يوجد معرف للطالب على السيرفر بعد');
+      return;
+    }
+
+    final String msg = _buildAttendanceMessage(status);
+    final String badgeText = status == 'absent' ? 'غائب ❌' : 'لم يُسمّع ⚠️';
+    bool savedOnServer = false;
+
+    if (widget.classRoomId != null) {
+      try {
+        await _apiClient.sendAppreciation(widget.classRoomId!, {
+          'appreciations': [
+            {
+              'student_id': sid,
+              'type': 'warning',
+              'message': msg,
+            }
+          ],
+        });
+        savedOnServer = true;
+      } catch (e) {
+        if (mounted) AppFeedback.showError(context, 'حفظ سجل الحضور والغياب', e);
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _studentEvaluations[sid] = {
+        'student_id': sid,
+        'name': studentName,
+        'attendance_status': status,
+        'type': 'warning',
+        'message': msg,
+        'scoreText': badgeText,
+        'savedOnServer': savedOnServer,
+      };
+      if (_activeEvalStudentId == sid) {
+        _activeEvalStudentId = null;
+        _activeEvalStudentName = null;
+      }
+    });
+
+    if (savedOnServer) {
+      _sendRoomCommand({
+        'cmd': 'student_eval_result',
+        'target_user_id': sid,
+        'score': badgeText,
+        'summary': msg,
+      });
+      AppFeedback.showSuccess(
+        context,
+        status == 'absent'
+            ? 'تم تسجيل غياب $studentName وإرسال تنبيه لولي الأمر ❌'
+            : 'تم تسجيل أن $studentName لم يُسمّع وإرسال تنبيه لولي الأمر ⚠️',
+      );
+    }
+  }
+
+  Future<void> _batchRecordUnmarkedAttendance(List<Map<String, dynamic>> targets) async {
+    if (targets.isEmpty || widget.classRoomId == null) return;
+    final List<Map<String, dynamic>> payload = [];
+    for (final s in targets) {
+      final int? sid = s['student_id'] as int?;
+      if (sid == null) continue;
+      final String status = s['isOnline'] == true ? 'not_recited' : 'absent';
+      final String msg = _buildAttendanceMessage(status);
+      payload.add({
+        'student_id': sid,
+        'type': 'warning',
+        'message': msg,
+      });
+      _studentEvaluations[sid] = {
+        'student_id': sid,
+        'name': (s['name'] ?? 'طالب').toString(),
+        'attendance_status': status,
+        'type': 'warning',
+        'message': msg,
+        'scoreText': status == 'absent' ? 'غائب ❌' : 'لم يُسمّع ⚠️',
+        'savedOnServer': true,
+      };
+    }
+    if (payload.isEmpty) return;
+    try {
+      await _apiClient.sendAppreciation(widget.classRoomId!, {
+        'appreciations': payload,
+      });
+    } catch (_) {}
+  }
+
   Future<void> _showParticipantsAndEvaluateSheet() async {
     await _loadClassDetails(silent: true);
     if (!mounted) return;
@@ -1147,30 +1253,100 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
                             child: Row(
                               children: [
                                 if (widget.isSheikh)
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: isCurrentlyEvaluating
-                                          ? const Color(0xFF005F3F)
-                                          : const Color(0xFF00875A),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      minimumSize: Size.zero,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.pop(bCtx);
-                                      _startEvaluatingStudent(student);
-                                    },
-                                    child: Text(
-                                      isCurrentlyEvaluating
-                                          ? 'يسمّع الآن'
-                                          : (eval != null ? 'إعادة تقييم' : 'فتح المايك والتقييم'),
-                                      style: const TextStyle(
-                                        fontFamily: 'Dubai',
-                                        fontSize: 11.5,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: isCurrentlyEvaluating
+                                              ? const Color(0xFF005F3F)
+                                              : const Color(0xFF00875A),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          minimumSize: Size.zero,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        onPressed: () {
+                                          Navigator.pop(bCtx);
+                                          _startEvaluatingStudent(student);
+                                        },
+                                        child: Text(
+                                          isCurrentlyEvaluating
+                                              ? 'يسمّع الآن'
+                                              : (eval != null ? 'تقييم التلاوة' : 'فتح المايك والتقييم'),
+                                          style: const TextStyle(
+                                            fontFamily: 'Dubai',
+                                            fontSize: 11,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (sid != null) ...[
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            InkWell(
+                                              onTap: () async {
+                                                await _markStudentAttendance(student, 'absent');
+                                                if (ctx.mounted) setSheetState(() {});
+                                              },
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: eval?['attendance_status'] == 'absent'
+                                                      ? Colors.red.shade600
+                                                      : Colors.red.shade50,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.red.shade300),
+                                                ),
+                                                child: Text(
+                                                  'غائب ❌',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Dubai',
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: eval?['attendance_status'] == 'absent'
+                                                        ? Colors.white
+                                                        : Colors.red.shade700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            InkWell(
+                                              onTap: () async {
+                                                await _markStudentAttendance(student, 'not_recited');
+                                                if (ctx.mounted) setSheetState(() {});
+                                              },
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: eval?['attendance_status'] == 'not_recited'
+                                                      ? Colors.orange.shade700
+                                                      : Colors.orange.shade50,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.orange.shade300),
+                                                ),
+                                                child: Text(
+                                                  'لم يُسمّع ⚠️',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Dubai',
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: eval?['attendance_status'] == 'not_recited'
+                                                        ? Colors.white
+                                                        : Colors.orange.shade900,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -1228,16 +1404,27 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFFD3EADB),
+                                                color: eval['attendance_status'] == 'absent'
+                                                    ? Colors.red.shade50
+                                                    : (eval['attendance_status'] == 'not_recited'
+                                                        ? Colors.orange.shade50
+                                                        : const Color(0xFFD3EADB)),
                                                 borderRadius: BorderRadius.circular(8),
                                               ),
                                               child: Text(
-                                                '${eval['scoreText'] ?? 'تم التقييم'} ✓',
-                                                style: const TextStyle(
+                                                eval['attendance_status'] == 'absent' ||
+                                                        eval['attendance_status'] == 'not_recited'
+                                                    ? '${eval['scoreText']}'
+                                                    : '${eval['scoreText'] ?? 'تم التقييم'} ✓',
+                                                style: TextStyle(
                                                   fontFamily: 'Dubai',
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF00875A),
+                                                  color: eval['attendance_status'] == 'absent'
+                                                      ? Colors.red.shade700
+                                                      : (eval['attendance_status'] == 'not_recited'
+                                                          ? Colors.orange.shade900
+                                                          : const Color(0xFF00875A)),
                                                 ),
                                               ),
                                             ),
@@ -1488,16 +1675,22 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
   }
 
   void _endSessionPrompt() {
+    final unmarkedStudents = _getMergedParticipantsList()
+        .where((s) => s['student_id'] != null && s['user_id'] != _currentUserId && s['evaluation'] == null)
+        .toList();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('إنهاء الحلقة والتسميع', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'Dubai', fontWeight: FontWeight.bold)),
         content: Text(
-          _studentEvaluations.isNotEmpty
-              ? 'تم حفظ تقييم ${_studentEvaluations.length} طالب في هذه الحلقة.\nهل ترغب في إنهاء الحلقة الآن وحفظ التسجيل؟'
-              : (_isRecording
-                  ? 'هل ترغب في إنهاء الحلقة، وتدوين تقييم الطالب (الأخطاء والتلعثم)، وحفظ التسجيل؟'
-                  : 'هل ترغب في إنهاء جلسة التسميع أو تقييم طالب قبل الخروج؟'),
+          unmarkedStudents.isNotEmpty
+              ? 'تم تقييم ${_studentEvaluations.length} طالب.\nيوجد ${unmarkedStudents.length} طالب مشترك لم يُسمّع أو لم يحضر بعد — يمكنك تسجيلهم تلقائياً وإرسال تنبيه لولي الأمر قبل إنهاء الحلقة.'
+              : (_studentEvaluations.isNotEmpty
+                  ? 'تم حفظ سجل وتقييم ${_studentEvaluations.length} طالب في هذه الحلقة.\nهل ترغب في إنهاء الحلقة الآن وحفظ التسجيل؟'
+                  : (_isRecording
+                      ? 'هل ترغب في إنهاء الحلقة، وتدوين تقييم الطالب (الأخطاء والتلعثم)، وحفظ التسجيل؟'
+                      : 'هل ترغب في إنهاء جلسة التسميع أو تقييم طالب قبل الخروج؟')),
           textAlign: TextAlign.right,
           style: const TextStyle(fontFamily: 'Dubai'),
         ),
@@ -1506,6 +1699,38 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
             onPressed: () => Navigator.pop(ctx),
             child: const Text('إلغاء', style: TextStyle(fontFamily: 'Dubai')),
           ),
+          if (unmarkedStudents.isNotEmpty)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _batchRecordUnmarkedAttendance(unmarkedStudents);
+                await UserChaptersService.instance.endAndSaveChapter(
+                  roomId: widget.roomId,
+                  title: widget.circleTitle,
+                  durationFormatted: _formatCallTimer(_callSeconds > 0 ? _callSeconds : 150),
+                );
+                if (widget.classRoomId != null) {
+                  try {
+                    await _apiClient.endClass(
+                      widget.classRoomId!,
+                      recordUrl: 'https://etqan.site/storage/recordings/sample_recitation.mp4',
+                    );
+                  } catch (_) {}
+                }
+                if (mounted) {
+                  AppFeedback.showSuccess(
+                    context,
+                    'تم تسجيل حضور/غياب غير المقيّمين (${unmarkedStudents.length}) وإشعار أولياء الأمور ثم إنهاء الحلقة',
+                  );
+                  Navigator.pop(context);
+                }
+              },
+              child: Text(
+                'رصد غياب غير المقيّمين (${unmarkedStudents.length}) وإنهاء 📢',
+                style: const TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
           if (_studentEvaluations.isNotEmpty)
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
@@ -1534,7 +1759,7 @@ class _LiveRecitationRoomState extends State<LiveRecitationRoom> with WidgetsBin
               },
               child: const Text('إنهاء الحلقة وحفظ السجل', style: TextStyle(fontFamily: 'Dubai', color: Colors.white, fontWeight: FontWeight.bold)),
             )
-          else
+          else if (unmarkedStudents.isEmpty)
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00875A)),
               onPressed: () async {

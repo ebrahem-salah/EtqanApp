@@ -1,4 +1,4 @@
-enum UserRole { student, sheikh, supervisor }
+enum UserRole { student, sheikh, supervisor, parent }
 
 class UserModel {
   final int id;
@@ -28,6 +28,8 @@ class UserModel {
       parsedRole = UserRole.sheikh;
     } else if (roleStr == 'supervisor') {
       parsedRole = UserRole.supervisor;
+    } else if (roleStr == 'parent') {
+      parsedRole = UserRole.parent;
     }
 
     return UserModel(

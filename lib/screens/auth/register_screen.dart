@@ -16,14 +16,16 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _nameController = TextEditingController(text: 'محمد أحمد');
-  final _phoneController = TextEditingController(text: '123456789');
-  final _emailController = TextEditingController(text: 'user@etqan.com');
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   String _selectedCountryCode = '+20';
   String _selectedCountryFlag = '🇪🇬';
+  String _selectedRole = 'student'; // 'student' | 'parent' | 'sheikh'
+  bool _wantsVolunteer = false;
 
   bool _agreeToTerms = true;
   bool _obscurePassword = true;
@@ -65,6 +67,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       phone: _phoneController.text.trim(),
       password: _passwordController.text.isEmpty ? 'Pass#12345' : _passwordController.text,
       countryCode: _selectedCountryCode,
+      userType: _selectedRole == 'sheikh' ? 'sheikh' : 'student',
+      isParent: _selectedRole == 'parent',
+      wantsVolunteer: _selectedRole != 'parent' && _wantsVolunteer,
     );
 
     if (!mounted) return;
@@ -175,14 +180,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               // Subtitle: قم بإنشاء حساب جديد
               const Text(
-                'قم بإنشاء حساب جديد',
+                'قم بإنشاء حساب جديد واختر نوع الحساب',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.black54,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+
+              // Role Selector: طالب / والد / شيخ
+              Row(
+                children: [
+                  _buildRoleCard(
+                    value: 'student',
+                    title: 'طالب',
+                    subtitle: 'حفظ ومراجعة',
+                    icon: Icons.school_rounded,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildRoleCard(
+                    value: 'parent',
+                    title: 'والد / ولي أمر',
+                    subtitle: 'متابعة الأبناء',
+                    icon: Icons.family_restroom_rounded,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildRoleCard(
+                    value: 'sheikh',
+                    title: 'شيخ / محفّظ',
+                    subtitle: 'إدارة الحلقات',
+                    icon: Icons.menu_book_rounded,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
 
               // Field 1: الاسم
               _buildFigmaField(
@@ -290,6 +322,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
               ),
               const SizedBox(height: 12),
+
+              if (_selectedRole != 'parent')
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _wantsVolunteer,
+                      activeColor: const Color(0xFF00875A),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      onChanged: (val) => setState(() => _wantsVolunteer = val ?? false),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'أرغب بالتطوع في مبادرات إتقان الخيرية 🤝 (يمكن إكماله من داخل التطبيق)',
+                        style: TextStyle(fontSize: 12, color: Colors.black87, fontFamily: 'Dubai'),
+                      ),
+                    ),
+                  ],
+                ),
 
               // Terms & Conditions Checkbox
               Row(
@@ -441,6 +491,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
   ),
 ),
 );
+  }
+
+  Widget _buildRoleCard({
+    required String value,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final bool selected = _selectedRole == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedRole = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE8F5E9) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? const Color(0xFF00875A) : Colors.grey.shade300,
+              width: selected ? 1.8 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: selected ? const Color(0xFF00875A) : Colors.grey.shade600,
+                size: 22,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: selected ? const Color(0xFF00875A) : const Color(0xFF191919),
+                ),
+              ),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Dubai',
+                  fontSize: 10,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildFigmaField({

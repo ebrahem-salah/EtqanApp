@@ -25,10 +25,13 @@ import '../volunteer/volunteer_screen.dart';
 import '../appreciations/appreciations_screen.dart';
 import '../support/support_screen.dart';
 import 'student_record_screen.dart';
+import '../parent/parent_children_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../sections/sections_hub_screen.dart';
 import '../sections/dialogs/create_section_session_dialog.dart';
 import '../../core/services/reels_preload_manager.dart';
+import '../../core/services/parent_children_service.dart';
+import '../../core/services/student_rating_service.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -42,8 +45,32 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _tabRefreshTick = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkParentAlerts());
+  }
+
+  Future<void> _checkParentAlerts() async {
+    if (!mounted) return;
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    if (user == null || user.role != UserRole.parent) return;
+    try {
+      final children = await ParentChildrenService.instance.getChildren(user.id);
+      for (final child in children) {
+        final summary = await StudentRatingService.instance.fetchStudentRating(child.studentId);
+        await ParentChildrenService.instance.checkAndNotifyNewAlert(
+          parentUserId: user.id,
+          child: child,
+          summary: summary,
+        );
+      }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final bool isParent = auth.currentUser?.role == UserRole.parent;
     final canCreateCircle = auth.currentUser?.role == UserRole.sheikh ||
         auth.currentUser?.role == UserRole.supervisor;
 
@@ -51,7 +78,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       ReelsHomeScreen(isActive: _selectedTabIndex == 0),
       ChaptersScreen(refreshTick: _tabRefreshTick),
       const SheikhsScreen(),
-      MyChaptersScreen(refreshTick: _tabRefreshTick),
+      isParent ? const ParentChildrenScreen() : MyChaptersScreen(refreshTick: _tabRefreshTick),
       const _MoreScreenPlaceholder(),
     ];
 
@@ -112,7 +139,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           BottomNavigationBarItem(
             icon: SvgPicture.asset(AppAssets.myChapters, width: 22, height: 22, colorFilter: ColorFilter.mode(Colors.grey.shade500, BlendMode.srcIn)),
             activeIcon: SvgPicture.asset(AppAssets.myChapters, width: 22, height: 22, colorFilter: const ColorFilter.mode(AppColors.primary, BlendMode.srcIn)),
-            label: 'حلقاتي',
+            label: isParent ? 'أبنائي' : 'حلقاتي',
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset(AppAssets.more, width: 22, height: 22, colorFilter: ColorFilter.mode(Colors.grey.shade500, BlendMode.srcIn)),
@@ -240,7 +267,7 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        // Phone Number
+                        // Phone Number & Role Badge
                         Text(
                           userPhone,
                           style: TextStyle(
@@ -249,7 +276,30 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                             color: Colors.grey.shade700,
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: user?.role == UserRole.parent
+                                ? const Color(0xFFE8F5E9)
+                                : const Color(0xFFF3F6F4),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            user?.role == UserRole.parent
+                                ? 'حساب ولي أمر 👨‍👧‍👦'
+                                : (user?.role == UserRole.sheikh
+                                    ? 'شيخ / محفّظ 📖'
+                                    : (user?.role == UserRole.supervisor ? 'مشرف الحلقة ⭐' : 'حساب طالب 🎓')),
+                            style: const TextStyle(
+                              fontFamily: 'Dubai',
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF00875A),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                       ],
                     ),
                   ],
@@ -320,6 +370,30 @@ class _MoreScreenPlaceholder extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
                   children: [
+                    // متابعة الأبناء والحضور (متاحة لولي الأمر والجميع)
+                    _buildMenuItem(
+                      title: 'متابعة الأبناء والحضور 👨‍👧‍👦',
+                      icon: Icons.family_restroom_rounded,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ParentChildrenScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // سجل الطالب وكود متابعة ولي الأمر
+                    _buildMenuItem(
+                      title: 'سجل الطالب وكود ولي الأمر 📖',
+                      icon: Icons.assignment_ind_outlined,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const StudentRecordScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
                     // المحفظة
                     _buildMenuItem(
                       title: 'المحفظة',
@@ -433,7 +507,7 @@ class _MoreScreenPlaceholder extends StatelessWidget {
 
                     // رقم الإصدار
                     Text(
-                      'الاصدار v1.0.01',
+                      'الاصدار v1.0.13',
                       style: TextStyle(
                         fontFamily: 'Dubai',
                         fontSize: 13,
